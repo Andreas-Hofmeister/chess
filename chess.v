@@ -249,10 +249,115 @@ Definition advance_pawn (c : Color) (rank_index : nat) :=
   | Black => (rank_index - 1)
   end.
 
-Inductive PawnCanMoveTo (pp : PiecePlacements) (c : Color) 
+Definition starting_rank_of_pawn (c : Color) : nat :=
+  match c with
+  | White => 1
+  | Black => 6
+  end.
+
+Inductive PawnDoubleStep : Type :=
+  | DoubleStepFileRank (onFile : nat) (toRank : nat).
+
+Definition get_double_step_target_rank (dstep : PawnDoubleStep) :=
+  match dstep with
+  | DoubleStepFileRank f r => r
+  end.
+
+Definition get_double_step_file (dstep : PawnDoubleStep) :=
+  match dstep with
+  | DoubleStepFileRank f r => f
+  end.
+
+Inductive Position : Type :=
+  | Posn (pp : PiecePlacements) (toMove : Color) 
+    (pawnDoubleStep : option PawnDoubleStep).
+
+Definition get_piece_placements (pos : Position) :=
+  match pos with
+  | Posn pp _ _ => pp
+  end.
+
+Definition get_to_move (pos : Position) :=
+  match pos with
+  | Posn _ toMove _ => toMove
+  end.
+
+Definition get_pawn_double_step (pos : Position) :=
+  match pos with
+  | Posn _ _ dstep => dstep
+  end.
+
+Inductive PawnCanMoveTo (pos : Position) (c : Color) 
 : nat -> nat -> nat -> nat -> Prop :=
-  | PawnCanMoveForward : forall sf sr tr, 
-     tr = advance_pawn c sr -> 
-     (indices_valid sf sr) = true -> 
-     (indices_valid sf tr) = true ->
-     get_square_by_index pp sf tr = Empty -> PawnCanMoveTo pp c sf sr sf tr.
+  | PawnCanMoveForward : forall pp sf sr tr,
+    pp = get_piece_placements pos ->
+    tr = advance_pawn c sr -> 
+    (indices_valid sf sr) = true -> 
+    (indices_valid sf tr) = true ->
+    get_square_by_index pp sf tr = Empty -> PawnCanMoveTo pos c sf sr sf tr
+  | PawnCanCaptureDiagonallyForward : forall pp sf sr tf tr tc p,
+    pp = get_piece_placements pos ->
+    tr = advance_pawn c sr ->
+    (tf = sf + 1 \/ tf = sf - 1) ->
+    (indices_valid sf sr) = true -> 
+    (indices_valid sf tr) = true ->
+    get_square_by_index pp tf tr = Occupied tc p ->
+    tc <> c -> PawnCanMoveTo pos c sf sr tf tr
+  | PawnCanDoubleStep : forall pp sf sr tr,
+    pp = get_piece_placements pos ->
+    sr = starting_rank_of_pawn c ->
+    tr = advance_pawn c (advance_pawn c sr) ->
+    get_square_by_index pp sf tr = Empty ->
+    PawnCanMoveTo pos c sf sr sf tr
+  | EnPassant : forall pp dstep dstf sf sr tr,
+    pp = get_piece_placements pos ->
+    get_pawn_double_step pos = Some dstep ->
+    sr = get_double_step_target_rank dstep ->
+    dstf = get_double_step_file dstep ->
+    (sf = dstf + 1 \/ sf = dstf - 1) ->
+    tr = advance_pawn c sr ->
+    PawnCanMoveTo pos c sf sr dstf tr.
+
+Inductive SquareLocation : Type :=
+  | Loc (rank : nat) (file : nat).
+
+Definition is_square_empty (rank : nat) (file : nat) (pp : PiecePlacements) :=
+  match (get_square_by_index pp file rank) with
+  | Empty => true
+  | _ => false
+  end.
+
+Definition pawn_forward_movements (pawn_loc : SquareLocation)
+  (pp : PiecePlacements) (c : Color) : (list SquareLocation) :=
+  match pawn_loc with
+  | Loc r f => 
+    let new_r := advance_pawn c r in
+      if andb (indices_valid f r) (indices_valid f new_r) then
+        if (is_square_empty new_r f pp) then [Loc new_r f]
+        else nil
+      else nil
+  end.
+
+Definition pawn_movements (pawn_loc : SquareLocation) (pos : Position) :=
+  match pos with
+  | Posn pp toMove dstep =>
+    (pawn_forward_movements pawn_loc pp toMove)
+  end.
+
+Lemma pawn_movements_sound : forall sr sf tr tf pos,
+  In (Loc tr tf) (pawn_movements (Loc sr sf) pos) ->
+  PawnCanMoveTo pos (get_to_move pos) sf sr tf tr.
+Proof.
+  intros. unfold pawn_movements in H. destruct pos eqn:Epos. simpl in H.
+  simpl.
+  destruct (indices_valid sf (advance_pawn toMove sr)) eqn:Eiv; 
+    try rewrite Bool.andb_false_r in H; simpl in H; try contradiction.
+  destruct (indices_valid sf sr) eqn:Eiv2; try simpl in H; try contradiction.
+  destruct (is_square_empty (advance_pawn toMove sr) sf pp) eqn:Eempty;
+    try simpl in H; try contradiction.
+  inversion H; try inversion H0.
+  subst. eapply PawnCanMoveForward; eauto. simpl. 
+  unfold is_square_empty in Eempty.
+  destruct (get_square_by_index pp tf (advance_pawn toMove sr)); auto.
+  discriminate.
+Qed.
