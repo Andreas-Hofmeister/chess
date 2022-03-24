@@ -344,6 +344,24 @@ Definition pawn_forward_movements (pawn_loc : SquareLocation)
       else nil
   end.
 
+Lemma pawn_forward_movements_sound : forall sr sf tr tf c pp dstep,
+  In (Loc tr tf) (pawn_forward_movements (Loc sr sf) pp c) -> 
+  PawnCanMoveTo (Posn pp c dstep) c sr sf tr tf.
+Proof.
+  intros. 
+  simpl in H.
+  destruct (indices_valid (advance_pawn c sr) sf) eqn:Eiv; 
+    try rewrite Bool.andb_false_r in H; simpl in H; try contradiction.
+  destruct (indices_valid sr sf) eqn:Eiv2; try simpl in H; try contradiction.
+  destruct (is_square_empty (advance_pawn c sr) sf pp) eqn:Eempty;
+    try simpl in H; try contradiction.
+  inversion H; try inversion H0.
+  subst. eapply PawnCanMoveForward; eauto. simpl. 
+  unfold is_square_empty in Eempty.
+  destruct (get_square_by_index pp (advance_pawn c sr) tf); auto.
+  discriminate.
+Qed.
+
 Definition occupied_by_enemy_piece (r : nat) (f : nat) (pp : PiecePlacements)
   (c : Color) : bool :=
   if (indices_valid r f) then
@@ -398,6 +416,29 @@ Definition pawn_captures (pawn_loc : SquareLocation) (pp : PiecePlacements)
       else []
   end.
 
+Lemma pawn_captures_sound : forall sr sf tr tf c pp dstep,
+  In (Loc tr tf) (pawn_captures (Loc sr sf) pp c) -> 
+  PawnCanMoveTo (Posn pp c dstep) c sr sf tr tf.
+Proof.
+  intros. 
+  simpl in H.
+  destruct (indices_valid sr sf) eqn:Hivsrc; try inversion H.
+  apply in_app_or in H. destruct H as [H | H].
+  - destruct 
+      (occupied_by_enemy_piece (advance_pawn c sr) (sf - 1) pp c) eqn: Eoc; 
+      try inversion H; try inversion H0.
+    apply occupied_by_enemy_piece_correct in Eoc.
+    destruct Eoc as [c2 [piece [Hiv [Hoc Henemy]]]].
+    subst. eapply PawnCanCaptureDiagonallyForward; simpl; eauto.
+  - destruct 
+      (occupied_by_enemy_piece (advance_pawn c sr) (sf + 1) pp c)
+      eqn: Eoc; try inversion H; try inversion H0.
+    apply occupied_by_enemy_piece_correct in Eoc.
+    destruct Eoc as [c2 [piece [Hiv [Hoc Henemy]]]].
+    subst.
+    eapply PawnCanCaptureDiagonallyForward; simpl; eauto.
+Qed.
+
 Definition pawn_movements (pawn_loc : SquareLocation) (pos : Position) :=
   match pos with
   | Posn pp toMove dstep =>
@@ -412,33 +453,6 @@ Proof.
   intros. unfold pawn_movements in H. destruct pos eqn:Epos. 
   apply in_app_or in H.
   destruct H as [H | H].
-  - simpl in H.
-    simpl.
-    destruct (indices_valid (advance_pawn toMove sr) sf) eqn:Eiv; 
-      try rewrite Bool.andb_false_r in H; simpl in H; try contradiction.
-    destruct (indices_valid sr sf) eqn:Eiv2; try simpl in H; try contradiction.
-    destruct (is_square_empty (advance_pawn toMove sr) sf pp) eqn:Eempty;
-      try simpl in H; try contradiction.
-    inversion H; try inversion H0.
-    subst. eapply PawnCanMoveForward; eauto. simpl. 
-    unfold is_square_empty in Eempty.
-    destruct (get_square_by_index pp (advance_pawn toMove sr) tf); auto.
-    discriminate.
-  - simpl in H.
-    destruct (indices_valid sr sf) eqn:Hivsrc; try inversion H.
-    apply in_app_or in H. destruct H as [H | H].
-    + destruct 
-      (occupied_by_enemy_piece (advance_pawn toMove sr) (sf - 1) pp toMove)
-      eqn: Eoc; try inversion H; try inversion H0.
-      apply occupied_by_enemy_piece_correct in Eoc.
-      destruct Eoc as [c2 [piece [Hiv [Hoc Henemy]]]].
-      subst.
-      eapply PawnCanCaptureDiagonallyForward; simpl; eauto.
-    + destruct 
-      (occupied_by_enemy_piece (advance_pawn toMove sr) (sf + 1) pp toMove)
-      eqn: Eoc; try inversion H; try inversion H0.
-      apply occupied_by_enemy_piece_correct in Eoc.
-      destruct Eoc as [c2 [piece [Hiv [Hoc Henemy]]]].
-      subst.
-      eapply PawnCanCaptureDiagonallyForward; simpl; eauto.
+  - apply pawn_forward_movements_sound. auto.
+  - apply pawn_captures_sound. auto.
 Qed.
