@@ -1,5 +1,6 @@
 Require Import List.
 Require Import Nat.
+From Coq Require Export Lia.
 
 Notation "x :: l" := (cons x l)
                      (at level 60, right associativity).
@@ -262,16 +263,16 @@ Definition starting_rank_of_pawn (c : Color) : nat :=
   end.
 
 Inductive PawnDoubleStep : Type :=
-  | DoubleStepFileRank (onFile : nat) (toRank : nat).
+  | DoubleStepRankFile (toRank : nat) (onFile : nat).
 
 Definition get_double_step_target_rank (dstep : PawnDoubleStep) :=
   match dstep with
-  | DoubleStepFileRank f r => r
+  | DoubleStepRankFile r f => r
   end.
 
 Definition get_double_step_file (dstep : PawnDoubleStep) :=
   match dstep with
-  | DoubleStepFileRank f r => f
+  | DoubleStepRankFile r f => f
   end.
 
 Inductive Position : Type :=
@@ -346,7 +347,7 @@ Proof.
     destruct (get_square_by_index pp r f) eqn:Egs; auto. discriminate.
 Qed.
 
-Definition pawn_forward_movements (pawn_loc : SquareLocation)
+Definition pawn_forward_moves (pawn_loc : SquareLocation)
   (pp : PiecePlacements) (c : Color) : (list SquareLocation) :=
   match pawn_loc with
   | Loc r f => 
@@ -357,8 +358,8 @@ Definition pawn_forward_movements (pawn_loc : SquareLocation)
       else nil
   end.
 
-Lemma pawn_forward_movements_sound : forall sr sf tr tf c pp dstep,
-  In (Loc tr tf) (pawn_forward_movements (Loc sr sf) pp c) -> 
+Lemma pawn_forward_moves_sound : forall sr sf tr tf c pp dstep,
+  In (Loc tr tf) (pawn_forward_moves (Loc sr sf) pp c) -> 
   PawnCanMoveTo (Posn pp c dstep) c sr sf tr tf.
 Proof.
   intros. 
@@ -481,25 +482,60 @@ Proof.
   eapply PawnCanDoubleStep; eauto.
 Qed.
 
-Definition pawn_movements (pawn_loc : SquareLocation) (pos : Position) :=
-  match pos with
-  | Posn pp toMove dstep =>
-    (pawn_forward_movements pawn_loc pp toMove) ++
-    (pawn_captures pawn_loc pp toMove) ++
-    (pawn_double_steps pawn_loc pp toMove)
+Definition en_passant_moves (pawn_loc : SquareLocation) 
+  (pos : Position) : (list SquareLocation) :=
+  match pawn_loc with
+  | Loc r f =>
+    if (indices_valid r f) then
+      match pos with
+      | Posn pp toMove (Some (DoubleStepRankFile dsr dsf)) =>
+        if (dsr =? r) then
+          if (orb (dsf =? f + 1) (dsf =? f - 1)) then
+            [Loc (advance_pawn toMove r) dsf]
+          else []
+        else []
+      | _ => []
+      end
+    else []
   end.
 
-Lemma pawn_movements_sound : forall sr sf tr tf pos,
-  In (Loc tr tf) (pawn_movements (Loc sr sf) pos) ->
+Lemma en_passant_moves_sound : forall sr sf tr tf pos,
+  In (Loc tr tf) (en_passant_moves (Loc sr sf) pos) -> 
   PawnCanMoveTo pos (get_to_move pos) sr sf tr tf.
 Proof.
-  intros. unfold pawn_movements in H. destruct pos eqn:Epos. 
+  intros. unfold en_passant_moves in H.
+  repeat tac2.
+  destruct pos eqn:Epos.
+  destruct pawnDoubleStep eqn:Edstep; try inversion H.
+  destruct p eqn:Ep.
+  repeat tac2.
+  rewrite PeanoNat.Nat.eqb_eq in H1.
+  inversion H; inversion H3.
+  rewrite Bool.orb_true_iff in H2. repeat rewrite PeanoNat.Nat.eqb_eq in H2. 
+  simpl. eapply EnPassant; simpl; eauto; simpl. lia.
+Qed.
+
+Definition pawn_moves (pawn_loc : SquareLocation) (pos : Position) :=
+  match pos with
+  | Posn pp toMove dstep =>
+    (pawn_forward_moves pawn_loc pp toMove) ++
+    (pawn_captures pawn_loc pp toMove) ++
+    (pawn_double_steps pawn_loc pp toMove) ++
+    (en_passant_moves pawn_loc pos)
+  end.
+
+Lemma pawn_moves_sound : forall sr sf tr tf pos,
+  In (Loc tr tf) (pawn_moves (Loc sr sf) pos) ->
+  PawnCanMoveTo pos (get_to_move pos) sr sf tr tf.
+Proof.
+  intros. unfold pawn_moves in H. destruct pos eqn:Epos. 
   Ltac in_app_to_or := match goal with
   | H : In _ (_ ++ _) |- _ => apply in_app_or in H
   | H : In _ _ \/ In _ _ |- _ => destruct H as [H | H]
   end.
   repeat in_app_to_or.
-  - apply pawn_forward_movements_sound. auto.
+  - apply pawn_forward_moves_sound. auto.
   - apply pawn_captures_sound. auto.
   - apply pawn_double_steps_sound. auto.
+  - apply en_passant_moves_sound. auto.
 Qed.
