@@ -309,10 +309,12 @@ Inductive PawnCanMoveTo (pos : Position) (c : Color)
     (indices_valid tr tf) = true ->
     get_square_by_index pp tr tf = Occupied tc p ->
     tc <> c -> PawnCanMoveTo pos c sr sf tr tf
-  | PawnCanDoubleStep : forall pp sf sr tr,
+  | PawnCanDoubleStep : forall pp sf sr step1r tr,
     pp = get_piece_placements pos ->
     sr = starting_rank_of_pawn c ->
-    tr = advance_pawn c (advance_pawn c sr) ->
+    step1r = advance_pawn c sr ->
+    tr = advance_pawn c step1r ->
+    get_square_by_index pp step1r sf = Empty ->
     get_square_by_index pp tr sf = Empty ->
     PawnCanMoveTo pos c sr sf tr sf
   | EnPassant : forall pp dstep dstf sf sr tr,
@@ -332,6 +334,17 @@ Definition is_square_empty (rank : nat) (file : nat) (pp : PiecePlacements) :=
   | Empty => true
   | _ => false
   end.
+
+Lemma is_square_empty_correct : forall r f pp,
+  is_square_empty r f pp = true <-> (get_square_by_index pp r f) = Empty.
+Proof.
+  intros. 
+  split.
+  - intros. unfold is_square_empty in *. 
+    destruct (get_square_by_index pp r f) eqn:Egs; auto. discriminate.
+  - intros. unfold is_square_empty in *. 
+    destruct (get_square_by_index pp r f) eqn:Egs; auto. discriminate.
+Qed.
 
 Definition pawn_forward_movements (pawn_loc : SquareLocation)
   (pp : PiecePlacements) (c : Color) : (list SquareLocation) :=
@@ -423,27 +436,57 @@ Proof.
   intros. 
   simpl in H.
   destruct (indices_valid sr sf) eqn:Hivsrc; try inversion H.
-  apply in_app_or in H. destruct H as [H | H].
-  - destruct 
-      (occupied_by_enemy_piece (advance_pawn c sr) (sf - 1) pp c) eqn: Eoc; 
-      try inversion H; try inversion H0.
-    apply occupied_by_enemy_piece_correct in Eoc.
-    destruct Eoc as [c2 [piece [Hiv [Hoc Henemy]]]].
-    subst. eapply PawnCanCaptureDiagonallyForward; simpl; eauto.
-  - destruct 
-      (occupied_by_enemy_piece (advance_pawn c sr) (sf + 1) pp c)
-      eqn: Eoc; try inversion H; try inversion H0.
-    apply occupied_by_enemy_piece_correct in Eoc.
-    destruct Eoc as [c2 [piece [Hiv [Hoc Henemy]]]].
-    subst.
-    eapply PawnCanCaptureDiagonallyForward; simpl; eauto.
+  Ltac tac1 :=
+    match goal with
+    | H: In _ (if occupied_by_enemy_piece ?r ?f ?pp ?c then _ else _) |- _
+          => destruct (occupied_by_enemy_piece r f pp c) eqn: Eoc
+    end;
+    try inversion H; try inversion H0; 
+    match goal with
+    | H: (occupied_by_enemy_piece ?r ?f ?pp ?c = _) |- _ 
+          => apply occupied_by_enemy_piece_correct in H; 
+             destruct H as [c2 [piece [Hiv [Hoc Henemy]]]]
+    end;
+    subst; eapply PawnCanCaptureDiagonallyForward; simpl; eauto.
+  apply in_app_or in H. destruct H as [H | H]; tac1.
+Qed.
+
+Definition pawn_double_steps (pawn_loc : SquareLocation) 
+  (pp : PiecePlacements) (c : Color) : (list SquareLocation) :=
+  match pawn_loc with
+  | Loc r f =>
+    if (indices_valid r f) then
+      if (starting_rank_of_pawn c) =? r then
+        let step1r := (advance_pawn c r) in
+        let step2r := (advance_pawn c step1r) in
+          if andb (is_square_empty step1r f pp) (is_square_empty step2r f pp)
+          then [Loc step2r f] else []
+      else []
+    else []
+  end.
+
+Lemma pawn_double_steps_sound : forall sr sf tr tf c pp dstep,
+  In (Loc tr tf) (pawn_double_steps (Loc sr sf) pp c) -> 
+  PawnCanMoveTo (Posn pp c dstep) c sr sf tr tf.
+Proof.
+  intros.
+  simpl in H.
+  Ltac tac2 := match goal with
+  | H : In _ (if ?c then _ else _) |- _ => destruct c eqn:?H
+  | H : In _ [] |- _ => inversion H
+  end.
+  repeat tac2. inversion H; inversion H3. subst.
+  rewrite Bool.andb_true_iff in H2. destruct H2 as [Hempty1 Hempty2].
+  rewrite PeanoNat.Nat.eqb_eq in H1. rewrite is_square_empty_correct in *.
+  eapply PawnCanDoubleStep; eauto.
 Qed.
 
 Definition pawn_movements (pawn_loc : SquareLocation) (pos : Position) :=
   match pos with
   | Posn pp toMove dstep =>
     (pawn_forward_movements pawn_loc pp toMove) ++
-    (pawn_captures pawn_loc pp toMove)
+    (pawn_captures pawn_loc pp toMove) ++
+    (pawn_double_steps pawn_loc pp toMove)
   end.
 
 Lemma pawn_movements_sound : forall sr sf tr tf pos,
@@ -451,8 +494,12 @@ Lemma pawn_movements_sound : forall sr sf tr tf pos,
   PawnCanMoveTo pos (get_to_move pos) sr sf tr tf.
 Proof.
   intros. unfold pawn_movements in H. destruct pos eqn:Epos. 
-  apply in_app_or in H.
-  destruct H as [H | H].
+  Ltac in_app_to_or := match goal with
+  | H : In _ (_ ++ _) |- _ => apply in_app_or in H
+  | H : In _ _ \/ In _ _ |- _ => destruct H as [H | H]
+  end.
+  repeat in_app_to_or.
   - apply pawn_forward_movements_sound. auto.
   - apply pawn_captures_sound. auto.
+  - apply pawn_double_steps_sound. auto.
 Qed.
