@@ -571,3 +571,31 @@ Proof.
   - apply pawn_double_steps_sound. auto.
   - apply en_passant_moves_sound. auto.
 Qed.
+
+Lemma pawn_moves_complete : forall move loc pos,
+  PawnCanMakeMove pos loc move -> In move (pawn_moves loc pos).
+Proof.
+  intros.
+  Ltac if_cond_destruct_in_goal := match goal with
+  | |- In _ (if ?c then _ else _) => destruct c eqn:?H
+  end.
+  inversion H; subst; unfold pawn_moves.
+  - rewrite in_app_iff. left. simpl.
+    rewrite location_valid_iff in *. rewrite H3. rewrite H4. simpl.
+    rewrite <- is_square_empty_correct in *. rewrite H5. constructor. auto.
+  - rewrite in_app_iff. right. rewrite in_app_iff. left.
+    rewrite location_valid_iff in *. 
+    simpl. rewrite H4. destruct H3 as [Hr | Hl].
+    + rewrite in_app_iff. right. subst. if_cond_destruct_in_goal.
+      * constructor. auto.
+      * rewrite <- Bool.not_true_iff_false in H0. exfalso. apply H0. 
+        apply occupied_by_enemy_piece_correct. eexists. eexists. eauto.
+    + rewrite in_app_iff. left. subst. if_cond_destruct_in_goal.
+      * constructor. auto.
+      * rewrite <- Bool.not_true_iff_false in H0. exfalso. apply H0. 
+        apply occupied_by_enemy_piece_correct. eexists. eexists. eauto.
+  - rewrite in_app_iff. right. rewrite in_app_iff. right. rewrite in_app_iff.
+    left.
+    simpl.
+Admitted.
+    
