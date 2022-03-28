@@ -336,6 +336,7 @@ Inductive PawnCanMakeMove (pos : Position)
     PawnCanMakeMove pos loc (Capture loc (Loc tr tf))
   | PawnCanDoubleStep : forall pp c dstep loc sf sr step1r tr,
     pos = Posn pp c dstep -> loc = Loc sr sf ->
+    location_valid loc ->
     sr = starting_rank_of_pawn c ->
     step1r = advance_pawn c sr ->
     tr = advance_pawn c step1r ->
@@ -344,6 +345,7 @@ Inductive PawnCanMakeMove (pos : Position)
     PawnCanMakeMove pos loc (DoubleStep loc (Loc tr sf))
   | PawnCanCaptureEnPassant : forall pp c dstep loc dstf sf sr tr,
     pos = Posn pp c (Some dstep) -> loc = Loc sr sf ->
+    location_valid loc ->
     dstep = (DoubleStepRankFile sr dstf) ->
     (sf = dstf + 1 \/ sf = dstf - 1) ->
     tr = advance_pawn c sr ->
@@ -547,7 +549,7 @@ Proof.
   inversion H; inversion H3.
   rewrite Bool.orb_true_iff in H2. repeat rewrite PeanoNat.Nat.eqb_eq in H2.
   rewrite <- location_valid_iff in *.
-  simpl. eapply PawnCanCaptureEnPassant; simpl; eauto; simpl. lia.
+  simpl. eapply PawnCanCaptureEnPassant; simpl; eauto; simpl; try lia.
 Qed.
 
 Definition pawn_moves (pawn_loc : SquareLocation) (pos : Position) :=
@@ -596,6 +598,15 @@ Proof.
         apply occupied_by_enemy_piece_correct. eexists. eexists. eauto.
   - rewrite in_app_iff. right. rewrite in_app_iff. right. rewrite in_app_iff.
     left.
-    simpl.
-Admitted.
+    simpl. rewrite location_valid_iff in *. rewrite H2.
+    rewrite PeanoNat.Nat.eqb_refl. rewrite <- is_square_empty_correct in *.
+    rewrite H6. rewrite H7. simpl. left. auto.
+  - rewrite in_app_iff. right. rewrite in_app_iff. right. rewrite in_app_iff.
+    right. simpl. rewrite location_valid_iff in *. rewrite H2. 
+    rewrite PeanoNat.Nat.eqb_refl. 
+    destruct ((dstf =? sf + 1) || (dstf =? sf - 1))%bool eqn:Edstf.
+    + constructor. auto.
+    + rewrite Bool.orb_false_iff in Edstf. 
+      repeat rewrite PeanoNat.Nat.eqb_neq in Edstf. lia.
+Qed.
     
