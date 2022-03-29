@@ -609,4 +609,127 @@ Proof.
     + rewrite Bool.orb_false_iff in Edstf. 
       repeat rewrite PeanoNat.Nat.eqb_neq in Edstf. lia.
 Qed.
-    
+
+Inductive Direction : Type :=
+  | Up
+  | Down
+  | Left
+  | Right.
+
+Inductive Step : Type :=
+  | StepInDirection (d : Direction) (n : nat).
+
+Inductive Vector : Type :=
+  | RankFileVector (rankStep : Step) (fileStep : Step).
+
+Definition vector_from_a_to_b (a : SquareLocation) (b : SquareLocation) :=
+  match a with Loc r_a f_a =>
+    match b with Loc r_b f_b =>
+      let rank_step := if r_a <=? r_b then (StepInDirection Right (r_b - r_a))
+        else (StepInDirection Left (r_a - r_b)) in
+      let file_step := if f_a <=? f_b then (StepInDirection Up (f_b - f_a))
+        else (StepInDirection Down (f_a - f_b)) in
+      (RankFileVector rank_step file_step)
+    end
+  end.
+
+Definition difference (i : nat) (j : nat) :=
+  if (i <? j) then (j - i) else (i - j).
+
+Definition SquaresAdjacent (loc1 : SquareLocation) (loc2 : SquareLocation)
+  : Prop :=
+  match loc1 with
+  | Loc rank1 file1 => 
+    match loc2 with
+    | Loc rank2 file2 => 
+      (difference rank1 rank2) <= 1 /\ (difference file1 file2) <= 1
+    end
+  end.
+
+Definition are_squares_adjacent (loc1 : SquareLocation) (loc2 : SquareLocation)
+  : bool :=
+  match loc1, loc2 with
+  | Loc rank1 file1, Loc rank2 file2 => 
+    (andb ((difference rank1 rank2) <=? 1) ((difference file1 file2) <=? 1))
+  end.
+
+Lemma are_squares_adjacent_correct : forall loc1 loc2,
+  are_squares_adjacent loc1 loc2 = true <-> SquaresAdjacent loc1 loc2.
+Proof.
+  intros. split.
+  - intros. unfold are_squares_adjacent in H. destruct loc1 eqn:Eloc1.
+    destruct loc2 eqn:Eloc2. rewrite Bool.andb_true_iff in H.
+    repeat rewrite PeanoNat.Nat.leb_le in H. constructor; lia.
+  - intros. unfold SquaresAdjacent in H. destruct loc1 eqn:Eloc1.
+    destruct loc2 eqn:Eloc2. repeat rewrite <- PeanoNat.Nat.leb_le in H. 
+    rewrite <- Bool.andb_true_iff in H. auto.
+Qed.
+
+Definition one_step_along_vector (l : SquareLocation) (v : Vector) :=
+  match l with
+  | Loc r f => match v with
+    | RankFileVector (StepInDirection Left x) (StepInDirection Up y) =>
+      Loc (r - 1) (f + y)
+    | RankFileVector (StepInDirection Left x) (StepInDirection Down y) =>
+      Loc (r - 1) (f - y)
+    | RankFileVector (StepInDirection Right x) (StepInDirection Up y) =>
+      Loc (r + 1) (f + y)
+    | RankFileVector (StepInDirection Right x) (StepInDirection Down y) =>
+      Loc (r + 1) (f - y)
+    | _ => l
+    end
+  end.
+
+(*Are the squares between to squares on the same rank, file or diagonal
+  empty?*)
+Inductive SquaresBetweenEmpty (pp : PiecePlacements)
+  : SquareLocation -> SquareLocation -> Prop :=
+  | NothingOccupiedBetweenAdjacentSquares : forall loc1 loc2, 
+    SquaresAdjacent loc1 loc2 -> SquaresBetweenEmpty pp loc1 loc2
+  | SquaresAlongVectorEmpty : forall loc1 loc2 v rdir rn fdir fn first_r 
+      first_f,
+    vector_from_a_to_b loc1 loc2 = v ->
+    v = RankFileVector (StepInDirection rdir rn) (StepInDirection fdir fn) ->
+    rn = 0 \/ fn = 0 \/ rn = fn -> (* same rank, file, or diagonal*)
+    one_step_along_vector loc1 v = Loc first_r first_f ->
+    is_square_empty first_r first_f pp = true ->
+    SquaresBetweenEmpty pp (Loc first_r first_f) loc2 ->
+    SquaresBetweenEmpty pp loc1 loc2.
+
+Definition locations_equal (loc1 : SquareLocation) (loc2 : SquareLocation) :=
+  match loc1,loc2 with
+  | Loc x1 y1, Loc x2 y2 => ((x1 =? x2) && (y1 =? y2))%bool
+  end.
+
+Definition vector_length (v: Vector) : nat :=
+  match v with
+  | RankFileVector (StepInDirection _ n) (StepInDirection _ m) => n + m
+  end.
+
+Definition manhattan_distance (loc1 : SquareLocation) (loc2 : SquareLocation)
+:= vector_length (vector_from_a_to_b loc1 loc2).
+
+Require Import Recdef. (* Must import this to use the Function feature *)
+
+Fixpoint are_squares_between_empty_aux (pp : PiecePlacements) 
+  (loc1 : SquareLocation) (loc2 : SquareLocation) (steps : nat)
+  :=
+  match steps with
+  | 0 => true
+  | S n =>
+    let v := vector_from_a_to_b loc1 loc2 in
+    let fst := one_step_along_vector loc1 v in
+    if locations_equal fst loc2 then true (*squares are adjacent*)
+    else
+    match fst with
+    | Loc fstr fstf => 
+      if is_square_empty fstr fstf pp then
+        (are_squares_between_empty_aux pp fst loc2 n)
+      else false
+    end
+  end.
+
+Definition are_squares_between_empty (pp : PiecePlacements) 
+  (loc1 : SquareLocation) (loc2 : SquareLocation) :=
+  are_squares_between_empty_aux pp loc1 loc2 (manhattan_distance loc1 loc2).
+
