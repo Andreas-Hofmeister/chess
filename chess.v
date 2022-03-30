@@ -673,16 +673,61 @@ Definition one_step_along_vector (l : SquareLocation) (v : Vector) :=
   match l with
   | Loc r f => match v with
     | RankFileVector (StepInDirection Left x) (StepInDirection Up y) =>
-      Loc (r - 1) (f + y)
+      Loc (r - 1) (f + 1)
     | RankFileVector (StepInDirection Left x) (StepInDirection Down y) =>
-      Loc (r - 1) (f - y)
+      Loc (r - 1) (f - 1)
     | RankFileVector (StepInDirection Right x) (StepInDirection Up y) =>
-      Loc (r + 1) (f + y)
+      Loc (r + 1) (f + 1)
     | RankFileVector (StepInDirection Right x) (StepInDirection Down y) =>
-      Loc (r + 1) (f - y)
+      Loc (r + 1) (f - 1)
     | _ => l
     end
   end.
+
+Lemma Sn_lt_Snp1 : forall n, S n <? S (n + 1) = true.
+Proof.
+  intros. rewrite PeanoNat.Nat.ltb_lt. lia.
+Qed.
+
+Lemma Sn_lt_n : forall n, S n <? n = false.
+Proof.
+  intros. destruct (S n <? n) eqn:Es; auto. rewrite PeanoNat.Nat.ltb_lt in *. 
+  lia.
+Qed.
+
+Lemma n_lt_nm1 : forall n, n <? n - 1 = false.
+Proof.
+  intros. destruct (n <? n - 1) eqn:Es; auto. rewrite PeanoNat.Nat.ltb_lt in *. 
+  lia.
+Qed.
+
+Lemma n_lt_np1 : forall n, n <? n + 1 = true.
+Proof.
+  intros. rewrite PeanoNat.Nat.ltb_lt in *. lia.
+Qed.
+
+Lemma one_step_along_vector_correct1 : forall l l2 v,
+  l2 = (one_step_along_vector l v) -> l = l2 \/ SquaresAdjacent l l2.
+Proof.
+  intros. unfold one_step_along_vector in *.
+  destruct l eqn:El.
+  destruct v eqn:Ev.
+  destruct rankStep eqn:Ers.
+  destruct fileStep eqn:Efs.
+  Ltac invalidDir := match goal with
+  | H: ?v = RankFileVector (StepInDirection Up _) (StepInDirection _ _)|- _ => left; auto
+  | H: ?v = RankFileVector (StepInDirection Down _) (StepInDirection _ _)|- _ => left; auto
+  | H: ?v = RankFileVector (StepInDirection _ _) (StepInDirection Left _)|- _ => left; auto
+  | H: ?v = RankFileVector (StepInDirection _ _) (StepInDirection Right _)|- _ => left; auto
+  end.
+  destruct d eqn:Ed; destruct d0 eqn:Ed0; try invalidDir.
+  - right. subst. simpl. unfold difference. rewrite n_lt_nm1. rewrite n_lt_np1.
+    lia.
+  - right. subst. simpl. unfold difference. repeat rewrite n_lt_nm1. lia.
+  - right. subst. simpl. unfold difference. repeat rewrite n_lt_np1. lia.
+  - right. subst. simpl. unfold difference. rewrite n_lt_np1. rewrite n_lt_nm1. 
+    lia.
+Qed.
 
 (*Are the squares between to squares on the same rank, file or diagonal
   empty?*)
@@ -690,6 +735,8 @@ Inductive SquaresBetweenEmpty (pp : PiecePlacements)
   : SquareLocation -> SquareLocation -> Prop :=
   | NothingOccupiedBetweenAdjacentSquares : forall loc1 loc2, 
     SquaresAdjacent loc1 loc2 -> SquaresBetweenEmpty pp loc1 loc2
+  | NothingOccupiedBetweenSingleSquare : forall loc,
+    SquaresBetweenEmpty pp loc loc
   | SquaresAlongVectorEmpty : forall loc1 loc2 v rdir rn fdir fn first_r 
       first_f,
     vector_from_a_to_b loc1 loc2 = v ->
@@ -726,7 +773,7 @@ Definition one_step_along_vector_and_location (l : SquareLocation) (v : Vector)
     | RankFileVector (StepInDirection Left x) (StepInDirection Down y) =>
       (RankFileVector (StepInDirection Left (x - 1))
                       (StepInDirection Down (y - 1)),
-       Loc (r - 1) (f - y))
+       Loc (r - 1) (f - 1))
     | RankFileVector (StepInDirection Right x) (StepInDirection Up y) =>
       (RankFileVector (StepInDirection Right (x - 1))
                       (StepInDirection Up (y - 1)),
@@ -774,9 +821,40 @@ Proof.
   destruct d eqn:Ed; destruct d0 eqn:Ed0; inversion teq0; simpl; try lia.
 Defined.
 
+Inductive VectorOnRank : Vector -> Prop :=
+  | VectorOnRankConstr : forall left_or_right n d,
+    left_or_right = Left \/ left_or_right = Right ->
+    VectorOnRank (RankFileVector (StepInDirection left_or_right n)
+      (StepInDirection d 0)).
+
+Inductive VectorOnFile : Vector -> Prop :=
+  | VectorOnFileConstr : forall up_or_down n d,
+    up_or_down = Up \/ up_or_down = Down ->
+    VectorOnFile (RankFileVector (StepInDirection d 0)
+      (StepInDirection up_or_down n)).
+
+Inductive DiagonalVector : Vector -> Prop :=
+  | DiagonalVectorConstr : forall up_or_down n left_or_right,
+    up_or_down = Up \/ up_or_down = Down ->
+    left_or_right = Left \/ left_or_right = Right ->
+    DiagonalVector (RankFileVector (StepInDirection left_or_right n)
+      (StepInDirection up_or_down n)).
+
+Definition RankFileOrDiagonalVector (v : Vector) : Prop :=
+  (VectorOnRank v) \/ (VectorOnFile v) \/ (DiagonalVector v).
+
+Definition apply_vector (v : Vector) (loc : SquareLocation) : SquareLocation :=
+  match v with
+  | RankFileVector (StepInDirection 
+
+Lemma are_squares_along_vector_empty_sound :
+  RankFileOrDiagnoalVector v ->
+  are_squares_along_vector_empty pp start v = true ->
+  (vector_length v) = 0 \/ SquaresBetweenEmpty pp start (
+
+
 Definition are_squares_between_empty (pp : PiecePlacements) 
   (loc1 : SquareLocation) (loc2 : SquareLocation) :=
   let (v, start) := 
     one_step_along_vector_and_location loc1 (vector_from_a_to_b loc1 loc2) in
   are_squares_along_vector_empty pp start v.
-
