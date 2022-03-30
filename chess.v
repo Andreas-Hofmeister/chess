@@ -351,20 +351,24 @@ Inductive PawnCanMakeMove (pos : Position)
     tr = advance_pawn c sr ->
     PawnCanMakeMove pos loc (EnPassant loc (Loc tr dstf)).
 
-Definition is_square_empty (rank : nat) (file : nat) (pp : PiecePlacements) :=
+Definition is_square_empty_rank_file (rank : nat) (file : nat) 
+  (pp : PiecePlacements) :=
   match (get_square_by_index pp rank file) with
   | Empty => true
   | _ => false
   end.
 
-Lemma is_square_empty_correct : forall r f pp,
-  is_square_empty r f pp = true <-> (get_square_by_index pp r f) = Empty.
+Definition is_square_empty (loc : SquareLocation) (pp : PiecePlacements) :=
+  match loc with Loc r f => is_square_empty_rank_file r f pp end.
+
+Lemma is_square_empty_rank_file_correct : forall r f pp,
+  is_square_empty_rank_file r f pp = true <-> (get_square_by_index pp r f) = Empty.
 Proof.
   intros. 
   split.
-  - intros. unfold is_square_empty in *. 
+  - intros. unfold is_square_empty_rank_file in *. 
     destruct (get_square_by_index pp r f) eqn:Egs; auto. discriminate.
-  - intros. unfold is_square_empty in *. 
+  - intros. unfold is_square_empty_rank_file in *. 
     destruct (get_square_by_index pp r f) eqn:Egs; auto. discriminate.
 Qed.
 
@@ -376,7 +380,7 @@ Definition pawn_forward_moves (pawn_loc : SquareLocation)
     | Loc r f => 
       let new_r := advance_pawn c r in
         if andb (indices_valid r f) (indices_valid new_r f) then
-          if (is_square_empty new_r f pp) then [FromTo pawn_loc (Loc new_r f)]
+          if (is_square_empty_rank_file new_r f pp) then [FromTo pawn_loc (Loc new_r f)]
           else nil
         else nil
     end
@@ -393,11 +397,11 @@ Proof.
     try rewrite Bool.andb_false_r in H; simpl in H; try contradiction.
   destruct (indices_valid rank file) eqn:Eiv2; try simpl in H; 
     try contradiction.
-  destruct (is_square_empty (advance_pawn toMove rank) file pp) eqn:Eempty;
+  destruct (is_square_empty_rank_file (advance_pawn toMove rank) file pp) eqn:Eempty;
     try simpl in H; try contradiction.
   destruct H as [H | W]; try contradiction.
   subst. rewrite <- location_valid_iff in *. 
-  rewrite is_square_empty_correct in *.
+  rewrite is_square_empty_rank_file_correct in *.
   eapply PawnCanMoveForward; auto.
 Qed.
 
@@ -493,7 +497,7 @@ Definition pawn_double_steps (pawn_loc : SquareLocation)
         if (starting_rank_of_pawn c) =? r then
           let step1r := (advance_pawn c r) in
           let step2r := (advance_pawn c step1r) in
-            if andb (is_square_empty step1r f pp) (is_square_empty step2r f pp)
+            if andb (is_square_empty_rank_file step1r f pp) (is_square_empty_rank_file step2r f pp)
             then [DoubleStep pawn_loc (Loc step2r f)] else []
         else []
       else []
@@ -512,7 +516,7 @@ Proof.
   | H : In _ [] |- _ => inversion H
   end.
   repeat tac2. rewrite <- location_valid_iff in *.
-  rewrite Bool.andb_true_iff in *. repeat rewrite is_square_empty_correct in *.
+  rewrite Bool.andb_true_iff in *. repeat rewrite is_square_empty_rank_file_correct in *.
   inversion H; inversion H3. subst. destruct H2 as [Hempty1 Hempty2].
   rewrite PeanoNat.Nat.eqb_eq in H1. eapply PawnCanDoubleStep; eauto.
 Qed.
@@ -584,7 +588,7 @@ Proof.
   inversion H; subst; unfold pawn_moves.
   - rewrite in_app_iff. left. simpl.
     rewrite location_valid_iff in *. rewrite H3. rewrite H4. simpl.
-    rewrite <- is_square_empty_correct in *. rewrite H5. constructor. auto.
+    rewrite <- is_square_empty_rank_file_correct in *. rewrite H5. constructor. auto.
   - rewrite in_app_iff. right. rewrite in_app_iff. left.
     rewrite location_valid_iff in *. 
     simpl. rewrite H4. destruct H3 as [Hr | Hl].
@@ -599,7 +603,7 @@ Proof.
   - rewrite in_app_iff. right. rewrite in_app_iff. right. rewrite in_app_iff.
     left.
     simpl. rewrite location_valid_iff in *. rewrite H2.
-    rewrite PeanoNat.Nat.eqb_refl. rewrite <- is_square_empty_correct in *.
+    rewrite PeanoNat.Nat.eqb_refl. rewrite <- is_square_empty_rank_file_correct in *.
     rewrite H6. rewrite H7. simpl. left. auto.
   - rewrite in_app_iff. right. rewrite in_app_iff. right. rewrite in_app_iff.
     right. simpl. rewrite location_valid_iff in *. rewrite H2. 
@@ -692,7 +696,7 @@ Inductive SquaresBetweenEmpty (pp : PiecePlacements)
     v = RankFileVector (StepInDirection rdir rn) (StepInDirection fdir fn) ->
     rn = 0 \/ fn = 0 \/ rn = fn -> (* same rank, file, or diagonal*)
     one_step_along_vector loc1 v = Loc first_r first_f ->
-    is_square_empty first_r first_f pp = true ->
+    is_square_empty_rank_file first_r first_f pp = true ->
     SquaresBetweenEmpty pp (Loc first_r first_f) loc2 ->
     SquaresBetweenEmpty pp loc1 loc2.
 
@@ -711,25 +715,68 @@ Definition manhattan_distance (loc1 : SquareLocation) (loc2 : SquareLocation)
 
 Require Import Recdef. (* Must import this to use the Function feature *)
 
-Fixpoint are_squares_between_empty_aux (pp : PiecePlacements) 
-  (loc1 : SquareLocation) (loc2 : SquareLocation) (steps : nat)
-  :=
-  match steps with
-  | 0 => true
-  | S n =>
-    let v := vector_from_a_to_b loc1 loc2 in
-    let fst := one_step_along_vector loc1 v in
-    if locations_equal fst loc2 then true (*squares are adjacent*)
-    else
-    match fst with
-    | Loc fstr fstf => 
-      if is_square_empty fstr fstf pp then
-        (are_squares_between_empty_aux pp fst loc2 n)
-      else false
+Definition one_step_along_vector_and_location (l : SquareLocation) (v : Vector) 
+  : (Vector * SquareLocation) :=
+  match l with
+  | Loc r f => match v with
+    | RankFileVector (StepInDirection Left x) (StepInDirection Up y) =>
+      (RankFileVector (StepInDirection Left (x - 1))
+                      (StepInDirection Up (y - 1)),
+       Loc (r - 1) (f + 1))
+    | RankFileVector (StepInDirection Left x) (StepInDirection Down y) =>
+      (RankFileVector (StepInDirection Left (x - 1))
+                      (StepInDirection Down (y - 1)),
+       Loc (r - 1) (f - y))
+    | RankFileVector (StepInDirection Right x) (StepInDirection Up y) =>
+      (RankFileVector (StepInDirection Right (x - 1))
+                      (StepInDirection Up (y - 1)),
+       Loc (r + 1) (f + 1))
+    | RankFileVector (StepInDirection Right x) (StepInDirection Down y) =>
+      (RankFileVector (StepInDirection Right (x - 1))
+                      (StepInDirection Down (y - 1)),
+       Loc (r + 1) (f - 1))
+    | _ => ((RankFileVector (StepInDirection Right 0) (StepInDirection Up 0)),l)
     end
   end.
 
+Definition is_vector_to_adjacent_square (v : Vector) :=
+  match v with
+  | RankFileVector (StepInDirection _ n) (StepInDirection _ m) =>
+    ((n <=? 1) && (m <=? 1))%bool
+  end.
+
+Lemma vector_length_0_iff : forall d1 n d2 m,
+  vector_length (RankFileVector (StepInDirection d1 n) (StepInDirection d2 m))
+  = 0 <-> (n = 0) /\ (m = 0).
+Proof.
+  intros. simpl. split; intros; lia.
+Qed.
+
+Lemma vector_length_not_0_iff : forall d1 n d2 m,
+  vector_length (RankFileVector (StepInDirection d1 n) (StepInDirection d2 m))
+  <> 0 <-> (n > 0) \/ (m > 0).
+Proof.
+  intros. simpl. split; intros; lia.
+Qed.
+
+Function are_squares_along_vector_empty (pp : PiecePlacements) 
+  (start : SquareLocation) (v : Vector) {measure vector_length v} :=
+  if (vector_length v) =? 0 then true
+  else let (v2, fst) := one_step_along_vector_and_location start v in
+    if is_square_empty start pp then
+      are_squares_along_vector_empty pp fst v2
+    else false.
+Proof.
+  intros. rewrite PeanoNat.Nat.eqb_neq in teq. 
+  unfold one_step_along_vector_and_location in *. destruct start eqn:Es.
+  destruct v eqn:Ev. destruct rankStep eqn:Ers. destruct fileStep eqn:Efs.
+  rewrite vector_length_not_0_iff in teq.
+  destruct d eqn:Ed; destruct d0 eqn:Ed0; inversion teq0; simpl; try lia.
+Defined.
+
 Definition are_squares_between_empty (pp : PiecePlacements) 
   (loc1 : SquareLocation) (loc2 : SquareLocation) :=
-  are_squares_between_empty_aux pp loc1 loc2 (manhattan_distance loc1 loc2).
+  let (v, start) := 
+    one_step_along_vector_and_location loc1 (vector_from_a_to_b loc1 loc2) in
+  are_squares_along_vector_empty pp start v.
 
