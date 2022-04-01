@@ -253,6 +253,12 @@ Qed.
 Inductive SquareLocation : Type :=
   | Loc (rank : nat) (file : nat).
 
+Lemma eq_Loc : forall rank file rank1 file1, 
+  rank = rank1 -> file = file1 -> Loc rank file = Loc rank1 file1.
+Proof.
+  intros. subst. auto.
+Qed.
+
 Definition location_valid (loc : SquareLocation) : Prop :=
   match loc with
   | Loc r f => r <= 7 /\ f <= 7
@@ -614,101 +620,76 @@ Proof.
       repeat rewrite PeanoNat.Nat.eqb_neq in Edstf. lia.
 Qed.
 
-Inductive Direction : Type :=
-  | Up
-  | Down
+Inductive HorizontalDirection : Type :=
   | Left
   | Right.
 
-Inductive Step : Type :=
-  | StepInDirection (d : Direction) (n : nat).
+Inductive VerticalDirection : Type :=
+  | Up
+  | Down.
+
+Inductive HorizontalStep : Type :=
+  | HStep (d : HorizontalDirection) (n : nat).
+
+Inductive VerticalStep : Type :=
+  | VStep (d : VerticalDirection) (n : nat).
 
 Inductive Vector : Type :=
-  | RankFileVector (rankStep : Step) (fileStep : Step).
-
-Inductive ValidVector : Vector -> Prop :=
-  | RightUpVector : forall n m,
-    ValidVector (RankFileVector (StepInDirection Right n) (StepInDirection Up m))
-  | RightDownVector : forall n m,
-    ValidVector (RankFileVector (StepInDirection Right n) (StepInDirection Down m))
-  | LeftUpVector : forall n m,
-    ValidVector (RankFileVector (StepInDirection Left n) (StepInDirection Up m))
-  | LeftDownVector : forall n m,
-    ValidVector (RankFileVector (StepInDirection Left n) (StepInDirection Down m))
-  | RightVector : forall n d,
-    ValidVector (RankFileVector (StepInDirection Right n) (StepInDirection d 0))
-  | LeftVector : forall n d,
-    ValidVector (RankFileVector (StepInDirection Left n) (StepInDirection d 0))
-  | UpVector : forall n d,
-    ValidVector (RankFileVector (StepInDirection d 0) (StepInDirection Up n))
-  | DownVector : forall n d,
-    ValidVector (RankFileVector (StepInDirection d 0) (StepInDirection Down n)).
-
+  | VectorHV (hstep : HorizontalStep) (vstep : VerticalStep).
 
 Inductive VectorOnRank : Vector -> Prop :=
-  | VectorOnRankConstr : forall left_or_right n d,
-    left_or_right = Left \/ left_or_right = Right ->
-    VectorOnRank (RankFileVector (StepInDirection left_or_right n)
-      (StepInDirection d 0)).
-
-Lemma vector_on_rank_valid : forall v, VectorOnRank v -> ValidVector v.
-Proof.
-  intros. inversion H. destruct H0 as [Hl | Hr]; subst.
-  - apply LeftVector.
-  - apply RightVector.
-Qed.
+  | VectorOnRankConstr : forall hstep d,
+    VectorOnRank (VectorHV hstep (VStep d 0)).
 
 Inductive VectorOnFile : Vector -> Prop :=
-  | VectorOnFileConstr : forall up_or_down n d,
-    up_or_down = Up \/ up_or_down = Down ->
-    VectorOnFile (RankFileVector (StepInDirection d 0)
-      (StepInDirection up_or_down n)).
-
-Lemma vector_on_file_valid : forall v, VectorOnFile v -> ValidVector v.
-Proof.
-  intros. inversion H. destruct H0 as [Hu | Hd]; subst.
-  - apply UpVector.
-  - apply DownVector.
-Qed.
+  | VectorOnFileConstr : forall vstep d,
+    VectorOnFile (VectorHV (HStep d 0) vstep).
 
 Inductive DiagonalVector : Vector -> Prop :=
-  | DiagonalVectorConstr : forall up_or_down n left_or_right,
-    up_or_down = Up \/ up_or_down = Down ->
-    left_or_right = Left \/ left_or_right = Right ->
-    DiagonalVector (RankFileVector (StepInDirection left_or_right n)
-      (StepInDirection up_or_down n)).
-
-Lemma diagonal_vector_valid : forall v, DiagonalVector v -> ValidVector v.
-Proof.
-  intros. inversion H. destruct H0 as [Hu | Hd]; destruct H1 as [Hl | Hr]; 
-  subst; constructor.
-Qed.
+  | DiagonalVectorConstr : forall dh dv n,
+    DiagonalVector (VectorHV (HStep dh n) (VStep dv n)).
 
 Definition RankFileOrDiagonalVector (v : Vector) : Prop :=
   (VectorOnRank v) \/ (VectorOnFile v) \/ (DiagonalVector v).
 
-Lemma rank_file_or_diagonal_vector_valid : forall v, 
-  RankFileOrDiagonalVector v -> ValidVector v.
-Proof.
-  intros. destruct H as [Hr|[Hf|Hd]].
-  - apply vector_on_rank_valid. auto.
-  - apply vector_on_file_valid. auto.
-  - apply diagonal_vector_valid. auto.
-Qed.
-
 Definition vector_from_a_to_b (a : SquareLocation) (b : SquareLocation) :=
   match a with Loc r_a f_a =>
     match b with Loc r_b f_b =>
-      let rank_step := if r_a <=? r_b then (StepInDirection Right (r_b - r_a))
-        else (StepInDirection Left (r_a - r_b)) in
-      let file_step := if f_a <=? f_b then (StepInDirection Up (f_b - f_a))
-        else (StepInDirection Down (f_a - f_b)) in
-      (RankFileVector rank_step file_step)
+      let rank_step := if r_a <=? r_b then (HStep Right (r_b - r_a))
+        else (HStep Left (r_a - r_b)) in
+      let file_step := if f_a <=? f_b then (VStep Up (f_b - f_a))
+        else (VStep Down (f_a - f_b)) in
+      (VectorHV rank_step file_step)
     end
   end.
 
 Definition difference (i : nat) (j : nat) :=
   if (i <? j) then (j - i) else (i - j).
+
+Lemma difference_n_n: forall n, difference n n = 0.
+Proof.
+  intros. unfold difference. destruct (n <? n); lia.
+Qed.
+
+Lemma difference_n_nm1: forall n, difference n (n - 1) <= 1.
+Proof.
+  intros. unfold difference. destruct (n <? n - 1); lia.
+Qed.
+
+Lemma difference_n_np1: forall n, difference n (n + 1) <= 1.
+Proof.
+  intros. unfold difference. destruct (n <? n + 1); lia.
+Qed.
+
+Lemma difference_nm1_n: forall n, difference (n - 1) n <= 1.
+Proof.
+  intros. unfold difference. destruct (n - 1 <? n); lia.
+Qed.
+
+Lemma difference_np1_n: forall n, difference (n + 1) n <= 1.
+Proof.
+  intros. unfold difference. destruct (n + 1 <? n); lia.
+Qed.
 
 Definition SquaresAdjacent (loc1 : SquareLocation) (loc2 : SquareLocation)
   : Prop :=
@@ -742,15 +723,15 @@ Qed.
 Definition one_step_along_vector (l : SquareLocation) (v : Vector) :=
   match l with
   | Loc r f => match v with
-    | RankFileVector (StepInDirection Left x) (StepInDirection Up y) =>
-      Loc (r - 1) (f + 1)
-    | RankFileVector (StepInDirection Left x) (StepInDirection Down y) =>
-      Loc (r - 1) (f - 1)
-    | RankFileVector (StepInDirection Right x) (StepInDirection Up y) =>
-      Loc (r + 1) (f + 1)
-    | RankFileVector (StepInDirection Right x) (StepInDirection Down y) =>
-      Loc (r + 1) (f - 1)
-    | _ => l
+    | VectorHV (HStep _ 0) (VStep _ 0) => l
+    | VectorHV (HStep _ 0) (VStep Up (S _)) => Loc r (f + 1)
+    | VectorHV (HStep _ 0) (VStep Down (S _)) => Loc r (f - 1)
+    | VectorHV (HStep Left (S _)) (VStep _ 0) => Loc (r - 1) f
+    | VectorHV (HStep Right (S _)) (VStep _ 0) => Loc (r + 1) f
+    | VectorHV (HStep Right (S _)) (VStep Up (S _)) => Loc (r + 1) (f + 1)
+    | VectorHV (HStep Left (S _)) (VStep Up (S _)) => Loc (r - 1) (f + 1)
+    | VectorHV (HStep Right (S _)) (VStep Down (S _)) => Loc (r + 1) (f - 1)
+    | VectorHV (HStep Left (S _)) (VStep Down (S _)) => Loc (r - 1) (f - 1)
     end
   end.
 
@@ -779,24 +760,19 @@ Qed.
 Lemma one_step_along_vector_adjacent : forall l l2 v,
   l2 = (one_step_along_vector l v) -> l = l2 \/ SquaresAdjacent l l2.
 Proof.
+  Ltac split_and_differences := match goal with
+  | |- difference _ _ <= 1 /\ difference _ _ <= 1 => split
+  | |- difference ?x ?x <= 1 => rewrite difference_n_n; lia
+  | |- difference ?x (?x - 1) <= 1 => apply difference_n_nm1
+  | |- difference ?x (?x + 1) <= 1 => apply difference_n_np1
+  end.
   intros. unfold one_step_along_vector in *.
   destruct l eqn:El.
   destruct v eqn:Ev.
-  destruct rankStep eqn:Ers.
-  destruct fileStep eqn:Efs.
-  Ltac invalidDir := match goal with
-  | H: ?v = RankFileVector (StepInDirection Up _) (StepInDirection _ _)|- _ => left; auto
-  | H: ?v = RankFileVector (StepInDirection Down _) (StepInDirection _ _)|- _ => left; auto
-  | H: ?v = RankFileVector (StepInDirection _ _) (StepInDirection Left _)|- _ => left; auto
-  | H: ?v = RankFileVector (StepInDirection _ _) (StepInDirection Right _)|- _ => left; auto
-  end.
-  destruct d eqn:Ed; destruct d0 eqn:Ed0; try invalidDir.
-  - right. subst. simpl. unfold difference. rewrite n_lt_nm1. rewrite n_lt_np1.
-    lia.
-  - right. subst. simpl. unfold difference. repeat rewrite n_lt_nm1. lia.
-  - right. subst. simpl. unfold difference. repeat rewrite n_lt_np1. lia.
-  - right. subst. simpl. unfold difference. rewrite n_lt_np1. rewrite n_lt_nm1. 
-    lia.
+  destruct hstep eqn:Ehs.
+  destruct d eqn:Ed; destruct n eqn:En; destruct vstep eqn:Evs;
+  destruct d0 eqn:Ed0; destruct n0 eqn:En0; auto; right; simpl; rewrite H;
+  repeat split_and_differences; destruct n1 eqn:En1; repeat split_and_differences.
 Qed.
 
 (*Are the squares between to squares on the same rank, file or diagonal
@@ -807,14 +783,11 @@ Inductive SquaresBetweenEmpty (pp : PiecePlacements)
     SquaresAdjacent loc1 loc2 -> SquaresBetweenEmpty pp loc1 loc2
   | NothingOccupiedBetweenSingleSquare : forall loc,
     SquaresBetweenEmpty pp loc loc
-  | SquaresAlongVectorEmpty : forall loc1 loc2 v rdir rn fdir fn first_r 
-      first_f,
-    vector_from_a_to_b loc1 loc2 = v ->
-    v = RankFileVector (StepInDirection rdir rn) (StepInDirection fdir fn) ->
-    rn = 0 \/ fn = 0 \/ rn = fn -> (* same rank, file, or diagonal*)
-    one_step_along_vector loc1 v = Loc first_r first_f ->
-    is_square_empty_rank_file first_r first_f pp = true ->
-    SquaresBetweenEmpty pp (Loc first_r first_f) loc2 ->
+  | SquaresAlongVectorEmpty : forall loc1 loc2 v first_step,
+    vector_from_a_to_b loc1 loc2 = v -> RankFileOrDiagonalVector v ->
+    (one_step_along_vector loc1 v) = first_step ->
+    is_square_empty first_step pp = true ->
+    SquaresBetweenEmpty pp first_step loc2 ->
     SquaresBetweenEmpty pp loc1 loc2.
 
 Definition locations_equal (loc1 : SquareLocation) (loc2 : SquareLocation) :=
@@ -824,7 +797,7 @@ Definition locations_equal (loc1 : SquareLocation) (loc2 : SquareLocation) :=
 
 Definition vector_length (v: Vector) : nat :=
   match v with
-  | RankFileVector (StepInDirection _ n) (StepInDirection _ m) => n + m
+  | VectorHV (HStep _ n) (VStep _ m) => n + m
   end.
 
 Definition manhattan_distance (loc1 : SquareLocation) (loc2 : SquareLocation)
@@ -836,23 +809,24 @@ Definition one_step_along_vector_and_location (l : SquareLocation) (v : Vector)
   : (Vector * SquareLocation) :=
   match l with
   | Loc r f => match v with
-    | RankFileVector (StepInDirection Left x) (StepInDirection Up y) =>
-      (RankFileVector (StepInDirection Left (x - 1))
-                      (StepInDirection Up (y - 1)),
-       Loc (r - 1) (f + 1))
-    | RankFileVector (StepInDirection Left x) (StepInDirection Down y) =>
-      (RankFileVector (StepInDirection Left (x - 1))
-                      (StepInDirection Down (y - 1)),
-       Loc (r - 1) (f - 1))
-    | RankFileVector (StepInDirection Right x) (StepInDirection Up y) =>
-      (RankFileVector (StepInDirection Right (x - 1))
-                      (StepInDirection Up (y - 1)),
-       Loc (r + 1) (f + 1))
-    | RankFileVector (StepInDirection Right x) (StepInDirection Down y) =>
-      (RankFileVector (StepInDirection Right (x - 1))
-                      (StepInDirection Down (y - 1)),
-       Loc (r + 1) (f - 1))
-    | _ => ((RankFileVector (StepInDirection Right 0) (StepInDirection Up 0)),l)
+    | VectorHV (HStep dh 0) (VStep dv 0) => 
+      (VectorHV (HStep dh 0) (VStep dv 0), l)
+    | VectorHV (HStep dh 0) (VStep Up (S m)) => 
+      (VectorHV (HStep dh 0) (VStep Up m), Loc r (f + 1))
+    | VectorHV (HStep dh 0) (VStep Down (S m)) => 
+      (VectorHV (HStep dh 0) (VStep Down m), Loc r (f - 1))
+    | VectorHV (HStep Left (S n)) (VStep dv 0) => 
+      (VectorHV (HStep Left n) (VStep dv 0), Loc (r - 1) f)
+    | VectorHV (HStep Right (S n)) (VStep dv 0) => 
+      (VectorHV (HStep Right n) (VStep dv 0), Loc (r + 1) f)
+    | VectorHV (HStep Right (S n)) (VStep Up (S m)) => 
+      (VectorHV (HStep Right n) (VStep Up m), Loc (r + 1) (f + 1))
+    | VectorHV (HStep Left (S n)) (VStep Up (S m)) => 
+      (VectorHV (HStep Left n) (VStep Up m), Loc (r - 1) (f + 1))
+    | VectorHV (HStep Right (S n)) (VStep Down (S m)) => 
+      (VectorHV (HStep Right n) (VStep Down m), Loc (r + 1) (f - 1))
+    | VectorHV (HStep Left (S n)) (VStep Down (S m)) => 
+      (VectorHV (HStep Left n) (VStep Down m), Loc (r - 1) (f - 1))
     end
   end.
 
@@ -861,6 +835,11 @@ Lemma one_step_along_vector_and_location_adjacent : forall v s v1 s1,
   one_step_along_vector_and_location s v = (v1, s1) ->
   SquaresAdjacent s s1.
 Admitted.
+
+Ltac Hdestruct :=
+repeat match goal with 
+  | H: match ?x with _ => _ end = _ |- _ => destruct x eqn:?H 
+end.
 
 Lemma one_step_along_vector_and_location_shorter : forall l v v1 l1,
   vector_length v <> 0 ->
@@ -871,20 +850,7 @@ Proof.
   unfold one_step_along_vector_and_location in H0.
   destruct l eqn:El.
   destruct v eqn:Ev.
-  destruct rankStep eqn:ErankStep.
-  destruct d eqn:Ed.
-  - inversion H0. subst. simpl. destruct fileStep eqn:EfileStep.
-    assert (~(n = 0 /\ n0 = 0)). { intros [C1 C2]. subst. simpl in H. lia. }
-    lia.
-  - inversion H0. subst. simpl. destruct fileStep eqn:EfileStep.
-    assert (~(n = 0 /\ n0 = 0)). { intros [C1 C2]. subst. simpl in H. lia. }
-    lia.
-  - destruct fileStep eqn:EfileStep.
-    assert (~(n = 0 /\ n0 = 0)). { intros [C1 C2]. subst. simpl in H. lia. } 
-    destruct d0 eqn:Ed0; inversion H0; subst; simpl; lia.
-  - destruct fileStep eqn:EfileStep.
-    assert (~(n = 0 /\ n0 = 0)). { intros [C1 C2]. subst. simpl in H. lia. }
-    destruct d0 eqn:Ed0; inversion H0; subst; simpl; lia.
+  repeat Hdestruct; inversion H0; subst; simpl in H; try lia; simpl; try lia.
 Qed.
 
 Lemma one_step_along_vector_and_location_diagonal : forall l v v1 l1,
@@ -895,36 +861,29 @@ Proof.
   intros. unfold one_step_along_vector_and_location in H0. 
   destruct l eqn:El. unfold RankFileOrDiagonalVector in H.
   destruct H as [HR | [HF | HD]].
-  - inversion HR. subst. destruct H as [Hl | Hr].
-    + rewrite Hl in H0. destruct d eqn:Ed; 
-      inversion H0; constructor; constructor; auto.
-    + rewrite Hr in H0. destruct d eqn:Ed; 
-      inversion H0; constructor; constructor; auto.
-  - inversion HF. subst. destruct H as [Hu | Hd].
-    + rewrite Hu in H0. destruct d eqn:Ed;
-      inversion H0; subst; right; left; constructor; auto.
-    + rewrite Hd in H0. destruct d eqn:Ed;
-      inversion H0; subst; right; left; constructor; auto.
-  - right. right. inversion HD. destruct H as [Hup | Hdown]; 
-    destruct H1 as [Hleft | Hright]; subst; inversion H0; constructor; auto.
+  - inversion HR. subst. repeat Hdestruct; inversion H0; subst; left; 
+    constructor.
+  - inversion HF. subst. repeat Hdestruct; inversion H0; subst; right; left;
+    constructor.
+  - inversion HD. subst. repeat Hdestruct; inversion H0; subst; right; right;
+    constructor.
 Qed.
 
 Definition is_vector_to_adjacent_square (v : Vector) :=
   match v with
-  | RankFileVector (StepInDirection _ n) (StepInDirection _ m) =>
+  | VectorHV (HStep _ n) (VStep _ m) =>
     ((n <=? 1) && (m <=? 1))%bool
   end.
 
 Lemma vector_length_0_iff : forall d1 n d2 m,
-  vector_length (RankFileVector (StepInDirection d1 n) (StepInDirection d2 m))
-  = 0 <-> (n = 0) /\ (m = 0).
+  vector_length (VectorHV (HStep d1 n) (VStep d2 m)) = 0 <-> (n = 0) /\ (m = 0).
 Proof.
   intros. simpl. split; intros; lia.
 Qed.
 
 Lemma vector_length_not_0_iff : forall d1 n d2 m,
-  vector_length (RankFileVector (StepInDirection d1 n) (StepInDirection d2 m))
-  <> 0 <-> (n > 0) \/ (m > 0).
+  vector_length (VectorHV (HStep d1 n) (VStep d2 m)) <> 0 <-> 
+  (n > 0) \/ (m > 0).
 Proof.
   intros. simpl. split; intros; lia.
 Qed.
@@ -939,23 +898,38 @@ Function are_squares_along_vector_empty (pp : PiecePlacements)
 Proof.
   intros. rewrite PeanoNat.Nat.eqb_neq in teq. 
   unfold one_step_along_vector_and_location in *. destruct start eqn:Es.
-  destruct v eqn:Ev. destruct rankStep eqn:Ers. destruct fileStep eqn:Efs.
-  rewrite vector_length_not_0_iff in teq.
-  destruct d eqn:Ed; destruct d0 eqn:Ed0; inversion teq0; simpl; try lia.
+  destruct v eqn:Ev. repeat Hdestruct; simpl in teq; try lia; inversion teq0;
+  subst; simpl; lia.
 Defined.
 
-Definition apply_step (s : Step) (loc : SquareLocation) : SquareLocation :=
+Definition apply_hstep (s : HorizontalStep) (loc : SquareLocation) 
+  : SquareLocation :=
   match s,loc with
-  | StepInDirection Left n, Loc r f => Loc r (f - n)
-  | StepInDirection Right n, Loc r f => Loc r (f + n)
-  | StepInDirection Up n, Loc r f => Loc (r + n) f
-  | StepInDirection Down n, Loc r f => Loc (r - n) f
+  | HStep Left n, Loc r f => Loc (r - n) f
+  | HStep Right n, Loc r f => Loc (r + n) f
+  end.
+
+Definition apply_vstep (s : VerticalStep) (loc : SquareLocation) 
+  : SquareLocation :=
+  match s,loc with
+  | VStep Up n, Loc r f => Loc r (f + n)
+  | VStep Down n, Loc r f => Loc r (f - n)
   end.
 
 Definition apply_vector (v : Vector) (loc : SquareLocation) : SquareLocation :=
   match v with
-  | RankFileVector step1 step2 => (apply_step step2 (apply_step step1 loc))
+  | VectorHV hstep vstep => (apply_vstep vstep (apply_hstep hstep loc))
   end.
+
+Lemma apply_null_vector : forall v l, 
+  vector_length v = 0 -> apply_vector v l = l.
+Proof.
+  intros. unfold vector_length in H. repeat Hdestruct.
+  assert (Hn_is_zero: n = 0). lia.
+  assert (H_n0_is_zero: n0 = 0). lia.
+  subst. simpl. destruct d0 eqn:Ed0; destruct d eqn:Ed; destruct l eqn:El;
+  apply eq_Loc; try lia.
+Qed.
 
 Theorem strong_induction:
   forall P : nat -> Prop,
@@ -981,22 +955,21 @@ Ltac dall := match goal with
 end.
 
 Lemma one_step_along_vector_and_location_correct: forall s v v1 s1,
-  ValidVector v ->
   one_step_along_vector_and_location s v = (v1, s1) ->
   apply_vector v s = apply_vector v1 s1.
 Proof.
-  intros. inversion H; subst.
-  - unfold one_step_along_vector_and_location in H0. dall. inversion H0.
-    subst. simpl.
-
+  intros. unfold one_step_along_vector_and_location in H. repeat Hdestruct;
+  inversion H; subst; try reflexivity; simpl; try apply eq_Loc; try lia.
+Qed.
 
 Lemma one_step_along_vector_and_location_last_step: forall s v v1 s1,
   one_step_along_vector_and_location s v = (v1, s1) ->
   vector_length v <> 0 -> vector_length v1 = 0 ->
   s1 = apply_vector v s.
-Admitted.
-
-
+Proof.
+  intros. rewrite (one_step_along_vector_and_location_correct s v v1 s1); auto.
+  rewrite apply_null_vector; auto.
+Qed.
 
 Lemma are_squares_along_vector_empty_sound_aux : forall n,
   forall pp v start,
