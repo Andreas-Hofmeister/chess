@@ -626,17 +626,50 @@ Inductive Step : Type :=
 Inductive Vector : Type :=
   | RankFileVector (rankStep : Step) (fileStep : Step).
 
+Inductive ValidVector : Vector -> Prop :=
+  | RightUpVector : forall n m,
+    ValidVector (RankFileVector (StepInDirection Right n) (StepInDirection Up m))
+  | RightDownVector : forall n m,
+    ValidVector (RankFileVector (StepInDirection Right n) (StepInDirection Down m))
+  | LeftUpVector : forall n m,
+    ValidVector (RankFileVector (StepInDirection Left n) (StepInDirection Up m))
+  | LeftDownVector : forall n m,
+    ValidVector (RankFileVector (StepInDirection Left n) (StepInDirection Down m))
+  | RightVector : forall n d,
+    ValidVector (RankFileVector (StepInDirection Right n) (StepInDirection d 0))
+  | LeftVector : forall n d,
+    ValidVector (RankFileVector (StepInDirection Left n) (StepInDirection d 0))
+  | UpVector : forall n d,
+    ValidVector (RankFileVector (StepInDirection d 0) (StepInDirection Up n))
+  | DownVector : forall n d,
+    ValidVector (RankFileVector (StepInDirection d 0) (StepInDirection Down n)).
+
+
 Inductive VectorOnRank : Vector -> Prop :=
   | VectorOnRankConstr : forall left_or_right n d,
     left_or_right = Left \/ left_or_right = Right ->
     VectorOnRank (RankFileVector (StepInDirection left_or_right n)
       (StepInDirection d 0)).
 
+Lemma vector_on_rank_valid : forall v, VectorOnRank v -> ValidVector v.
+Proof.
+  intros. inversion H. destruct H0 as [Hl | Hr]; subst.
+  - apply LeftVector.
+  - apply RightVector.
+Qed.
+
 Inductive VectorOnFile : Vector -> Prop :=
   | VectorOnFileConstr : forall up_or_down n d,
     up_or_down = Up \/ up_or_down = Down ->
     VectorOnFile (RankFileVector (StepInDirection d 0)
       (StepInDirection up_or_down n)).
+
+Lemma vector_on_file_valid : forall v, VectorOnFile v -> ValidVector v.
+Proof.
+  intros. inversion H. destruct H0 as [Hu | Hd]; subst.
+  - apply UpVector.
+  - apply DownVector.
+Qed.
 
 Inductive DiagonalVector : Vector -> Prop :=
   | DiagonalVectorConstr : forall up_or_down n left_or_right,
@@ -645,8 +678,23 @@ Inductive DiagonalVector : Vector -> Prop :=
     DiagonalVector (RankFileVector (StepInDirection left_or_right n)
       (StepInDirection up_or_down n)).
 
+Lemma diagonal_vector_valid : forall v, DiagonalVector v -> ValidVector v.
+Proof.
+  intros. inversion H. destruct H0 as [Hu | Hd]; destruct H1 as [Hl | Hr]; 
+  subst; constructor.
+Qed.
+
 Definition RankFileOrDiagonalVector (v : Vector) : Prop :=
   (VectorOnRank v) \/ (VectorOnFile v) \/ (DiagonalVector v).
+
+Lemma rank_file_or_diagonal_vector_valid : forall v, 
+  RankFileOrDiagonalVector v -> ValidVector v.
+Proof.
+  intros. destruct H as [Hr|[Hf|Hd]].
+  - apply vector_on_rank_valid. auto.
+  - apply vector_on_file_valid. auto.
+  - apply diagonal_vector_valid. auto.
+Qed.
 
 Definition vector_from_a_to_b (a : SquareLocation) (b : SquareLocation) :=
   match a with Loc r_a f_a =>
@@ -728,7 +776,7 @@ Proof.
   intros. rewrite PeanoNat.Nat.ltb_lt in *. lia.
 Qed.
 
-Lemma one_step_along_vector_correct1 : forall l l2 v,
+Lemma one_step_along_vector_adjacent : forall l l2 v,
   l2 = (one_step_along_vector l v) -> l = l2 \/ SquaresAdjacent l l2.
 Proof.
   intros. unfold one_step_along_vector in *.
@@ -807,6 +855,12 @@ Definition one_step_along_vector_and_location (l : SquareLocation) (v : Vector)
     | _ => ((RankFileVector (StepInDirection Right 0) (StepInDirection Up 0)),l)
     end
   end.
+
+Lemma one_step_along_vector_and_location_adjacent : forall v s v1 s1,
+  vector_length v <> 0 ->
+  one_step_along_vector_and_location s v = (v1, s1) ->
+  SquaresAdjacent s s1.
+Admitted.
 
 Lemma one_step_along_vector_and_location_shorter : forall l v v1 l1,
   vector_length v <> 0 ->
@@ -920,6 +974,30 @@ Proof.
   - intros. apply Hsi with (n:=n). auto.
 Qed. 
 
+Ltac dall := match goal with
+| H : match ?x with _ => _ end = _ |- _ => destruct x eqn:?H
+| |- match ?x with _ => _ end = _ => destruct x eqn:?H
+| |- _ = match ?x with _ => _ end => destruct x eqn:?H
+end.
+
+Lemma one_step_along_vector_and_location_correct: forall s v v1 s1,
+  ValidVector v ->
+  one_step_along_vector_and_location s v = (v1, s1) ->
+  apply_vector v s = apply_vector v1 s1.
+Proof.
+  intros. inversion H; subst.
+  - unfold one_step_along_vector_and_location in H0. dall. inversion H0.
+    subst. simpl.
+
+
+Lemma one_step_along_vector_and_location_last_step: forall s v v1 s1,
+  one_step_along_vector_and_location s v = (v1, s1) ->
+  vector_length v <> 0 -> vector_length v1 = 0 ->
+  s1 = apply_vector v s.
+Admitted.
+
+
+
 Lemma are_squares_along_vector_empty_sound_aux : forall n,
   forall pp v start,
   n = vector_length v ->
@@ -932,13 +1010,14 @@ Proof.
   induction n using strong_induction.
   intros. rewrite are_squares_along_vector_empty_equation in H2. destruct n eqn:En.
   - left. auto.
-  - right. rewrite <- H0 in H2. assert (S n0 <> 0). lia. 
+  - assert (Hvnot0: vector_length v <> 0). lia.
+    right. rewrite <- H0 in H2. assert (S n0 <> 0). lia. 
     rewrite <- PeanoNat.Nat.eqb_neq in H3. rewrite H3 in H2.
     destruct (one_step_along_vector_and_location start v) eqn:Eos.
     destruct (is_square_empty start pp) eqn:Eisempty.
     + split; auto.
       assert (vector_length v0 < S n0). { rewrite H0. 
-        eapply one_step_along_vector_and_location_shorter; eauto. lia.
+        eapply one_step_along_vector_and_location_shorter; eauto.
       }
       assert (Hduh: vector_length v0 = vector_length v0). { auto. }
       assert (Hrfdv0: RankFileOrDiagonalVector v0). { 
@@ -946,7 +1025,12 @@ Proof.
       }
       specialize (H (vector_length v0) H4 pp v0 s Hduh Hrfdv0 H2) as Hind.
       destruct Hind as [Hind | Hind].
-      * Admitted.
+      * apply NothingOccupiedBetweenAdjacentSquares.
+        specialize (one_step_along_vector_and_location_last_step start v v0 s 
+          Eos Hvnot0 Hind) as Hlaststep. subst.
+        eapply one_step_along_vector_and_location_adjacent. eauto. apply Eos.
+      * 
+        
 
 Definition are_squares_between_empty (pp : PiecePlacements) 
   (loc1 : SquareLocation) (loc2 : SquareLocation) :=
