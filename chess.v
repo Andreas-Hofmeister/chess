@@ -775,8 +775,6 @@ Proof.
   repeat split_and_differences; destruct n1 eqn:En1; repeat split_and_differences.
 Qed.
 
-(*Are the squares between to squares on the same rank, file or diagonal
-  empty?*)
 Inductive SquaresBetweenEmpty (pp : PiecePlacements)
   : SquareLocation -> SquareLocation -> Prop :=
   | NothingOccupiedBetweenAdjacentSquares : forall loc1 loc2, 
@@ -784,7 +782,7 @@ Inductive SquaresBetweenEmpty (pp : PiecePlacements)
   | NothingOccupiedBetweenSingleSquare : forall loc,
     SquaresBetweenEmpty pp loc loc
   | SquaresAlongVectorEmpty : forall loc1 loc2 v first_step,
-    vector_from_a_to_b loc1 loc2 = v -> RankFileOrDiagonalVector v ->
+    vector_from_a_to_b loc1 loc2 = v ->
     (one_step_along_vector loc1 v) = first_step ->
     is_square_empty first_step pp = true ->
     SquaresBetweenEmpty pp first_step loc2 ->
@@ -1129,32 +1127,109 @@ Proof.
   - subst. apply eq_Loc; auto; lia.
 Qed.
 
+Ltac Hb2p := match goal with
+  | H : (_ <=? _) = true |- _ => rewrite PeanoNat.Nat.leb_le in H
+  | H : (_ <=? _) = false |- _ => rewrite PeanoNat.Nat.leb_gt in H
+  end.
+
+Ltac Gb2p := match goal with
+  | |- (_ <=? _) = true => rewrite PeanoNat.Nat.leb_le
+  | |- (_ <=? _) = false => rewrite PeanoNat.Nat.leb_gt
+  | |- true = (_ <=? _) => symmetry; rewrite PeanoNat.Nat.leb_le
+  | |- false = (_ <=? _) => symmetry; rewrite PeanoNat.Nat.leb_gt
+  end.
+
+Lemma one_step_same : forall start v,
+  one_step_along_vector start v =
+  one_step_along_vector start (vector_from_a_to_b start 
+    (apply_vector v start)).
+Proof.
+  intros. 
+  destruct start eqn:El.
+  destruct v eqn:Ev.
+  destruct hstep eqn:Ehstep.
+  destruct vstep eqn:Evstep.
+  destruct d eqn:Ed; destruct d0 eqn:Ed0; simpl; auto.
+  - destruct n eqn:En.
+    + simplify_calculations.
+      replace (file <=? file + n0) with true; try symmetry; 
+      try rewrite PeanoNat.Nat.leb_le; try lia.
+      replace (file + n0 - file) with n0; try lia.
+      destruct n0 eqn:En0; auto.
+    + destruct n0 eqn:En0; simpl; destruct (rank <=? rank - S n1) eqn:Ernk.
+      * rewrite PeanoNat.Nat.leb_le in Ernk.
+        assert (Hrnk2: rank = 0). lia. subst. simpl.
+        simplify_calculations. auto.
+      * subst. rewrite PeanoNat.Nat.leb_gt in Ernk.
+        destruct (rank - (rank - S n1)) eqn:Hrnk2; try lia.
+        simplify_calculations. auto.
+      * rewrite PeanoNat.Nat.leb_le in Ernk. 
+        assert (Hrnk2: rank = 0). lia. subst. simpl. 
+        replace (file <=? file + S n2) with true; try symmetry; 
+        try rewrite PeanoNat.Nat.leb_le; try lia.
+        replace (file + S n2 - file) with (S n2); try lia. auto.
+      * subst. rewrite PeanoNat.Nat.leb_gt in Ernk.
+        destruct (rank - (rank - S n1)) eqn:Hrnk2; try lia.
+        replace (file <=? file + S n2) with true; try symmetry; 
+        try rewrite PeanoNat.Nat.leb_le; try lia.
+        replace (file + S n2 - file) with (S n2); try lia. auto.
+  - destruct n eqn:En.
+    + simplify_calculations. destruct n0 eqn:En0. simplify_calculations. auto.
+      destruct (file <=? file - S n) eqn:Efl.
+      * Hb2p. assert (Hfl2: file = 0). lia. rewrite Hfl2. simpl. auto.
+      * Hb2p. destruct (file - (file - S n)) eqn:Efl2; try lia. auto.
+    + destruct n0 eqn:En0.
+      * simplify_calculations. destruct (rank <=? rank - S n1) eqn:Hrnk.
+        -- Hb2p. assert (Hrnk2: rank = 0). lia. rewrite Hrnk2. simpl. auto.
+        -- Hb2p. destruct (rank - (rank - S n1)) eqn:Ernk2; try lia. auto.
+      * destruct (rank <=? rank - S n1) eqn:Hrnk.
+        -- Hb2p. assert (Hrnk2: rank = 0). lia. rewrite Hrnk2. simpl.
+           destruct (file <=? file - S n2) eqn:Hfl.
+           ++ Hb2p. assert (Hfl2: file = 0). lia. rewrite Hfl2. simpl. auto.
+           ++ Hb2p. destruct (file - (file - S n2)) eqn:Hfl2; try lia. auto.
+        -- Hb2p. destruct (rank - (rank - S n1)) eqn:Hrnk2; try lia.
+           destruct (file <=? file - S n2) eqn:Hfl.
+           ++ Hb2p. assert (Hfl2: file = 0). lia. rewrite Hfl2. simpl. auto.
+           ++ Hb2p. destruct (file - (file - S n2)) eqn:Hfl2; try lia. auto.
+  - destruct n eqn:En.
+    + simplify_calculations. destruct n0 eqn:En0. simplify_calculations. auto.
+      replace (file <=? file + S n) with true; try Gb2p; try lia.
+      replace (file + S n - file) with (S n); try lia. auto.
+    + destruct n0 eqn:En0. 
+      * simplify_calculations. auto.
+        replace (rank <=? rank + S n1) with true; try Gb2p; try lia.
+        replace (rank + S n1 - rank) with (S n1); try lia. auto.
+      * replace (rank <=? rank + S n1) with true; try Gb2p; try lia.
+        replace (rank + S n1 - rank) with (S n1); try lia. auto.
+        replace (file <=? file + S n2) with true; try Gb2p; try lia.
+        replace (file + S n2 - file) with (S n2); try lia. auto.
+  - 
+
 Lemma are_squares_along_vector_empty_sound_aux : forall n,
   forall pp v start,
   n = vector_length v ->
-  RankFileOrDiagonalVector v ->
   are_squares_along_vector_empty pp start v = true ->
   (vector_length v) = 0 \/ 
   (is_square_empty start pp = true /\ 
     (SquaresBetweenEmpty pp start (apply_vector v start))).
 Proof.
   induction n using strong_induction.
-  intros. rewrite are_squares_along_vector_empty_equation in H2. 
+  intros pp v start Hvlength Hemptyv. 
+  rewrite are_squares_along_vector_empty_equation in Hemptyv. 
   destruct n eqn:En. left. auto.
+  replace (vector_length v =? 0) with false in Hemptyv; try symmetry;
+  try rewrite PeanoNat.Nat.eqb_neq; try lia.
   assert (Hvnot0: vector_length v <> 0). lia.
-  right. rewrite <- H0 in H2. assert (S n0 <> 0). lia. 
-  rewrite <- PeanoNat.Nat.eqb_neq in H3. rewrite H3 in H2.
+  right.
   destruct (one_step_along_vector_and_location start v) eqn:Eos.
   destruct (is_square_empty start pp) eqn:Eisempty; try discriminate.
   split; auto.
-  assert (vector_length v0 < S n0). { rewrite H0. 
+  assert (Hvlv0: vector_length v0 < S n0). { rewrite Hvlength.
     eapply one_step_along_vector_and_location_shorter; eauto.
   }
   assert (Hduh: vector_length v0 = vector_length v0). { auto. }
-  assert (Hrfdv0: RankFileOrDiagonalVector v0). { 
-    eapply one_step_along_vector_and_location_diagonal; eauto.
-  }
-  specialize (H (vector_length v0) H4 pp v0 s Hduh Hrfdv0 H2) as Hind.
+  
+  specialize (H (vector_length v0) Hvlv0 pp v0 s Hduh Hemptyv) as Hind.
   destruct Hind as [Hind | Hind].
   - specialize (one_step_along_vector_and_location_last_step start v v0 s Eos 
       Hvnot0 Hind) as Hlaststep. subst.
@@ -1163,10 +1238,8 @@ Proof.
     destruct Hadj as [Hequal | Hadj].
     + rewrite <- Hequal. apply NothingOccupiedBetweenSingleSquare.
     + constructor. auto.
-  - rewrite make_vector_stay_in_bounds_eq. eapply SquaresAlongVectorEmpty; 
-    eauto.
-    + apply vector_from_a_to_b_preserves_diagonal. 
-      apply make_vector_stay_in_bounds_stays_in_bounds.
+  - eapply SquaresAlongVectorEmpty; eauto.
+    + 
       
 
 Definition are_squares_between_empty (pp : PiecePlacements) 
