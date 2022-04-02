@@ -1087,6 +1087,48 @@ Proof.
     replace (file - (file - S n0)) with (S n0); try lia. finish.
 Qed.
 
+Definition make_vector_stay_in_bounds (v : Vector) (l : SquareLocation) :=
+  match l with
+  | Loc x y =>
+    match v with
+    | VectorHV (HStep Left n) (VStep Down m) =>
+      VectorHV (HStep Left (min n x)) (VStep Down (min m y))
+    | VectorHV (HStep Left n) (VStep Up m) =>
+      VectorHV (HStep Left (min n x)) (VStep Up m)
+    | VectorHV (HStep Right n) (VStep Down m) =>
+      VectorHV (HStep Right n) (VStep Down (min m y))
+    | _ => v
+    end
+  end.
+
+Lemma make_vector_stay_in_bounds_stays_in_bounds : forall v l,
+  vector_stays_within_boundaries (make_vector_stay_in_bounds v l) l.
+Proof.
+  intros.
+  destruct l eqn:El.
+  destruct v eqn:Ev.
+  destruct hstep eqn:Ehstep.
+  destruct vstep eqn:Evstep.
+  destruct d eqn:Ed; destruct d0 eqn:Ed0; simpl; auto.
+  - apply PeanoNat.Nat.le_min_r.
+  - split. apply PeanoNat.Nat.le_min_r. apply PeanoNat.Nat.le_min_r.
+  - apply PeanoNat.Nat.le_min_r.
+Qed.
+
+Lemma make_vector_stay_in_bounds_eq : forall v l,
+  apply_vector v l = apply_vector (make_vector_stay_in_bounds v l) l.
+Proof.
+  intros.
+  destruct l eqn:El.
+  destruct v eqn:Ev.
+  destruct hstep eqn:Ehstep.
+  destruct vstep eqn:Evstep.
+  destruct d eqn:Ed; destruct d0 eqn:Ed0; simpl; auto.
+  - subst. apply eq_Loc; auto. lia.
+  - subst. apply eq_Loc; auto; lia.
+  - subst. apply eq_Loc; auto; lia.
+Qed.
+
 Lemma are_squares_along_vector_empty_sound_aux : forall n,
   forall pp v start,
   n = vector_length v ->
@@ -1121,7 +1163,11 @@ Proof.
     destruct Hadj as [Hequal | Hadj].
     + rewrite <- Hequal. apply NothingOccupiedBetweenSingleSquare.
     + constructor. auto.
-  - eapply SquaresAlongVectorEmpty; eauto. 
+  - rewrite make_vector_stay_in_bounds_eq. eapply SquaresAlongVectorEmpty; 
+    eauto.
+    + apply vector_from_a_to_b_preserves_diagonal. 
+      apply make_vector_stay_in_bounds_stays_in_bounds.
+      
 
 Definition are_squares_between_empty (pp : PiecePlacements) 
   (loc1 : SquareLocation) (loc2 : SquareLocation) :=
