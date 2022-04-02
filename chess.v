@@ -1139,7 +1139,20 @@ Ltac Gb2p := match goal with
   | |- false = (_ <=? _) => symmetry; rewrite PeanoNat.Nat.leb_gt
   end.
 
-Lemma one_step_same : forall start v,
+Lemma one_step_same : forall start v s v0,
+  one_step_along_vector_and_location start v = (v0, s) ->
+  one_step_along_vector start v = s.
+Proof.
+  intros start v s v0 Hosvl.
+  destruct start eqn:El.
+  destruct v eqn:Ev.
+  destruct hstep eqn:Ehstep.
+  destruct vstep eqn:Evstep.
+  destruct d eqn:Ed; destruct d0 eqn:Ed0; simpl; simpl in Hosvl; subst; auto;
+  destruct n eqn:En; destruct n0 eqn:En0; inversion Hosvl; auto.
+Qed.
+
+Lemma one_step_apply_same : forall start v,
   one_step_along_vector start v =
   one_step_along_vector start (vector_from_a_to_b start 
     (apply_vector v start)).
@@ -1203,7 +1216,21 @@ Proof.
         replace (rank + S n1 - rank) with (S n1); try lia. auto.
         replace (file <=? file + S n2) with true; try Gb2p; try lia.
         replace (file + S n2 - file) with (S n2); try lia. auto.
-  - 
+  - destruct n eqn:En.
+    + simplify_calculations. destruct n0 eqn:En0. simplify_calculations. auto.
+      destruct (file <=? file - S n) eqn:Hfl.
+      * Hb2p. assert (Hfl2: file = 0). lia. rewrite Hfl2. simpl. auto.
+      * Hb2p. destruct (file - (file - S n)) eqn:Hfl2; try lia. auto.
+    + destruct n0 eqn:En0. 
+      * simplify_calculations. auto.
+        replace (rank <=? rank + S n1) with true; try Gb2p; try lia.
+        replace (rank + S n1 - rank) with (S n1); try lia. auto.
+      * replace (rank <=? rank + S n1) with true; try Gb2p; try lia.
+        replace (rank + S n1 - rank) with (S n1); try lia. auto.
+        destruct (file <=? file - S n2) eqn:Hfl.
+        -- Hb2p. assert (Hfl2: file = 0). lia. rewrite Hfl2. simpl. auto.
+        -- Hb2p. destruct (file - (file - S n2)) eqn:Hfl2; try lia. auto.
+Qed.
 
 Lemma are_squares_along_vector_empty_sound_aux : forall n,
   forall pp v start,
@@ -1239,8 +1266,11 @@ Proof.
     + rewrite <- Hequal. apply NothingOccupiedBetweenSingleSquare.
     + constructor. auto.
   - eapply SquaresAlongVectorEmpty; eauto.
-    + 
-      
+    + rewrite <- one_step_apply_same. replace (one_step_along_vector start v) with s.
+      apply Hind. symmetry. apply (one_step_same start v s v0). auto.
+    + rewrite <- one_step_apply_same. rewrite (one_step_same start v s v0); auto.
+      erewrite one_step_along_vector_and_location_correct. apply Hind. auto.
+Qed.
 
 Definition are_squares_between_empty (pp : PiecePlacements) 
   (loc1 : SquareLocation) (loc2 : SquareLocation) :=
