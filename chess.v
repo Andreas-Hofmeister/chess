@@ -7,6 +7,41 @@ Notation "x :: l" := (cons x l)
 Notation "[ ]" := nil.
 Notation "[ x ; .. ; y ]" := (cons x .. (cons y nil) ..).
 
+Ltac dall := match goal with
+| H : match ?x with _ => _ end = _ |- _ => destruct x eqn:?H
+| |- match ?x with _ => _ end = _ => destruct x eqn:?H
+| |- _ = match ?x with _ => _ end => destruct x eqn:?H
+end.
+
+Ltac Hb2p := match goal with
+  | H : (_ <=? _) = true |- _ => rewrite PeanoNat.Nat.leb_le in H
+  | H : (_ <=? _) = false |- _ => rewrite PeanoNat.Nat.leb_gt in H
+  | H : (_ =? _) = false |- _ => rewrite PeanoNat.Nat.eqb_neq in H
+  end.
+
+Ltac Gb2p := match goal with
+  | |- (_ <=? _) = true => rewrite PeanoNat.Nat.leb_le
+  | |- (_ <? _) = true => rewrite PeanoNat.Nat.ltb_lt
+  | |- (_ <=? _) = false => rewrite PeanoNat.Nat.leb_gt
+  | |- (_ <? _) = false => rewrite PeanoNat.Nat.ltb_ge
+  | |- true = (_ <=? _) => symmetry; rewrite PeanoNat.Nat.leb_le
+  | |- true = (_ <? _) => symmetry; rewrite PeanoNat.Nat.ltb_lt
+  | |- false = (_ <=? _) => symmetry; rewrite PeanoNat.Nat.leb_gt
+  | |- false = (_ <? _) => symmetry; rewrite PeanoNat.Nat.ltb_ge
+  | |- (_ =? _) = false => rewrite PeanoNat.Nat.eqb_neq
+  end.
+
+Ltac Hp2b := match goal with
+  | H : (_ <= _) |- _ => rewrite <- PeanoNat.Nat.leb_le in H
+  | H : (_ > _) |- _ => rewrite <- PeanoNat.Nat.leb_gt in H
+  | H : (_ = _) |- _ => rewrite <- PeanoNat.Nat.eqb_eq in H
+  end.
+
+Ltac Hdestruct :=
+repeat match goal with 
+  | H: match ?x with _ => _ end = _ |- _ => destruct x eqn:?H 
+end.
+
 Inductive Color : Type :=
   | White
   | Black.
@@ -828,11 +863,6 @@ Definition one_step_along_vector_and_location (l : SquareLocation) (v : Vector)
     end
   end.
 
-Ltac Hdestruct :=
-repeat match goal with 
-  | H: match ?x with _ => _ end = _ |- _ => destruct x eqn:?H 
-end.
-
 Lemma one_step_along_vector_and_location_adjacent : forall l v l1 v1,
   one_step_along_vector_and_location l v = (v1, l1) -> 
   l = l1 \/ SquaresAdjacent l l1.
@@ -950,12 +980,6 @@ Proof.
         apply IHn. auto.
   - intros. apply Hsi with (n:=n). auto.
 Qed. 
-
-Ltac dall := match goal with
-| H : match ?x with _ => _ end = _ |- _ => destruct x eqn:?H
-| |- match ?x with _ => _ end = _ => destruct x eqn:?H
-| |- _ = match ?x with _ => _ end => destruct x eqn:?H
-end.
 
 Lemma one_step_along_vector_and_location_correct: forall s v v1 s1,
   one_step_along_vector_and_location s v = (v1, s1) ->
@@ -1113,6 +1137,23 @@ Proof.
   - apply PeanoNat.Nat.le_min_r.
 Qed.
 
+Lemma one_step_stays_in_bounds : forall v l v0 l0,
+  vector_stays_within_boundaries v l ->
+  one_step_along_vector_and_location l v = (v0, l0) ->
+  vector_stays_within_boundaries v0 l0.
+Proof.
+  intros v l v0 l0 Hbounds Hos.
+  destruct l eqn:El.
+  destruct v eqn:Ev.
+  destruct hstep eqn:Ehstep.
+  destruct vstep eqn:Evstep.
+  destruct d eqn:Ed; destruct d0 eqn:Ed0; simpl; inversion Hos; subst; auto.
+  - simpl in Hbounds. Hdestruct; inversion H0; subst; simpl; auto; lia.
+  - simpl in Hbounds. Hdestruct; inversion H0; subst; simpl; auto; lia.
+  - simpl in Hbounds. Hdestruct; inversion H0; subst; simpl; auto; lia.
+  - simpl in Hbounds. Hdestruct; inversion H0; subst; simpl; auto; lia.
+Qed.
+
 Lemma make_vector_stay_in_bounds_eq : forall v l,
   apply_vector v l = apply_vector (make_vector_stay_in_bounds v l) l.
 Proof.
@@ -1126,18 +1167,6 @@ Proof.
   - subst. apply eq_Loc; auto; lia.
   - subst. apply eq_Loc; auto; lia.
 Qed.
-
-Ltac Hb2p := match goal with
-  | H : (_ <=? _) = true |- _ => rewrite PeanoNat.Nat.leb_le in H
-  | H : (_ <=? _) = false |- _ => rewrite PeanoNat.Nat.leb_gt in H
-  end.
-
-Ltac Gb2p := match goal with
-  | |- (_ <=? _) = true => rewrite PeanoNat.Nat.leb_le
-  | |- (_ <=? _) = false => rewrite PeanoNat.Nat.leb_gt
-  | |- true = (_ <=? _) => symmetry; rewrite PeanoNat.Nat.leb_le
-  | |- false = (_ <=? _) => symmetry; rewrite PeanoNat.Nat.leb_gt
-  end.
 
 Lemma one_step_same : forall start v s v0,
   one_step_along_vector_and_location start v = (v0, s) ->
@@ -1255,7 +1284,6 @@ Proof.
     eapply one_step_along_vector_and_location_shorter; eauto.
   }
   assert (Hduh: vector_length v0 = vector_length v0). { auto. }
-  
   specialize (H (vector_length v0) Hvlv0 pp v0 s Hduh Hemptyv) as Hind.
   destruct Hind as [Hind | Hind].
   - specialize (one_step_along_vector_and_location_last_step start v v0 s Eos 
@@ -1271,6 +1299,38 @@ Proof.
     + rewrite <- one_step_apply_same. rewrite (one_step_same start v s v0); auto.
       erewrite one_step_along_vector_and_location_correct. apply Hind. auto.
 Qed.
+
+Lemma are_squares_along_vector_empty_sound : forall pp v start,
+  are_squares_along_vector_empty pp start v = true ->
+  (vector_length v) = 0 \/ 
+  (is_square_empty start pp = true /\ 
+    (SquaresBetweenEmpty pp start (apply_vector v start))).
+Proof.
+  intros.
+  apply are_squares_along_vector_empty_sound_aux with (n:=vector_length v).
+  auto. auto.
+Qed.
+
+Lemma are_squares_along_vector_empty_complete_aux : forall n,
+  forall pp v start,
+  (vector_length v) = n ->
+  vector_stays_within_boundaries v start ->
+  ((vector_length v) = 0 \/ 
+  (is_square_empty start pp = true /\ 
+    (SquaresBetweenEmpty pp start (apply_vector v start))) ->
+  are_squares_along_vector_empty pp start v = true).
+Proof.
+  induction n using strong_induction.
+  intros pp v start Hvl Hbounds [Hv0 | [Hfstempty Hrestempty]]; 
+  rewrite are_squares_along_vector_empty_equation. Hp2b. rewrite Hv0. auto.
+  destruct (vector_length v =? 0) eqn:Evl; auto. Hb2p.
+  destruct (one_step_along_vector_and_location start v) eqn:Eos.
+  rewrite Hfstempty. apply H with (k:=vector_length v0). rewrite <- Hvl.
+  eapply one_step_along_vector_and_location_shorter; eauto. auto.
+  apply (one_step_stays_in_bounds v start v0 s Hbounds Eos).
+  inversion Hrestempty.
+  - subst.
+  
 
 Definition are_squares_between_empty (pp : PiecePlacements) 
   (loc1 : SquareLocation) (loc2 : SquareLocation) :=
