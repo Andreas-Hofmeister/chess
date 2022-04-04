@@ -848,3 +848,53 @@ Proof.
       * rewrite <- (vector_from_a_to_b_correct l1 l2).
         rewrite (one_step_along_vector_and_location_correct _ _ _ _ Eos). auto.
 Qed.
+
+Lemma one_step_along_zero : forall v l,
+  vector_length v = 0 ->
+  one_step_along_vector_and_location l v = (v, l).
+Proof.
+  intros v l Hlen.
+  destruct l eqn:El.
+  destruct v eqn:Ev.
+  destruct hstep eqn:Ehstep.
+  destruct vstep eqn:Evstep.
+  rewrite vector_length_0_iff in Hlen. destruct Hlen as [Hlen1 Hlen2]. subst.
+  simpl. destruct d eqn:Ed; destruct d0 eqn:Ed0; simpl; auto.
+Qed.
+
+Lemma are_squares_between_empty_complete : forall pp l1 l2,
+  SquaresBetweenEmpty pp l1 l2 -> are_squares_between_empty pp l1 l2 = true.
+Proof.
+  intros pp l1 l2 Hempty. unfold are_squares_between_empty.
+  destruct (one_step_along_vector_and_location l1 (vector_from_a_to_b l1 l2))
+    eqn:Eos.
+  inversion Hempty.
+  - subst. assert (Hv0: vector_length v = 0). { 
+      apply (one_step_along_short_vector (vector_from_a_to_b l1 l2) l1 v s);
+      auto. apply vector_from_a_to_b_in_bounds.
+      rewrite (vector_from_a_to_b_correct l1 l2). auto.
+    }
+    rewrite are_squares_along_vector_empty_equation. Hp2b. rewrite Hv0. auto.
+  - subst. assert (Hl1l2zero: vector_length (vector_from_a_to_b l2 l2) = 0).
+    { apply vector_from_a_to_b_zero_iff. auto. }
+    assert (Hosidem : one_step_along_vector_and_location l2 (vector_from_a_to_b l2 l2)
+      = (vector_from_a_to_b l2 l2, l2)). { apply one_step_along_zero. auto. }
+    rewrite Eos in Hosidem. inversion Hosidem. subst.
+    rewrite are_squares_along_vector_empty_equation. Hp2b. rewrite Hl1l2zero.
+    auto.
+  - subst. apply are_squares_along_vector_empty_complete.
+    + eapply one_step_stays_in_bounds. apply vector_from_a_to_b_in_bounds.
+      apply Eos.
+    + right. split. rewrite (one_step_same _ _ _ _ Eos) in H1. auto.
+      rewrite (one_step_same _ _ _ _ Eos) in H2. 
+      rewrite <- (one_step_along_vector_and_location_correct _ _ _ _ Eos).
+      rewrite vector_from_a_to_b_correct. auto.
+Qed.
+
+Lemma are_squares_between_empty_correct : forall pp l1 l2,
+  SquaresBetweenEmpty pp l1 l2 <-> are_squares_between_empty pp l1 l2 = true.
+Proof.
+  intros. split.
+  - intros. apply are_squares_between_empty_complete. auto.
+  - intros. apply are_squares_between_empty_sound. auto.
+Qed.
