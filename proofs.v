@@ -421,41 +421,6 @@ Proof.
   intros. subst. auto.
 Qed.
 
-(* Incorrect. v = vector_from_a_to_b s loc2 is not necessariliy true,
-    because (0,Up) != (0,Down)
-
-Lemma one_step_along_vector_and_location_correct2: forall loc1 loc2 v s,
-  one_step_along_vector_and_location loc1 (vector_from_a_to_b loc1 loc2) 
-    = (v, s) -> v = vector_from_a_to_b s loc2.
-Proof.
-  intros. unfold vector_from_a_to_b in H. 
-  destruct loc1 eqn:Eloc1. destruct loc2 eqn:Eloc2.
-  destruct (rank <=? rank0) eqn:Ernk; destruct (file <=? file0) eqn:Efl.
-  - simpl in H. destruct (rank0 - rank) eqn:Ernk2; 
-    destruct (file0 - file) eqn:Efl2; inversion H; subst.
-    + simpl. rewrite Ernk. rewrite Efl. rewrite Ernk2. rewrite Efl2. auto.
-    + simpl. rewrite Ernk. rewrite PeanoNat.Nat.leb_le in *.
-      assert (Hfl3: file + 1 <= file0). lia. 
-      rewrite <- PeanoNat.Nat.leb_le in Hfl3. rewrite Hfl3. apply eq_VectorHV;
-      auto. lia.
-    + simpl. rewrite Efl. rewrite PeanoNat.Nat.leb_le in *.
-      assert (Hrnk3: rank + 1 <= rank0). lia. 
-      rewrite <- PeanoNat.Nat.leb_le in Hrnk3. rewrite Hrnk3. 
-      apply eq_VectorHV; auto. lia.
-    + simpl. rewrite PeanoNat.Nat.leb_le in *.
-      assert (Hfl3: file + 1 <= file0). lia.
-      assert (Hrnk3: rank + 1 <= rank0). lia. rewrite <- PeanoNat.Nat.leb_le in *.
-      rewrite Hfl3. rewrite Hrnk3. apply eq_VectorHV; auto; lia.
-  - simpl in H. destruct (rank0 - rank) eqn:Ernk2; 
-    destruct (file - file0) eqn:Efl2; inversion H; subst.
-    + simpl. rewrite Ernk. rewrite Efl. rewrite Ernk2. rewrite Efl2. auto.
-    + simpl. rewrite Ernk. destruct (file - 1 <=? file0) eqn:Efl3.
-      * rewrite Ernk2. rewrite PeanoNat.Nat.leb_le in Efl3.
-        assert (Hn: n = 0). lia. rewrite Hn. rewrite Hn in Efl2.
-        assert (Hfl4: file0 - (file - 1) = 0). lia. rewrite Hfl4.
-Qed.
-*)
-
 Lemma one_step_along_vector_and_location_last_step: forall s v v1 s1,
   one_step_along_vector_and_location s v = (v1, s1) ->
   vector_length v <> 0 -> vector_length v1 = 0 ->
@@ -532,6 +497,17 @@ Proof.
     try rewrite PeanoNat.Nat.leb_gt; try lia.
     replace (rank + S n0 - rank) with (S n0); try lia.
     replace (file - (file - S n0)) with (S n0); try lia. finish.
+Qed.
+
+Lemma vector_from_a_to_b_correct : forall l1 l2,
+  apply_vector (vector_from_a_to_b l1 l2) l1 = l2.
+Proof.
+  intros l1 l2.
+  destruct l1 eqn:El1.
+  destruct l2 eqn:El2.
+  simpl. destruct (file <=? file0) eqn:Efl.
+  - Hb2p. destruct (rank <=? rank0) eqn:Ernk; Hb2p; simpl; apply eq_Loc; lia.
+  - Hb2p. destruct (rank <=? rank0) eqn:Ernk; Hb2p; simpl; apply eq_Loc; lia.
 Qed.
 
 Lemma make_vector_stay_in_bounds_stays_in_bounds : forall v l,
@@ -722,6 +698,57 @@ Proof.
   auto. auto.
 Qed.
 
+Lemma one_step_along_short_vector : forall v l v0 l0,
+  vector_stays_within_boundaries v l ->
+  one_step_along_vector_and_location l v = (v0,l0) ->
+  SquaresAdjacent l (apply_vector v l) ->
+  vector_length v0 = 0.
+Proof.
+  intros v l v0 l0 Hbounds Hos Hadj.
+  destruct l eqn:El.
+  destruct v eqn:Ev.
+  destruct hstep eqn:Ehstep.
+  destruct vstep eqn:Evstep.
+  destruct d eqn:Ed; destruct d0 eqn:Ed0; simpl; auto.
+  - simpl in Hos. simpl in Hadj. Hdestruct; unfold difference in Hadj; 
+    destruct Hadj as [Hadj1 Hadj2].
+    + inversion Hos. subst. simpl. auto.
+    + repeat HreplaceInIf. inversion Hos. subst. simpl. lia.
+    + HreplaceInIf. inversion Hos. simpl. simpl in Hbounds. lia.
+    + repeat HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
+  - simpl in Hos. simpl in Hadj. Hdestruct; destruct Hadj as [Hadj1 Hadj2];
+    unfold difference in *.
+    + inversion Hos. simpl. auto.
+    + repeat HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
+    + repeat HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
+    + repeat HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
+  - simpl in Hos. simpl in Hadj. Hdestruct; destruct Hadj as [Hadj1 Hadj2];
+    unfold difference in *.
+    + inversion Hos. simpl. auto.
+    + HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
+    + HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
+    + repeat HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
+  - simpl in Hos. simpl in Hadj. Hdestruct; destruct Hadj as [Hadj1 Hadj2];
+    unfold difference in *.
+    + inversion Hos. simpl. auto.
+    + repeat HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
+    + repeat HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
+    + repeat HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
+Qed.
+
+Lemma apply_vector_idem: forall v l,
+  vector_stays_within_boundaries v l -> apply_vector v l = l -> 
+  vector_length v = 0.
+Proof.
+  intros v l Hbounds Hidem.
+  destruct l eqn:El.
+  destruct v eqn:Ev.
+  destruct hstep eqn:Ehstep.
+  destruct vstep eqn:Evstep.
+  destruct d eqn:Ed; destruct d0 eqn:Ed0; simpl; auto; subst;
+  simpl in Hidem; simpl in Hbounds; inversion Hidem; lia.
+Qed.
+
 Lemma are_squares_along_vector_empty_complete_aux : forall n,
   forall pp v start,
   (vector_length v) = n ->
@@ -740,4 +767,84 @@ Proof.
   eapply one_step_along_vector_and_location_shorter; eauto. auto.
   apply (one_step_stays_in_bounds v start v0 s Hbounds Eos).
   inversion Hrestempty.
-  - subst.
+  - subst. left. eapply one_step_along_short_vector; eauto.
+  - exfalso. apply Evl. eapply apply_vector_idem; eauto.
+  - assert (Hfst_s: first_step = s). { subst. rewrite <- one_step_apply_same.
+      eapply one_step_same. apply Eos.
+    }
+    right. rewrite Hfst_s in H2. split; auto. rewrite Hfst_s in H3.
+    rewrite <- (one_step_along_vector_and_location_correct _ _ _ _ Eos). auto.
+Qed.
+
+Lemma are_squares_along_vector_empty_complete : forall pp v start,
+  vector_stays_within_boundaries v start ->
+  ((vector_length v) = 0 \/ 
+  (is_square_empty start pp = true /\ 
+    (SquaresBetweenEmpty pp start (apply_vector v start))) ->
+  are_squares_along_vector_empty pp start v = true).
+Proof.
+  intros.
+  apply are_squares_along_vector_empty_complete_aux with (n:=vector_length v);
+  auto.
+Qed.
+
+Lemma vector_from_a_to_b_in_bounds : forall l1 l2,
+  vector_stays_within_boundaries (vector_from_a_to_b l1 l2) l1.
+Proof.
+  intros l1 l2.
+  destruct l1 eqn:El1.
+  destruct l2 eqn:El2.
+  simpl. destruct (rank <=? rank0) eqn:Ernk.
+  - destruct (file <=? file0) eqn:Efl; auto. lia.
+  - destruct (file <=? file0) eqn:Efl; auto. lia. split; auto; lia.
+Qed.
+
+Lemma are_squares_along_vector_empty_correct : forall pp v start,
+  vector_stays_within_boundaries v start ->
+  ((vector_length v) = 0 \/ 
+  (is_square_empty start pp = true /\ 
+    (SquaresBetweenEmpty pp start (apply_vector v start))) <->
+  are_squares_along_vector_empty pp start v = true).
+Proof.
+  intros. split.
+  - apply are_squares_along_vector_empty_complete. auto.
+  - apply are_squares_along_vector_empty_sound.
+Qed.
+
+Lemma vector_from_a_to_b_zero_iff : forall l1 l2, 
+  vector_length (vector_from_a_to_b l1 l2) = 0 <-> l1 = l2.
+Proof.
+  intros l1 l2. split.
+  - intros Hlen0. rewrite <- (vector_from_a_to_b_correct l1 l2).
+    symmetry. apply apply_null_vector. auto.
+  - intros Heq. rewrite Heq. destruct l2 eqn:El2. simpl.
+    replace (rank <=? rank) with true; try Gb2p; try lia.
+    replace (file <=? file) with true; try Gb2p; try lia.
+Qed.
+
+Lemma are_squares_between_empty_sound : forall pp l1 l2,
+  are_squares_between_empty pp l1 l2 = true -> SquaresBetweenEmpty pp l1 l2.
+Proof.
+  intros pp l1 l2 Htrue.
+  unfold are_squares_between_empty in *.
+  destruct (one_step_along_vector_and_location l1 (vector_from_a_to_b l1 l2))
+    eqn:Eos.
+  apply are_squares_along_vector_empty_sound in Htrue.
+  destruct (vector_length (vector_from_a_to_b l1 l2)) eqn:El1l2len.
+  - rewrite vector_from_a_to_b_zero_iff in El1l2len. rewrite El1l2len.
+    apply NothingOccupiedBetweenSingleSquare.
+  - destruct Htrue as [Hv0 | Halong].
+    + assert (HsIsl2: s = l2). { rewrite <- (vector_from_a_to_b_correct l1 l2).
+        rewrite (one_step_along_vector_and_location_correct _ _ _ _ Eos).
+        rewrite apply_null_vector; auto.
+      }
+      destruct (one_step_along_vector_and_location_adjacent _ _ _ _ Eos) as
+        [Hsame | Hadj]. subst. apply NothingOccupiedBetweenSingleSquare.
+      subst. constructor; auto.
+    + destruct Halong as [Hfstempty Hrestempty].
+      apply (SquaresAlongVectorEmpty pp l1 l2 (vector_from_a_to_b l1 l2) s);
+      auto.
+      * eapply one_step_same; eauto.
+      * rewrite <- (vector_from_a_to_b_correct l1 l2).
+        rewrite (one_step_along_vector_and_location_correct _ _ _ _ Eos). auto.
+Qed.

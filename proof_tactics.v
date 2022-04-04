@@ -35,3 +35,11 @@ Ltac Hdestruct :=
 repeat match goal with 
   | H: match ?x with _ => _ end = _ |- _ => destruct x eqn:?H 
 end.
+
+Ltac HreplaceInIf := match goal with
+  | H : (if (?x <? ?y - ?z) then _ else _) <= _ |- _ =>
+    replace (x <? y - z) with false in H; try Gb2p; try lia
+  | H : (if (?x <? ?y + S ?z) then _ else _) <= _ |- _ =>
+    replace (x <? y + S z) with true in H; try Gb2p; try lia
+  end.
+
