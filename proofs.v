@@ -898,3 +898,26 @@ Proof.
   - intros. apply are_squares_between_empty_complete. auto.
   - intros. apply are_squares_between_empty_sound. auto.
 Qed.
+
+Definition SquaresOnSameFile (l1 l2 : SquareLocation) : Prop :=
+  match l1,l2 with Loc _ file1, Loc _ file2 => file1 = file2 end.
+
+Definition SquaresOnSameRank (l1 l2 : SquareLocation) : Prop :=
+  match l1,l2 with Loc rank1 _, Loc rank2 _ => rank1 = rank2 end.
+
+Inductive RookCanMakeMove (pos : Position)
+: SquareLocation -> Move -> Prop :=
+  | RookCanMove : forall pp c dstep from to, 
+    pos = Posn pp c dstep ->
+    from <> to ->
+    SquaresOnSameFile from to \/ SquaresOnSameRank from to ->
+    SquaresBetweenEmpty pp from to ->
+    is_square_empty to pp = true ->
+    RookCanMakeMove pos from (FromTo from to)
+  | RookCanCapture : forall pp c dstep from to, 
+    pos = Posn pp c dstep ->
+    from <> to ->
+    SquaresOnSameFile from to \/ SquaresOnSameRank from to ->
+    SquaresBetweenEmpty pp from to ->
+    is_square_occupied_by_enemy_piece to pp c = true ->
+    RookCanMakeMove pos from (Capture from to).

@@ -338,6 +338,10 @@ Definition occupied_by_enemy_piece (r : nat) (f : nat) (pp : PiecePlacements)
   else
     false.
 
+Definition is_square_occupied_by_enemy_piece (l : SquareLocation) 
+  (pp : PiecePlacements) (c : Color) : bool :=
+  match l with Loc rank file => occupied_by_enemy_piece rank file pp c end.
+
 Definition pawn_captures (pawn_loc : SquareLocation) (pos : Position) 
   : (list Move) :=
   match pos with
