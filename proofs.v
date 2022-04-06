@@ -921,3 +921,114 @@ Inductive RookCanMakeMove (pos : Position)
     SquaresBetweenEmpty pp from to ->
     is_square_occupied_by_enemy_piece to pp c = true ->
     RookCanMakeMove pos from (Capture from to).
+
+Lemma append_forall_fold_acc : forall A B (f : A -> list B) l b accl,
+  In b accl -> In b (fold_left (fun acc x => (f x) ++ acc) l accl).
+Proof.
+  intros A B f.
+  induction l.
+  - intros. simpl. auto.
+  - intros. simpl. apply IHl. apply in_or_app. auto.
+Qed.
+
+Lemma append_forall_fold_acc2 : forall A B (f : A -> list B) l x accl1 accl2,
+  (forall y, In y accl1 -> In y accl2) ->
+  In x (fold_left (fun (acc : list B) (x : A) => f x ++ acc) l accl1) ->
+  In x (fold_left (fun (acc : list B) (x : A) => f x ++ acc) l accl2).
+Proof.
+  intros A B f. induction l.
+  - intros. simpl in H. simpl. simpl in H0. auto.
+  - intros. simpl. simpl in H0. apply IHl with (accl1:=(f a ++ accl1)).
+    + intros. apply in_app_or in H1. destruct H1 as [H1 | H1]; apply in_or_app;
+      auto.
+    + auto.
+Qed.
+
+Lemma in_append_forall_nec : forall A B (f : A -> list B) a l x,
+  In a l -> In x (f a) -> In x (append_forall f l).
+Proof.
+  intros. unfold append_forall.
+  induction l.
+  - inversion H.
+  - inversion H.
+    + subst. simpl. apply append_forall_fold_acc. apply in_or_app. auto.
+    + simpl. apply append_forall_fold_acc2 with (accl1:=[]). intros y C.
+      inversion C. auto.
+Qed.
+
+Lemma eqSL_iff : forall l1 l2,
+  eqSL l1 l2 = true <-> l1 = l2.
+Proof.
+  intros. 
+  destruct l1 eqn:El1. destruct l2 eqn:El2. subst.
+  split.
+  - intros. inversion H. subst. Hb2p. destruct H1 as [Hr Hf]. repeat Hb2p.
+    subst. auto.
+  - intros. inversion H. subst. auto. simpl. 
+    repeat rewrite PeanoNat.Nat.eqb_refl. auto.
+Qed.
+
+Lemma rook_move_to_square_on_same_rank_or_file_sound : forall pos fromL toL m,
+  SquaresOnSameFile fromL toL \/ SquaresOnSameRank fromL toL -> 
+  rook_move_to_square_on_same_rank_or_file pos fromL toL = Some m ->
+  RookCanMakeMove pos fromL m.
+Proof.
+  intros pos fromL toL m Hsamerf Hrmts.
+  destruct pos eqn:Epos. destruct fromL eqn:Efrom. destruct toL eqn:Eto.
+  subst. simpl in Hrmts.
+  destruct ((rank =? rank0) && (file =? file0))%bool eqn:EfromNotTo;
+  simpl in Hrmts; try discriminate.
+  destruct (are_squares_between_empty pp (Loc rank file) (Loc rank0 file0))
+    eqn:Eempty; simpl in Hrmts; try discriminate.
+  destruct (is_square_empty_rank_file rank0 file0 pp) eqn:Htoempty.
+  - inversion Hrmts. subst. apply (RookCanMove _ pp toMove pawnDoubleStep _ _); 
+    auto. intros C. inversion C; subst. Hb2p.
+    repeat rewrite PeanoNat.Nat.eqb_refl in EfromNotTo.
+    destruct EfromNotTo as [C1 | C1]; discriminate.
+    apply are_squares_between_empty_correct. auto.
+  - destruct (occupied_by_enemy_piece rank0 file0 pp toMove) eqn:Eoccupied;
+    simpl in Hrmts; try discriminate.
+    inversion Hrmts. subst. 
+    apply (RookCanCapture _ pp toMove pawnDoubleStep _ _); auto. intros C. 
+    inversion C; subst. Hb2p. 
+    repeat rewrite PeanoNat.Nat.eqb_refl in EfromNotTo.
+    destruct EfromNotTo as [C1 | C1]; discriminate.
+    apply are_squares_between_empty_correct. auto.
+Qed.
+
+Lemma occupied_not_empty : forall l pp c,
+  is_square_occupied_by_enemy_piece l pp c = true ->
+  is_square_empty l pp = false.
+Proof.
+  intros. destruct l eqn:El. 
+  unfold is_square_occupied_by_enemy_piece in H.
+  simpl. unfold occupied_by_enemy_piece in H.
+  destruct (indices_valid rank file) eqn:Eiv; try discriminate.
+  destruct (get_square_by_index pp rank file) eqn:Egs; try discriminate.
+  unfold is_square_empty_rank_file. rewrite Egs. auto.
+Qed.
+
+Lemma rook_move_to_square_on_same_rank_or_file_complete : 
+  forall pos fromL toL m,
+  RookCanMakeMove pos fromL m ->
+  (m = (FromTo fromL toL) \/ m = (Capture fromL toL)) ->
+  rook_move_to_square_on_same_rank_or_file pos fromL toL = Some m.
+Proof.
+  intros pos fromL toL m Hcan Hmove.
+  inversion Hcan; subst.
+  - assert (Hto: to = toL). 
+    { destruct Hmove as [Hmove | Hmove]; inversion Hmove; subst; auto. }
+    subst.
+    simpl. destruct (eqSL fromL toL) eqn:Enotsame.
+    + rewrite eqSL_iff in Enotsame. exfalso. apply H0. auto.
+    + simpl. rewrite are_squares_between_empty_correct in H2. rewrite H2.
+      rewrite H3. auto.
+  - assert (Hto: to = toL). 
+    { destruct Hmove as [Hmove | Hmove]; inversion Hmove; subst; auto. }
+    subst.
+    simpl. destruct (eqSL fromL toL) eqn:Enotsame.
+    + rewrite eqSL_iff in Enotsame. exfalso. apply H0. auto.
+    + simpl. rewrite are_squares_between_empty_correct in H2. rewrite H2.
+      rewrite H3. auto. rewrite (occupied_not_empty toL pp c H3). auto.
+Qed.
+

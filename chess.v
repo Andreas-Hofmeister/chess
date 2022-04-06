@@ -254,6 +254,11 @@ Qed.
 Inductive SquareLocation : Type :=
   | Loc (rank : nat) (file : nat).
 
+Definition eqSL (l1 l2: SquareLocation) :=
+  match l1,l2 with Loc rank1 file1, Loc rank2 file2 =>
+    ((rank1 =? rank2) && (file1 =? file2))%bool
+  end.
+
 Inductive Move : Type :=
   | FromTo (from : SquareLocation) (to : SquareLocation)
   | Capture (from : SquareLocation) (to : SquareLocation)
@@ -568,3 +573,43 @@ Definition are_squares_between_empty (pp : PiecePlacements)
   let (v, start) := 
     one_step_along_vector_and_location loc1 (vector_from_a_to_b loc1 loc2) in
   are_squares_along_vector_empty pp start v.
+
+Definition append_forall {A B : Type} (f : A -> list B) (l : list A) :=
+  let f_inner := (fun acc x => (f x) ++ acc) in
+    fold_left f_inner l [].
+
+Fixpoint for_accumulate {A : Type} (f : nat -> A) (cond : nat -> bool) 
+  (min_i max_i : nat) : list A :=
+  match max_i with
+  | 0 => if (cond 0) then [f 0] else []
+  | S n => let new_elm := if (cond max_i) then [f max_i] else [] in
+    if max_i =? min_i then
+      if (cond max_i) then [f max_i] else []
+    else 
+      if (cond max_i) then (f max_i) :: (for_accumulate f cond min_i n)
+      else (for_accumulate f cond min_i n)
+  end.
+
+Function squares_on_same_rank (l : SquareLocation) : (list SquareLocation) :=
+  match l with Loc rank file =>
+    let make_square := (fun n => Loc rank n) in
+    for_accumulate make_square (fun n => negb (n =? file)) 1 7
+  end.
+
+Function squares_on_same_file (l : SquareLocation) : (list SquareLocation) :=
+  match l with Loc rank file =>
+    let make_square := (fun n => Loc n file) in
+    for_accumulate make_square (fun n => negb (n =? rank)) 1 7
+  end.
+
+Function rook_move_to_square_on_same_rank_or_file (pos : Position) 
+  (fromL : SquareLocation) (toL : SquareLocation) : option Move :=
+  match pos with
+  | Posn pp c _ =>
+    if ((negb (eqSL fromL toL)) && (are_squares_between_empty pp fromL toL))%bool
+    then if is_square_empty toL pp then Some (FromTo fromL toL)
+    else if is_square_occupied_by_enemy_piece toL pp c 
+      then Some (Capture fromL toL)
+      else None
+    else None
+  end.

@@ -11,6 +11,9 @@ Ltac Hb2p := match goal with
   | H : (_ <=? _) = true |- _ => rewrite PeanoNat.Nat.leb_le in H
   | H : (_ <=? _) = false |- _ => rewrite PeanoNat.Nat.leb_gt in H
   | H : (_ =? _) = false |- _ => rewrite PeanoNat.Nat.eqb_neq in H
+  | H : (_ =? _) = true |- _ => rewrite PeanoNat.Nat.eqb_eq in H
+  | H : (_ && _)%bool = true |- _ => rewrite Bool.andb_true_iff in H
+  | H : (_ && _)%bool = false |- _ => rewrite Bool.andb_false_iff in H
   end.
 
 Ltac Gb2p := match goal with
