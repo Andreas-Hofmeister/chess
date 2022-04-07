@@ -1100,7 +1100,50 @@ Qed.
 Lemma squares_on_same_file_sound : forall l1 l2,
   In l2 (squares_on_same_file l1) -> SquaresOnSameFile l1 l2.
 Proof.
-  intros l1 l2 Hin.
+  intros l1 l2 Hin. unfold squares_on_same_file in Hin. 
   destruct l1 eqn:El1. destruct l2 eqn:El2. subst.
-  destruct file0 eqn:Efile0.
-  - unfold squares_on_same_file in Hin. 
+  rewrite for_accumulate_correct in Hin; try lia. 
+  destruct Hin as [i [Hi1 [Hi2 [Hi3 Hi4]]]]. simpl in *.
+  inversion Hi4. auto.
+Qed.
+
+Lemma squares_on_same_file_complete : forall l1 l2,
+  location_valid l1 -> location_valid l2 -> SquaresOnSameFile l1 l2 ->
+  l1 <> l2 ->
+  In l2 (squares_on_same_file l1).
+Proof.
+  intros l1 l2 Hv1 Hv2 Hsamef Hunequal.
+  unfold location_valid in *.
+  destruct l1 eqn:El1. destruct l2 eqn:El2. subst. unfold squares_on_same_file.
+  apply for_accumulate_correct. lia. unfold SquaresOnSameFile in *.
+  exists rank0. repeat split; auto; try lia.
+  destruct (rank0 =? rank) eqn:Ernk.
+  - Hb2p. subst. contradiction.
+  - simpl. auto.
+Qed.
+
+Lemma squares_on_same_rank_sound : forall l1 l2,
+  In l2 (squares_on_same_rank l1) -> SquaresOnSameRank l1 l2.
+Proof.
+  intros l1 l2 Hin. unfold squares_on_same_rank in Hin. 
+  destruct l1 eqn:El1. destruct l2 eqn:El2. subst.
+  rewrite for_accumulate_correct in Hin; try lia. 
+  destruct Hin as [i [Hi1 [Hi2 [Hi3 Hi4]]]]. simpl in *.
+  inversion Hi4. auto.
+Qed.
+
+Lemma squares_on_same_rank_complete : forall l1 l2,
+  location_valid l1 -> location_valid l2 -> SquaresOnSameRank l1 l2 ->
+  l1 <> l2 ->
+  In l2 (squares_on_same_rank l1).
+Proof.
+  intros l1 l2 Hv1 Hv2 Hsamer Hunequal.
+  unfold location_valid in *.
+  destruct l1 eqn:El1. destruct l2 eqn:El2. subst. unfold squares_on_same_file.
+  apply for_accumulate_correct. lia. unfold SquaresOnSameRank in *.
+  exists file0. repeat split; auto; try lia.
+  destruct (file0 =? file) eqn:Efl.
+  - Hb2p. subst. contradiction.
+  - simpl. auto.
+Qed.
+

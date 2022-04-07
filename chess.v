@@ -593,13 +593,13 @@ Fixpoint for_accumulate {A : Type} (f : nat -> A) (cond : nat -> bool)
 Function squares_on_same_rank (l : SquareLocation) : (list SquareLocation) :=
   match l with Loc rank file =>
     let make_square := (fun n => Loc rank n) in
-    for_accumulate make_square (fun n => negb (n =? file)) 1 7
+    for_accumulate make_square (fun n => negb (n =? file)) 0 7
   end.
 
 Function squares_on_same_file (l : SquareLocation) : (list SquareLocation) :=
   match l with Loc rank file =>
     let make_square := (fun n => Loc n file) in
-    for_accumulate make_square (fun n => negb (n =? rank)) 1 7
+    for_accumulate make_square (fun n => negb (n =? rank)) 0 7
   end.
 
 Function rook_move_to_square_on_same_rank_or_file (pos : Position) 
@@ -626,5 +626,3 @@ Function rook_moves (l : SquareLocation) (pos : Position) : (list Move) :=
     (squares_on_same_rank l)) ++
   (append_forall (rook_moves_to_square_on_same_rank_or_file_list pos l)
     (squares_on_same_file l)).
-
-
