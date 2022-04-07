@@ -23,6 +23,7 @@ Ltac Gb2p := match goal with
   | |- (_ <? _) = false => rewrite PeanoNat.Nat.ltb_ge
   | |- true = (_ <=? _) => symmetry; rewrite PeanoNat.Nat.leb_le
   | |- true = (_ <? _) => symmetry; rewrite PeanoNat.Nat.ltb_lt
+  | |- true = (_ =? _) => symmetry; rewrite PeanoNat.Nat.eqb_eq
   | |- false = (_ <=? _) => symmetry; rewrite PeanoNat.Nat.leb_gt
   | |- false = (_ <? _) => symmetry; rewrite PeanoNat.Nat.ltb_ge
   | |- (_ =? _) = false => rewrite PeanoNat.Nat.eqb_neq

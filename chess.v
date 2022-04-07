@@ -613,3 +613,18 @@ Function rook_move_to_square_on_same_rank_or_file (pos : Position)
       else None
     else None
   end.
+
+Function rook_moves_to_square_on_same_rank_or_file_list (pos : Position)
+  (fromL : SquareLocation) (toL : SquareLocation) : list Move :=
+  match (rook_move_to_square_on_same_rank_or_file pos fromL toL) with
+  | Some move => [move]
+  | _ => []
+  end.
+
+Function rook_moves (l : SquareLocation) (pos : Position) : (list Move) :=
+  (append_forall (rook_moves_to_square_on_same_rank_or_file_list pos l)
+    (squares_on_same_rank l)) ++
+  (append_forall (rook_moves_to_square_on_same_rank_or_file_list pos l)
+    (squares_on_same_file l)).
+
+

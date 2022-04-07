@@ -1032,3 +1032,75 @@ Proof.
       rewrite H3. auto. rewrite (occupied_not_empty toL pp c H3). auto.
 Qed.
 
+Lemma for_accumulate_correct : forall A cond (f : nat -> A) mini maxi a,
+  mini <= maxi ->
+  In a (for_accumulate f cond mini maxi) <-> 
+  (exists i, mini <= i /\ i <= maxi /\ (cond i) = true /\ a = (f i)).
+Proof.
+  intros A cond f mini. induction maxi.
+  - intros a Hinrange. split. 
+    + intros Hinresult. simpl in Hinresult. destruct (cond 0) eqn:Econd0;
+      inversion Hinresult; try inversion H. subst. exists 0. auto.
+    + intros [i [Hex1 [Hex2 [Hex3 Hex4]]]]. simpl. assert (Hmini0: mini = 0). 
+      lia. subst. assert (Hi0: i = 0). lia. subst. rewrite Hex3.
+      constructor. auto.
+  - intros a Hinrange. split.
+    + intros Hinresult. simpl in Hinresult. 
+      destruct mini eqn:Hmini.
+      * destruct (cond (S maxi)) eqn:Econd.
+        -- inversion Hinresult.
+           ++ exists (S maxi). auto.
+           ++ assert (Hduh: 0 <= maxi). lia. 
+              specialize (IHmaxi a Hduh) as [IH1 IH2].
+              specialize (IH1 H) as [i [Hex1 [Hex2 [Hex3 Hex4]]]]. exists i.
+              auto.
+        -- assert (Hduh: 0 <= maxi). lia. 
+           specialize (IHmaxi a Hduh) as [IH1 IH2].
+           specialize (IH1 Hinresult) as [i [Hex1 [Hex2 [Hex3 Hex4]]]]. 
+           exists i. auto.
+      * destruct (maxi =? n) eqn:Hlast.
+        -- destruct (cond (S maxi)) eqn:Econd; inversion Hinresult; 
+           try inversion H. exists (S maxi). auto.
+        -- destruct (cond (S maxi)) eqn:Econd.
+           ++ inversion Hinresult.
+              ** exists (S maxi). auto.
+              ** Hb2p. assert (Hran: S n <= maxi). lia.
+                 specialize (IHmaxi a Hran) as [IH1 IH2].
+                 specialize (IH1 H) as [i [Hex1 [Hex2 [Hex3 Hex4]]]]. subst.
+                 exists i. auto.
+           ++ Hb2p. assert (Hran: S n <= maxi). lia.
+              specialize (IHmaxi a Hran) as [IH1 IH2].
+              specialize (IH1 Hinresult) as [i [Hex1 [Hex2 [Hex3 Hex4]]]].
+              exists i. auto.
+    + intros [i [Hex1 [Hex2 [Hex3 Hex4]]]].
+      destruct (mini =? S maxi) eqn:Elast.
+      * Hb2p. assert (HiIsMini: mini = i). lia. subst. simpl.
+        replace (maxi =? maxi) with true; try Gb2p; try lia.
+        rewrite Hex3. constructor. auto.
+      * Hb2p. assert (Hmini: mini <= maxi). lia. simpl.
+        destruct mini eqn:Emini.
+        -- destruct (cond (S maxi)) eqn:Econd.
+           ++ destruct (i =? (S maxi)) eqn:Ei. 
+              ** Hb2p. subst. constructor. auto.
+              ** Hb2p. apply in_cons. apply IHmaxi; auto. exists i. 
+                 repeat split; auto. lia.
+           ++ destruct (i =? (S maxi)) eqn:Ei.
+              ** Hb2p. subst. rewrite Hex3 in Econd. discriminate.
+              ** Hb2p. apply IHmaxi; auto. exists i. repeat split; auto. lia.
+        -- assert (maxi <> n). lia. rewrite <- PeanoNat.Nat.eqb_neq in H.
+           rewrite H. destruct (i =? (S maxi)) eqn:Ei.
+           ++ repeat Hb2p. rewrite Ei in Hex3. rewrite Hex3. subst.
+              constructor. auto.
+           ++ destruct (cond (S maxi)).
+              ** apply in_cons. apply IHmaxi; auto. exists i. repeat split; auto.
+                 Hb2p. lia.
+              ** apply IHmaxi; auto. exists i. repeat split; auto. Hb2p. lia.
+Qed.
+
+Lemma squares_on_same_file_sound : forall l1 l2,
+  In l2 (squares_on_same_file l1) -> SquaresOnSameFile l1 l2.
+Proof.
+  intros l1 l2 Hin.
+  destruct l1 eqn:El1. destruct l2 eqn:El2. subst.
+  destruct file0 eqn:Efile0.
+  - unfold squares_on_same_file in Hin. 
