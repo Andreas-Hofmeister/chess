@@ -180,10 +180,6 @@ Lemma pawn_moves_sound : forall move loc pos,
   PawnCanMakeMove pos loc move.
 Proof.
   intros. unfold pawn_moves in H.
-  Ltac in_app_to_or := match goal with
-  | H : In _ (_ ++ _) |- _ => apply in_app_or in H
-  | H : In _ _ \/ In _ _ |- _ => destruct H as [H | H]
-  end.
   repeat in_app_to_or.
   - apply pawn_forward_moves_sound. auto.
   - apply pawn_captures_sound. auto.
@@ -944,6 +940,19 @@ Proof.
     + auto.
 Qed.
 
+Lemma append_forall_fold_acc3 : forall A B (f : A -> list B) l x accl,
+  In x (fold_left (fun (acc : list B) (x : A) => f x ++ acc) l accl) ->
+  In x accl \/ exists a, In a l /\ In x (f a).
+Proof.
+  intros A B f. induction l.
+  - intros. simpl in H. auto.
+  - intros. simpl in H. specialize (IHl x _ H) as IHl2.
+    destruct IHl2 as [IHl2 | [a2 IHl2]].
+    + apply in_app_or in IHl2. destruct IHl2 as [IHl2 | IHl2]; auto.
+      right. exists a. split. apply in_eq. auto.
+    + right. exists a2. split. apply in_cons. apply IHl2. apply IHl2.
+Qed.
+
 Lemma in_append_forall_nec : forall A B (f : A -> list B) a l x,
   In a l -> In x (f a) -> In x (append_forall f l).
 Proof.
@@ -954,6 +963,13 @@ Proof.
     + subst. simpl. apply append_forall_fold_acc. apply in_or_app. auto.
     + simpl. apply append_forall_fold_acc2 with (accl1:=[]). intros y C.
       inversion C. auto.
+Qed.
+
+Lemma in_append_forall_suf : forall A B (f : A -> list B) l x,
+  In x (append_forall f l) -> exists a, In a l /\ In x (f a).
+Proof.
+  intros. unfold append_forall in H. apply append_forall_fold_acc3 in H.
+  destruct H as [C | [a H]]; try inversion C. exists a. auto.
 Qed.
 
 Lemma eqSL_iff : forall l1 l2,
@@ -1030,6 +1046,18 @@ Proof.
     + rewrite eqSL_iff in Enotsame. exfalso. apply H0. auto.
     + simpl. rewrite are_squares_between_empty_correct in H2. rewrite H2.
       rewrite H3. auto. rewrite (occupied_not_empty toL pp c H3). auto.
+Qed.
+
+Lemma rook_moves_to_square_on_same_rank_or_file_list_sound : 
+  forall pos fromL toL m,
+  SquaresOnSameFile fromL toL \/ SquaresOnSameRank fromL toL -> 
+  In m (rook_moves_to_square_on_same_rank_or_file_list pos fromL toL) ->
+  RookCanMakeMove pos fromL m.
+Proof.
+  intros. unfold rook_moves_to_square_on_same_rank_or_file_list in *.
+  destruct (rook_move_to_square_on_same_rank_or_file pos fromL toL) eqn:Hrm;
+  inversion H0; try inversion H1. subst. 
+  eapply rook_move_to_square_on_same_rank_or_file_sound; eauto.
 Qed.
 
 Lemma for_accumulate_correct : forall A cond (f : nat -> A) mini maxi a,
@@ -1145,5 +1173,18 @@ Proof.
   destruct (file0 =? file) eqn:Efl.
   - Hb2p. subst. contradiction.
   - simpl. auto.
+Qed.
+
+Lemma rook_moves_sound : forall move fromL pos,
+  In move (rook_moves fromL pos) -> RookCanMakeMove pos fromL move.
+Proof.
+  intros move fromL pos Hin.
+  unfold rook_moves in Hin. in_app_to_or. destruct Hin as [Hin | Hin].
+  - apply in_append_forall_suf in Hin as [a [Hnk Hrm]].
+    apply rook_moves_to_square_on_same_rank_or_file_list_sound in Hrm; auto.
+    right. apply squares_on_same_rank_sound. auto.
+  - apply in_append_forall_suf in Hin as [a [Hnk Hrm]].
+    apply rook_moves_to_square_on_same_rank_or_file_list_sound in Hrm; auto. 
+    left. apply squares_on_same_file_sound. auto.
 Qed.
 

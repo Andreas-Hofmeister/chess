@@ -1,5 +1,6 @@
 Require Import Nat.
 From Coq Require Export Lia.
+Require Import List.
 
 Ltac dall := match goal with
 | H : match ?x with _ => _ end = _ |- _ => destruct x eqn:?H
@@ -45,5 +46,10 @@ Ltac HreplaceInIf := match goal with
     replace (x <? y - z) with false in H; try Gb2p; try lia
   | H : (if (?x <? ?y + S ?z) then _ else _) <= _ |- _ =>
     replace (x <? y + S z) with true in H; try Gb2p; try lia
+  end.
+
+Ltac in_app_to_or := match goal with
+  | H : In _ (_ ++ _) |- _ => apply in_app_or in H
+  | H : In _ _ \/ In _ _ |- _ => destruct H as [H | H]
   end.
 
