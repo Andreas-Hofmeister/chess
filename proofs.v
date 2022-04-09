@@ -904,13 +904,15 @@ Definition SquaresOnSameRank (l1 l2 : SquareLocation) : Prop :=
 Inductive RookCanMakeMove (pos : Position)
 : SquareLocation -> Move -> Prop :=
   | RookCanMove : forall pp c dstep from to, 
+    location_valid from -> location_valid to ->
     pos = Posn pp c dstep ->
     from <> to ->
     SquaresOnSameFile from to \/ SquaresOnSameRank from to ->
     SquaresBetweenEmpty pp from to ->
     is_square_empty to pp = true ->
     RookCanMakeMove pos from (FromTo from to)
-  | RookCanCapture : forall pp c dstep from to, 
+  | RookCanCapture : forall pp c dstep from to,
+    location_valid from -> location_valid to -> 
     pos = Posn pp c dstep ->
     from <> to ->
     SquaresOnSameFile from to \/ SquaresOnSameRank from to ->
@@ -985,11 +987,12 @@ Proof.
 Qed.
 
 Lemma rook_move_to_square_on_same_rank_or_file_sound : forall pos fromL toL m,
-  SquaresOnSameFile fromL toL \/ SquaresOnSameRank fromL toL -> 
+  location_valid fromL -> location_valid toL ->
+  SquaresOnSameFile fromL toL \/ SquaresOnSameRank fromL toL ->
   rook_move_to_square_on_same_rank_or_file pos fromL toL = Some m ->
   RookCanMakeMove pos fromL m.
 Proof.
-  intros pos fromL toL m Hsamerf Hrmts.
+  intros pos fromL toL m Hfromv Htov Hsamerf Hrmts.
   destruct pos eqn:Epos. destruct fromL eqn:Efrom. destruct toL eqn:Eto.
   subst. simpl in Hrmts.
   destruct ((rank =? rank0) && (file =? file0))%bool eqn:EfromNotTo;
@@ -1036,27 +1039,28 @@ Proof.
     { destruct Hmove as [Hmove | Hmove]; inversion Hmove; subst; auto. }
     subst.
     simpl. destruct (eqSL fromL toL) eqn:Enotsame.
-    + rewrite eqSL_iff in Enotsame. exfalso. apply H0. auto.
-    + simpl. rewrite are_squares_between_empty_correct in H2. rewrite H2.
-      rewrite H3. auto.
+    + rewrite eqSL_iff in Enotsame. exfalso. apply H2. auto.
+    + simpl. rewrite are_squares_between_empty_correct in H4. rewrite H4.
+      rewrite H5. auto.
   - assert (Hto: to = toL). 
     { destruct Hmove as [Hmove | Hmove]; inversion Hmove; subst; auto. }
     subst.
     simpl. destruct (eqSL fromL toL) eqn:Enotsame.
-    + rewrite eqSL_iff in Enotsame. exfalso. apply H0. auto.
-    + simpl. rewrite are_squares_between_empty_correct in H2. rewrite H2.
-      rewrite H3. auto. rewrite (occupied_not_empty toL pp c H3). auto.
+    + rewrite eqSL_iff in Enotsame. exfalso. apply H2. auto.
+    + simpl. rewrite are_squares_between_empty_correct in H4. rewrite H4.
+      rewrite H5. auto. rewrite (occupied_not_empty toL pp c H5). auto.
 Qed.
 
 Lemma rook_moves_to_square_on_same_rank_or_file_list_sound : 
   forall pos fromL toL m,
+  location_valid fromL -> location_valid toL ->
   SquaresOnSameFile fromL toL \/ SquaresOnSameRank fromL toL -> 
   In m (rook_moves_to_square_on_same_rank_or_file_list pos fromL toL) ->
   RookCanMakeMove pos fromL m.
 Proof.
   intros. unfold rook_moves_to_square_on_same_rank_or_file_list in *.
   destruct (rook_move_to_square_on_same_rank_or_file pos fromL toL) eqn:Hrm;
-  inversion H0; try inversion H1. subst. 
+  inversion H2; try inversion H3. subst. 
   eapply rook_move_to_square_on_same_rank_or_file_sound; eauto.
 Qed.
 
@@ -1175,16 +1179,39 @@ Proof.
   - simpl. auto.
 Qed.
 
+Lemma squares_on_same_rank_valid : forall l1 l2,
+  location_valid l1 -> In l2 (squares_on_same_rank l1) -> location_valid l2.
+Proof.
+  intros l1 l2 Hvalid Hin.
+  destruct l1 eqn:El1. destruct l2 eqn:El2. subst. simpl.
+  unfold squares_on_same_rank in Hin. apply for_accumulate_correct in Hin.
+  - destruct Hin as [i [Hi1 [Hi2 [Hi3 Hi4]]]]. unfold location_valid in Hvalid.
+    inversion Hi4. subst. lia.
+  - lia.
+Qed.
+
+Lemma squares_on_same_file_valid : forall l1 l2,
+  location_valid l1 -> In l2 (squares_on_same_file l1) -> location_valid l2.
+Proof.
+  intros l1 l2 Hvalid Hin.
+  destruct l1 eqn:El1. destruct l2 eqn:El2. subst. simpl.
+  unfold squares_on_same_file in Hin. apply for_accumulate_correct in Hin.
+  - destruct Hin as [i [Hi1 [Hi2 [Hi3 Hi4]]]]. unfold location_valid in Hvalid.
+    inversion Hi4. subst. lia.
+  - lia.
+Qed.
+
 Lemma rook_moves_sound : forall move fromL pos,
+  location_valid fromL ->
   In move (rook_moves fromL pos) -> RookCanMakeMove pos fromL move.
 Proof.
-  intros move fromL pos Hin.
-  unfold rook_moves in Hin. in_app_to_or. destruct Hin as [Hin | Hin].
-  - apply in_append_forall_suf in Hin as [a [Hnk Hrm]].
-    apply rook_moves_to_square_on_same_rank_or_file_list_sound in Hrm; auto.
-    right. apply squares_on_same_rank_sound. auto.
-  - apply in_append_forall_suf in Hin as [a [Hnk Hrm]].
-    apply rook_moves_to_square_on_same_rank_or_file_list_sound in Hrm; auto. 
-    left. apply squares_on_same_file_sound. auto.
+  intros move fromL pos Hvalid Hin.
+  unfold rook_moves in Hin. in_app_to_or. destruct Hin as [Hin | Hin];
+  apply in_append_forall_suf in Hin as [a [Hnk Hrm]];
+  apply rook_moves_to_square_on_same_rank_or_file_list_sound in Hrm; auto.
+  - eapply squares_on_same_rank_valid; eauto. 
+  - right. apply squares_on_same_rank_sound. auto.
+  - eapply squares_on_same_file_valid; eauto. 
+  - left. apply squares_on_same_file_sound. auto.
 Qed.
 
