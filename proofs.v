@@ -1051,6 +1051,23 @@ Proof.
       rewrite H5. auto. rewrite (occupied_not_empty toL pp c H5). auto.
 Qed.
 
+Lemma rook_moves_to_square_on_same_rank_or_file_list_complete : 
+  forall pos fromL toL m,
+  RookCanMakeMove pos fromL m ->
+  (m = (FromTo fromL toL) \/ m = (Capture fromL toL)) ->
+  In m (rook_moves_to_square_on_same_rank_or_file_list pos fromL toL).
+Proof.
+  intros pos fromL toL m Hcan Hmovetype.
+  unfold rook_moves_to_square_on_same_rank_or_file_list.
+  destruct (rook_move_to_square_on_same_rank_or_file pos fromL toL) eqn:Erm.
+  - constructor. 
+    apply rook_move_to_square_on_same_rank_or_file_complete with (toL:=toL) 
+      in Hcan; auto.
+    rewrite Hcan in Erm. inversion Erm. auto.
+  - apply rook_move_to_square_on_same_rank_or_file_complete with (toL:=toL) 
+      in Hcan; auto. rewrite Hcan in Erm. inversion Erm.
+Qed.
+
 Lemma rook_moves_to_square_on_same_rank_or_file_list_sound : 
   forall pos fromL toL m,
   location_valid fromL -> location_valid toL ->
@@ -1215,3 +1232,23 @@ Proof.
   - left. apply squares_on_same_file_sound. auto.
 Qed.
 
+Lemma rook_moves_complete : forall pos fromL move,
+  RookCanMakeMove pos fromL move -> In move (rook_moves fromL pos).
+Proof.
+  intros pos fromL move Hcan.
+  inversion Hcan; subst.
+  - unfold rook_moves. in_app_to_or. destruct H3 as [Hsamefile | Hsamerank].
+    + right. apply in_append_forall_nec with (a:=to).
+      * apply squares_on_same_file_complete; auto.
+      * apply rook_moves_to_square_on_same_rank_or_file_list_complete; auto.
+    + left. apply in_append_forall_nec with (a:=to).
+      * apply squares_on_same_rank_complete; auto.
+      * apply rook_moves_to_square_on_same_rank_or_file_list_complete; auto.
+  - unfold rook_moves. in_app_to_or. destruct H3 as [Hsamefile | Hsamerank].
+    + right. apply in_append_forall_nec with (a:=to).
+      * apply squares_on_same_file_complete; auto.
+      * apply rook_moves_to_square_on_same_rank_or_file_list_complete; auto.
+    + left. apply in_append_forall_nec with (a:=to).
+      * apply squares_on_same_rank_complete; auto.
+      * apply rook_moves_to_square_on_same_rank_or_file_list_complete; auto.
+Qed.

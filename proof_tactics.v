@@ -51,5 +51,6 @@ Ltac HreplaceInIf := match goal with
 Ltac in_app_to_or := match goal with
   | H : In _ (_ ++ _) |- _ => apply in_app_or in H
   | H : In _ _ \/ In _ _ |- _ => destruct H as [H | H]
+  | |- In _ (_ ++ _) => apply in_or_app
   end.
 
