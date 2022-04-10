@@ -16,12 +16,10 @@ learn.
 
 In this project I want to investigate how techniques of 
 knowledge representation and reasoning can be applied to learning how
-to play chess. I plan to accomplish the following two things:
+to play chess. I hope to accomplish the following two goals:
 - Write a chess engine that can explain how it selects its moves. A
-human player should be able execute the techniques used in searching
+human player should be able to execute the techniques used in searching
 for moves (no evaulation of millions of positions or looking ahead
 dozens of moves)
-- Write a series of lessons and exercises that allow a student to
-recreate such a chess engine for himself
-
-
+- Write a series of lessons and exercises that allow students to
+recreate such a chess engine for themselves
