@@ -464,13 +464,13 @@ Definition one_step_along_vector (l : SquareLocation) (v : Vector) :=
   match l with
   | Loc r f => match v with
     | VectorHV (HStep _ 0) (VStep _ 0) => l
-    | VectorHV (HStep _ 0) (VStep Up (S _)) => Loc r (f + 1)
-    | VectorHV (HStep _ 0) (VStep Down (S _)) => Loc r (f - 1)
-    | VectorHV (HStep Left (S _)) (VStep _ 0) => Loc (r - 1) f
-    | VectorHV (HStep Right (S _)) (VStep _ 0) => Loc (r + 1) f
+    | VectorHV (HStep _ 0) (VStep Up (S _)) => Loc (r + 1) f
+    | VectorHV (HStep _ 0) (VStep Down (S _)) => Loc (r - 1) f
+    | VectorHV (HStep Left (S _)) (VStep _ 0) => Loc r (f - 1)
+    | VectorHV (HStep Right (S _)) (VStep _ 0) => Loc r (f + 1)
     | VectorHV (HStep Right (S _)) (VStep Up (S _)) => Loc (r + 1) (f + 1)
-    | VectorHV (HStep Left (S _)) (VStep Up (S _)) => Loc (r - 1) (f + 1)
-    | VectorHV (HStep Right (S _)) (VStep Down (S _)) => Loc (r + 1) (f - 1)
+    | VectorHV (HStep Left (S _)) (VStep Up (S _)) => Loc (r + 1) (f - 1)
+    | VectorHV (HStep Right (S _)) (VStep Down (S _)) => Loc (r - 1) (f + 1)
     | VectorHV (HStep Left (S _)) (VStep Down (S _)) => Loc (r - 1) (f - 1)
     end
   end.
@@ -497,19 +497,19 @@ Definition one_step_along_vector_and_location (l : SquareLocation) (v : Vector)
     | VectorHV (HStep dh 0) (VStep dv 0) => 
       (VectorHV (HStep dh 0) (VStep dv 0), l)
     | VectorHV (HStep dh 0) (VStep Up (S m)) => 
-      (VectorHV (HStep dh 0) (VStep Up m), Loc r (f + 1))
+      (VectorHV (HStep dh 0) (VStep Up m), Loc (r + 1) f)
     | VectorHV (HStep dh 0) (VStep Down (S m)) => 
-      (VectorHV (HStep dh 0) (VStep Down m), Loc r (f - 1))
+      (VectorHV (HStep dh 0) (VStep Down m), Loc (r - 1) f)
     | VectorHV (HStep Left (S n)) (VStep dv 0) => 
-      (VectorHV (HStep Left n) (VStep dv 0), Loc (r - 1) f)
+      (VectorHV (HStep Left n) (VStep dv 0), Loc r (f - 1))
     | VectorHV (HStep Right (S n)) (VStep dv 0) => 
-      (VectorHV (HStep Right n) (VStep dv 0), Loc (r + 1) f)
+      (VectorHV (HStep Right n) (VStep dv 0), Loc r (f + 1))
     | VectorHV (HStep Right (S n)) (VStep Up (S m)) => 
       (VectorHV (HStep Right n) (VStep Up m), Loc (r + 1) (f + 1))
     | VectorHV (HStep Left (S n)) (VStep Up (S m)) => 
-      (VectorHV (HStep Left n) (VStep Up m), Loc (r - 1) (f + 1))
+      (VectorHV (HStep Left n) (VStep Up m), Loc (r + 1) (f - 1))
     | VectorHV (HStep Right (S n)) (VStep Down (S m)) => 
-      (VectorHV (HStep Right n) (VStep Down m), Loc (r + 1) (f - 1))
+      (VectorHV (HStep Right n) (VStep Down m), Loc (r - 1) (f + 1))
     | VectorHV (HStep Left (S n)) (VStep Down (S m)) => 
       (VectorHV (HStep Left n) (VStep Down m), Loc (r - 1) (f - 1))
     end
@@ -538,15 +538,15 @@ Defined.
 Definition apply_hstep (s : HorizontalStep) (loc : SquareLocation) 
   : SquareLocation :=
   match s,loc with
-  | HStep Left n, Loc r f => Loc (r - n) f
-  | HStep Right n, Loc r f => Loc (r + n) f
+  | HStep Left n, Loc r f => Loc r (f - n)
+  | HStep Right n, Loc r f => Loc r (f + n)
   end.
 
 Definition apply_vstep (s : VerticalStep) (loc : SquareLocation) 
   : SquareLocation :=
   match s,loc with
-  | VStep Up n, Loc r f => Loc r (f + n)
-  | VStep Down n, Loc r f => Loc r (f - n)
+  | VStep Up n, Loc r f => Loc (r + n) f
+  | VStep Down n, Loc r f => Loc (r - n) f
   end.
 
 Definition apply_vector (v : Vector) (loc : SquareLocation) : SquareLocation :=
@@ -626,3 +626,67 @@ Function rook_moves (l : SquareLocation) (pos : Position) : (list Move) :=
     (squares_on_same_rank l)) ++
   (append_forall (rook_moves_to_square_on_same_rank_or_file_list pos l)
     (squares_on_same_file l)).
+
+Definition are_squares_on_same_diagonal (l1 l2 : SquareLocation) : bool :=
+  match (vector_from_a_to_b l1 l2) with
+  | VectorHV (HStep Right n) (VStep Up m) => if (n =? m) then true else false
+  | VectorHV (HStep Left n) (VStep Down m) => if (n =? m) then true else false
+  | _ => false
+  end.
+
+Definition are_squares_on_same_antidiagonal (l1 l2 : SquareLocation) : bool :=
+  match (vector_from_a_to_b l1 l2) with
+  | VectorHV (HStep Right n) (VStep Down m) => if (n =? m) then true else false
+  | VectorHV (HStep Left n) (VStep Up m) => if (n =? m) then true else false
+  | _ => false
+  end.
+
+Fixpoint squares_along_direction_aux (l : SquareLocation) 
+  (hd : HorizontalDirection) (vd : VerticalDirection) (steps : nat) :=
+  match steps with
+  | 0 => []
+  | S n =>
+    match l with
+    | Loc rank file =>
+      match hd,vd with
+      | Right, Up =>
+        let l1 := Loc (rank + 1) (file + 1) in
+        l1 :: (squares_along_direction_aux l1 Right Up n)
+      | Right, Down =>
+        let l1 := Loc (rank - 1) (file + 1) in
+        l1 :: (squares_along_direction_aux l1 Right Down n)
+      | Left, Up =>
+        let l1 := Loc (rank + 1) (file - 1) in
+        l1 :: (squares_along_direction_aux l1 Left Up n)
+      | Left, Down =>
+        let l1 := Loc (rank - 1) (file - 1) in
+        l1 :: (squares_along_direction_aux l1 Left Down n)
+      end
+    end
+  end.
+
+Definition squares_along_direction (l : SquareLocation)
+  (hd : HorizontalDirection) (vd : VerticalDirection) :=
+  match l with Loc rank file =>
+    let hsteps := match hd with
+    | Left => file
+    | Right => (7 - file)
+    end
+    in
+    let vsteps := match vd with
+    | Up => (7 - rank)
+    | Down => rank
+    end
+    in
+    squares_along_direction_aux l hd vd (min hsteps vsteps)
+  end.
+
+Definition squares_on_same_diagonal (l : SquareLocation) : list SquareLocation
+  :=
+  (squares_along_direction l Right Up) ++ 
+  (squares_along_direction l Left Down).
+
+Definition squares_on_same_antidiagonal (l : SquareLocation) 
+  : list SquareLocation :=
+  (squares_along_direction l Right Down) ++ 
+  (squares_along_direction l Left Up).

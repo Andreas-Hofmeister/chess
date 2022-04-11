@@ -1252,3 +1252,24 @@ Proof.
       * apply squares_on_same_rank_complete; auto.
       * apply rook_moves_to_square_on_same_rank_or_file_list_complete; auto.
 Qed.
+
+Inductive BishopCanMakeMove (pos : Position)
+: SquareLocation -> Move -> Prop :=
+  | BishopCanMove : forall pp c dstep from to, 
+    location_valid from -> location_valid to ->
+    pos = Posn pp c dstep ->
+    from <> to ->
+    are_squares_on_same_diagonal from to = true \/ 
+    are_squares_on_same_antidiagonal from to = true ->
+    SquaresBetweenEmpty pp from to ->
+    is_square_empty to pp = true ->
+    BishopCanMakeMove pos from (FromTo from to)
+  | BishopCanCapture : forall pp c dstep from to,
+    location_valid from -> location_valid to -> 
+    pos = Posn pp c dstep ->
+    from <> to ->
+    are_squares_on_same_diagonal from to = true \/ 
+    are_squares_on_same_antidiagonal from to = true ->
+    SquaresBetweenEmpty pp from to ->
+    is_square_occupied_by_enemy_piece to pp c = true ->
+    BishopCanMakeMove pos from (Capture from to).
