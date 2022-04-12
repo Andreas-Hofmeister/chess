@@ -442,11 +442,11 @@ Definition RankFileOrDiagonalVector (v : Vector) : Prop :=
 Definition vector_from_a_to_b (a : SquareLocation) (b : SquareLocation) :=
   match a with Loc r_a f_a =>
     match b with Loc r_b f_b =>
-      let rank_step := if r_a <=? r_b then (HStep Right (r_b - r_a))
-        else (HStep Left (r_a - r_b)) in
-      let file_step := if f_a <=? f_b then (VStep Up (f_b - f_a))
-        else (VStep Down (f_a - f_b)) in
-      (VectorHV rank_step file_step)
+      let rank_step := if r_a <=? r_b then (VStep Up (r_b - r_a))
+        else (VStep Down (r_a - r_b)) in
+      let file_step := if f_a <=? f_b then (HStep Right (f_b - f_a))
+        else (HStep Left (f_a - f_b)) in
+      (VectorHV file_step rank_step)
     end
   end.
 
@@ -556,14 +556,14 @@ Definition apply_vector (v : Vector) (loc : SquareLocation) : SquareLocation :=
 
 Definition make_vector_stay_in_bounds (v : Vector) (l : SquareLocation) :=
   match l with
-  | Loc x y =>
+  | Loc rank file =>
     match v with
     | VectorHV (HStep Left n) (VStep Down m) =>
-      VectorHV (HStep Left (min n x)) (VStep Down (min m y))
+      VectorHV (HStep Left (min n file)) (VStep Down (min m rank))
     | VectorHV (HStep Left n) (VStep Up m) =>
-      VectorHV (HStep Left (min n x)) (VStep Up m)
+      VectorHV (HStep Left (min n file)) (VStep Up m)
     | VectorHV (HStep Right n) (VStep Down m) =>
-      VectorHV (HStep Right n) (VStep Down (min m y))
+      VectorHV (HStep Right n) (VStep Down (min m rank))
     | _ => v
     end
   end.

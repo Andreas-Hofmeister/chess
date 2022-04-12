@@ -431,9 +431,9 @@ Definition vector_stays_within_boundaries (v : Vector) (l : SquareLocation)
   match l with
   | Loc x y =>
     match v with
-    | VectorHV (HStep Left n) (VStep Down m) => (n <= x) /\ (m <= y)
-    | VectorHV (HStep Left n) (VStep Up _) => n <= x
-    | VectorHV (HStep Right _) (VStep Down m) => m <= y
+    | VectorHV (HStep Left n) (VStep Down m) => (n <= y) /\ (m <= x)
+    | VectorHV (HStep Left n) (VStep Up _) => n <= y
+    | VectorHV (HStep Right _) (VStep Down m) => m <= x
     | _ => True
     end
   end.
@@ -459,14 +459,14 @@ Proof.
   Ltac finish := try finish1; try finish2; try finish3.
   - simpl in Hbounds. destruct Hvdiag as [Hr | [Hf | Hd]];
     simplify_calculations; finish.
-    inversion Hd. subst. replace (file <=? file + n0) with true; 
+    inversion Hd. subst. replace (rank <=? rank + n0) with true; 
     try symmetry; try rewrite PeanoNat.Nat.leb_le; try lia. 
-    replace (file + n0 - file) with n0; try lia.
-    destruct rank eqn:Hrnk. simpl. right. left. constructor.
+    replace (rank + n0 - rank) with n0; try lia.
+    destruct file eqn:Hfl. simpl. finish.
     destruct (S n <=? S n - n0) eqn:En.
-    + replace (S n - n0 - S n) with 0; try lia. right. left. constructor.
+    + replace (S n - n0 - S n) with 0; try lia. finish.
     + rewrite PeanoNat.Nat.leb_gt in En. replace (S n - (S n - n0)) with n0; 
-      try lia. right. right. constructor.
+      try lia. finish.
   - simpl in Hbounds. destruct Hbounds as [Hbounds1 Hbounds2].
     destruct Hvdiag as [Hr | [Hf | Hd]]; simplify_calculations; finish.
     destruct n0. simplify_calculations. finish.
@@ -486,13 +486,13 @@ Proof.
     replace (file + n0 - file) with n0; try lia. finish.
   - simpl in Hbounds. destruct Hvdiag as [Hr | [Hf | Hd]]; 
     simplify_calculations; finish.
-    replace (rank <=? rank + n0) with true; try symmetry; 
+    replace (file <=? file + n0) with true; try symmetry; 
     try rewrite PeanoNat.Nat.leb_le; try lia.
     destruct n0. simplify_calculations. finish.
-    replace (file <=? file - S n0) with false; try symmetry; 
+    replace (rank <=? rank - S n0) with false; try symmetry; 
     try rewrite PeanoNat.Nat.leb_gt; try lia.
-    replace (rank + S n0 - rank) with (S n0); try lia.
-    replace (file - (file - S n0)) with (S n0); try lia. finish.
+    replace (file + S n0 - file) with (S n0); try lia.
+    replace (rank - (rank - S n0)) with (S n0); try lia. finish.
 Qed.
 
 Lemma vector_from_a_to_b_correct : forall l1 l2,
@@ -537,7 +537,7 @@ Proof.
   - simpl in Hbounds. Hdestruct; inversion H0; subst; simpl; auto; lia.
 Qed.
 
-Lemma make_vector_stay_in_bounds_eq : forall v l,
+Lemma  make_vector_stay_in_bounds_eq : forall v l,
   apply_vector v l = apply_vector (make_vector_stay_in_bounds v l) l.
 Proof.
   intros.
@@ -577,27 +577,27 @@ Proof.
   destruct d eqn:Ed; destruct d0 eqn:Ed0; simpl; auto.
   - destruct n eqn:En.
     + simplify_calculations.
-      replace (file <=? file + n0) with true; try symmetry; 
+      replace (rank <=? rank + n0) with true; try symmetry; 
       try rewrite PeanoNat.Nat.leb_le; try lia.
-      replace (file + n0 - file) with n0; try lia.
+      replace (rank + n0 - rank) with n0; try lia.
       destruct n0 eqn:En0; auto.
-    + destruct n0 eqn:En0; simpl; destruct (rank <=? rank - S n1) eqn:Ernk.
-      * rewrite PeanoNat.Nat.leb_le in Ernk.
-        assert (Hrnk2: rank = 0). lia. subst. simpl.
+    + destruct n0 eqn:En0; simpl; destruct (file <=? file - S n1) eqn:Efl.
+      * rewrite PeanoNat.Nat.leb_le in Efl.
+        assert (Hfl2: file = 0). lia. subst. simpl.
         simplify_calculations. auto.
-      * subst. rewrite PeanoNat.Nat.leb_gt in Ernk.
-        destruct (rank - (rank - S n1)) eqn:Hrnk2; try lia.
+      * subst. rewrite PeanoNat.Nat.leb_gt in Efl.
+        destruct (file - (file - S n1)) eqn:Hfl2; try lia.
         simplify_calculations. auto.
-      * rewrite PeanoNat.Nat.leb_le in Ernk. 
-        assert (Hrnk2: rank = 0). lia. subst. simpl. 
-        replace (file <=? file + S n2) with true; try symmetry; 
+      * rewrite PeanoNat.Nat.leb_le in Efl. 
+        assert (Hfl2: file = 0). lia. subst. simpl. 
+        replace (rank <=? rank + S n2) with true; try symmetry; 
         try rewrite PeanoNat.Nat.leb_le; try lia.
-        replace (file + S n2 - file) with (S n2); try lia. auto.
-      * subst. rewrite PeanoNat.Nat.leb_gt in Ernk.
-        destruct (rank - (rank - S n1)) eqn:Hrnk2; try lia.
-        replace (file <=? file + S n2) with true; try symmetry; 
+        replace (rank + S n2 - rank) with (S n2); try lia. auto.
+      * subst. rewrite PeanoNat.Nat.leb_gt in Efl.
+        destruct (file - (file - S n1)) eqn:Hfl2; try lia.
+        replace (rank <=? rank + S n2) with true; try symmetry; 
         try rewrite PeanoNat.Nat.leb_le; try lia.
-        replace (file + S n2 - file) with (S n2); try lia. auto.
+        replace (rank + S n2 - rank) with (S n2); try lia. auto.
   - destruct n eqn:En.
     + simplify_calculations. destruct n0 eqn:En0. simplify_calculations. auto.
       destruct (file <=? file - S n) eqn:Efl.
