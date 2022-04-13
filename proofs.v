@@ -600,48 +600,48 @@ Proof.
         replace (rank + S n2 - rank) with (S n2); try lia. auto.
   - destruct n eqn:En.
     + simplify_calculations. destruct n0 eqn:En0. simplify_calculations. auto.
-      destruct (file <=? file - S n) eqn:Efl.
-      * Hb2p. assert (Hfl2: file = 0). lia. rewrite Hfl2. simpl. auto.
-      * Hb2p. destruct (file - (file - S n)) eqn:Efl2; try lia. auto.
+      destruct (rank <=? rank - S n) eqn:Ernk.
+      * Hb2p. assert (Hrnk2: rank = 0). lia. rewrite Hrnk2. simpl. auto.
+      * Hb2p. destruct (rank - (rank - S n)) eqn:Ernk2; try lia. auto.
     + destruct n0 eqn:En0.
-      * simplify_calculations. destruct (rank <=? rank - S n1) eqn:Hrnk.
-        -- Hb2p. assert (Hrnk2: rank = 0). lia. rewrite Hrnk2. simpl. auto.
-        -- Hb2p. destruct (rank - (rank - S n1)) eqn:Ernk2; try lia. auto.
-      * destruct (rank <=? rank - S n1) eqn:Hrnk.
-        -- Hb2p. assert (Hrnk2: rank = 0). lia. rewrite Hrnk2. simpl.
-           destruct (file <=? file - S n2) eqn:Hfl.
-           ++ Hb2p. assert (Hfl2: file = 0). lia. rewrite Hfl2. simpl. auto.
-           ++ Hb2p. destruct (file - (file - S n2)) eqn:Hfl2; try lia. auto.
-        -- Hb2p. destruct (rank - (rank - S n1)) eqn:Hrnk2; try lia.
-           destruct (file <=? file - S n2) eqn:Hfl.
-           ++ Hb2p. assert (Hfl2: file = 0). lia. rewrite Hfl2. simpl. auto.
-           ++ Hb2p. destruct (file - (file - S n2)) eqn:Hfl2; try lia. auto.
-  - destruct n eqn:En.
-    + simplify_calculations. destruct n0 eqn:En0. simplify_calculations. auto.
-      replace (file <=? file + S n) with true; try Gb2p; try lia.
-      replace (file + S n - file) with (S n); try lia. auto.
-    + destruct n0 eqn:En0. 
-      * simplify_calculations. auto.
-        replace (rank <=? rank + S n1) with true; try Gb2p; try lia.
-        replace (rank + S n1 - rank) with (S n1); try lia. auto.
-      * replace (rank <=? rank + S n1) with true; try Gb2p; try lia.
-        replace (rank + S n1 - rank) with (S n1); try lia. auto.
-        replace (file <=? file + S n2) with true; try Gb2p; try lia.
-        replace (file + S n2 - file) with (S n2); try lia. auto.
-  - destruct n eqn:En.
-    + simplify_calculations. destruct n0 eqn:En0. simplify_calculations. auto.
-      destruct (file <=? file - S n) eqn:Hfl.
-      * Hb2p. assert (Hfl2: file = 0). lia. rewrite Hfl2. simpl. auto.
-      * Hb2p. destruct (file - (file - S n)) eqn:Hfl2; try lia. auto.
-    + destruct n0 eqn:En0. 
-      * simplify_calculations. auto.
-        replace (rank <=? rank + S n1) with true; try Gb2p; try lia.
-        replace (rank + S n1 - rank) with (S n1); try lia. auto.
-      * replace (rank <=? rank + S n1) with true; try Gb2p; try lia.
-        replace (rank + S n1 - rank) with (S n1); try lia. auto.
-        destruct (file <=? file - S n2) eqn:Hfl.
+      * simplify_calculations. destruct (file <=? file - S n1) eqn:Hfl.
         -- Hb2p. assert (Hfl2: file = 0). lia. rewrite Hfl2. simpl. auto.
-        -- Hb2p. destruct (file - (file - S n2)) eqn:Hfl2; try lia. auto.
+        -- Hb2p. destruct (file - (file - S n1)) eqn:Efl2; try lia. auto.
+      * destruct (file <=? file - S n1) eqn:Hfl.
+        -- Hb2p. assert (Hfl2: file = 0). lia. rewrite Hfl2. simpl.
+           destruct (rank <=? rank - S n2) eqn:Hrnk.
+           ++ Hb2p. assert (Hrnk2: rank = 0). lia. rewrite Hrnk2. simpl. auto.
+           ++ Hb2p. destruct (rank - (rank - S n2)) eqn:Hrnk2; try lia. auto.
+        -- Hb2p. destruct (file - (file - S n1)) eqn:Hfl2; try lia.
+           destruct (rank <=? rank - S n2) eqn:Hrnk.
+           ++ Hb2p. assert (Hrnk2: rank = 0). lia. rewrite Hrnk2. simpl. auto.
+           ++ Hb2p. destruct (rank - (rank - S n2)) eqn:Hrnk2; try lia. auto.
+  - destruct n eqn:En.
+    + simplify_calculations. destruct n0 eqn:En0. simplify_calculations. auto.
+      replace (rank <=? rank + S n) with true; try Gb2p; try lia.
+      replace (rank + S n - rank) with (S n); try lia. auto.
+    + destruct n0 eqn:En0. 
+      * simplify_calculations. auto.
+        replace (file <=? file + S n1) with true; try Gb2p; try lia.
+        replace (file + S n1 - file) with (S n1); try lia. auto.
+      * replace (file <=? file + S n1) with true; try Gb2p; try lia.
+        replace (file + S n1 - file) with (S n1); try lia. auto.
+        replace (rank <=? rank + S n2) with true; try Gb2p; try lia.
+        replace (rank + S n2 - rank) with (S n2); try lia. auto.
+  - destruct n eqn:En.
+    + simplify_calculations. destruct n0 eqn:En0. simplify_calculations. auto.
+      destruct (rank <=? rank - S n) eqn:Hrnk.
+      * Hb2p. assert (Hrnk2: rank = 0). lia. rewrite Hrnk2. simpl. auto.
+      * Hb2p. destruct (rank - (rank - S n)) eqn:Hrnk2; try lia. auto.
+    + destruct n0 eqn:En0. 
+      * simplify_calculations. auto.
+        replace (file <=? file + S n1) with true; try Gb2p; try lia.
+        replace (file + S n1 - file) with (S n1); try lia. auto.
+      * replace (file <=? file + S n1) with true; try Gb2p; try lia.
+        replace (file + S n1 - file) with (S n1); try lia. auto.
+        destruct (rank <=? rank - S n2) eqn:Hrnk.
+        -- Hb2p. assert (Hrnk2: rank = 0). lia. rewrite Hrnk2. simpl. auto.
+        -- Hb2p. destruct (rank - (rank - S n2)) eqn:Hrnk2; try lia. auto.
 Qed.
 
 Lemma are_squares_along_vector_empty_sound_aux : forall n,
@@ -1273,3 +1273,133 @@ Inductive BishopCanMakeMove (pos : Position)
     SquaresBetweenEmpty pp from to ->
     is_square_occupied_by_enemy_piece to pp c = true ->
     BishopCanMakeMove pos from (Capture from to).
+
+Lemma n_leb_n_plus_1: forall n, n <=? n + 1 = true.
+Proof.
+  intros. Gb2p. lia.
+Qed.
+
+Lemma n_plus_m_minus_n: forall n m, n + m - n = m.
+Proof.
+  intros. lia.
+Qed.
+
+Lemma Sn_leb_Sn_minus_1: forall n, S n <=? (S n) - 1 = false.
+Proof.
+  intros. Gb2p. lia.
+Qed.
+
+Lemma n_minus_n_minus_m: forall n m, m <= n -> n - (n - m) = m.
+Proof.
+  intros. lia.
+Qed.
+
+Lemma Sn_leb_n: forall n, S n <=? n = false.
+Proof.
+  intros. Gb2p. lia.
+Qed.
+
+Lemma are_squares_on_same_diagonal_trans : forall l1 l2 l3,
+  are_squares_on_same_diagonal l1 l2 = true ->
+  are_squares_on_same_diagonal l2 l3 = true ->
+  are_squares_on_same_diagonal l1 l3 = true.
+Proof.
+  intros l1 l2 l3 Hl1l2 Hl2l3.
+  destruct l1 eqn:Hl1.
+  destruct l2 eqn:Hl2.
+  destruct l3 eqn:Hl3.
+  unfold are_squares_on_same_diagonal in *. simpl in *.
+  destruct (file <=? file0) eqn:Eff0; repeat Hb2p; try lia; 
+  destruct (rank <=? rank0) eqn:Err0; repeat Hb2p; try lia;
+  destruct (file0 <=? file1) eqn:Ef0f1; repeat Hb2p; try lia; 
+  destruct (rank0 <=? rank1) eqn:Er0r1; repeat Hb2p; try lia;
+  destruct (file <=? file1) eqn:Eff1; repeat Hb2p; try lia; 
+  destruct (rank <=? rank1) eqn:Err1; repeat Hb2p; try lia;
+  destruct (file0 - file =? rank0 - rank) eqn:Edd0; repeat Hb2p; try lia;
+  destruct (file1 - file0 =? rank1 - rank0) eqn:Ed0d1; repeat Hb2p; try lia;
+  destruct (file0 - file1 =? rank0 - rank1) eqn:Ed1d0; repeat Hb2p; try lia;
+  destruct (file1 - file =? rank1 - rank) eqn:Edd1; repeat Hb2p; try lia;
+  destruct (file - file1 =? rank - rank1) eqn:Ed1d; repeat Hb2p; try lia;
+  destruct (file - file0 =? rank - rank0) eqn:Ed0d; repeat Hb2p; try lia.
+Qed.
+
+Lemma squares_along_direction_aux_soundRU : forall s l1 l2,
+  In l2 (squares_along_direction_aux l1 Right Up s) -> 
+  (are_squares_on_same_diagonal l1 l2) = true.
+Proof.
+  induction s.
+  - intros l1 l2 Hin. simpl in Hin. contradiction.
+  - intros l1 l2 Hin. destruct l1 eqn:El1. destruct l2 eqn:El2.
+    assert (Honestep: are_squares_on_same_diagonal (Loc rank file) 
+      (Loc (rank + 1) (file + 1)) = true). { 
+      unfold are_squares_on_same_diagonal. simpl. 
+      repeat rewrite n_leb_n_plus_1. repeat rewrite n_plus_m_minus_n.
+      simpl. auto.
+    }
+    simpl in Hin. destruct Hin as [Hin | Hin].
+    + inversion Hin. subst. auto.
+    + specialize (IHs _ _ Hin) as IHss. 
+      eapply are_squares_on_same_diagonal_trans. apply Honestep. apply IHss.
+Qed.
+
+Lemma are_squares_on_same_diagonal_one_stepLD : forall rank file,
+  rank >= 1 -> file >= 1 ->
+  are_squares_on_same_diagonal (Loc rank file) (Loc (rank - 1) (file - 1)) 
+    = true.
+Proof.
+  intros rank file Hrnk Hfl.
+  unfold are_squares_on_same_diagonal. simpl.
+  replace (file <=? file - 1) with false; try Gb2p; try lia.
+  replace (rank <=? rank - 1) with false; try Gb2p; try lia.
+  repeat rewrite n_minus_n_minus_m; simpl; auto; lia. 
+Qed.
+
+Lemma squares_along_direction_aux_soundLD : forall s rank file l2,
+  s <= rank -> s <= file ->
+  In l2 (squares_along_direction_aux (Loc rank file) Left Down s) -> 
+  (are_squares_on_same_diagonal (Loc rank file) l2) = true.
+Proof.
+  induction s; intros rank file l2 Hsleqr Hsleqf Hin. 
+  - simpl in Hin. contradiction.
+  - destruct l2 eqn:El2.
+    simpl in Hin. destruct Hin as [Hin | Hin].
+    + inversion Hin. subst. apply are_squares_on_same_diagonal_one_stepLD; lia.
+    + assert (Hsleqr2: s <= rank - 1). lia. 
+      assert (Hsleql2: s <= file - 1). lia.
+      specialize (IHs _ _ _ Hsleqr2 Hsleql2 Hin) as IHss.
+      eapply are_squares_on_same_diagonal_trans.
+      apply are_squares_on_same_diagonal_one_stepLD; try lia. auto.
+Qed.
+
+Lemma squares_along_direction_soundRU : forall l1 l2,
+  In l2 (squares_along_direction l1 Right Up) -> 
+  (are_squares_on_same_diagonal l1 l2) = true.
+Proof.
+  intros l1 l2 Hin.
+  destruct l1 eqn:Hl1. destruct l2 eqn:Hl2.
+  unfold squares_along_direction in Hin. 
+  eapply squares_along_direction_aux_soundRU. apply Hin.
+Qed.
+
+Lemma squares_along_direction_soundLD : forall l1 l2,
+  In l2 (squares_along_direction l1 Left Down) -> 
+  (are_squares_on_same_diagonal l1 l2) = true.
+Proof.
+  intros l1 l2 Hin.
+  destruct l1 eqn:Hl1. destruct l2 eqn:Hl2.
+  unfold squares_along_direction in Hin.
+  apply squares_along_direction_aux_soundLD with (s:=(min file rank)); try lia.
+  auto.
+Qed.
+
+Lemma squares_on_same_diagonal_sound : forall l1 l2,
+  In l2 (squares_on_same_diagonal l1) -> 
+  (are_squares_on_same_diagonal l1 l2) = true.
+Proof.
+  intros l1 l2 Hin.
+  unfold squares_on_same_diagonal in Hin. in_app_to_or.
+  destruct Hin as [Hin | Hin].
+  - apply squares_along_direction_soundRU. auto.
+  - apply squares_along_direction_soundLD. auto.
+Qed.
+
