@@ -638,6 +638,8 @@ Definition are_squares_on_same_antidiagonal (l1 l2 : SquareLocation) : bool :=
   match (vector_from_a_to_b l1 l2) with
   | VectorHV (HStep Right n) (VStep Down m) => if (n =? m) then true else false
   | VectorHV (HStep Left n) (VStep Up m) => if (n =? m) then true else false
+  | VectorHV (HStep Right 0) (VStep Up 0) => true
+  | VectorHV (HStep Left 0) (VStep Down 0) => true
   | _ => false
   end.
 

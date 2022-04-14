@@ -1323,6 +1323,33 @@ Proof.
   destruct (file - file0 =? rank - rank0) eqn:Ed0d; repeat Hb2p; try lia.
 Qed.
 
+Lemma are_squares_on_same_antidiagonal_trans : forall l1 l2 l3,
+  are_squares_on_same_antidiagonal l1 l2 = true ->
+  are_squares_on_same_antidiagonal l2 l3 = true ->
+  are_squares_on_same_antidiagonal l1 l3 = true.
+Proof.
+  intros l1 l2 l3 Hl1l2 Hl2l3.
+  destruct l1 eqn:Hl1.
+  destruct l2 eqn:Hl2.
+  destruct l3 eqn:Hl3.
+  unfold are_squares_on_same_antidiagonal in *. simpl in *.
+  Ltac same_antidiagonal_destruct := match goal with
+  | H: match (if ?x <=? ?y then _ else _) with _ => _ end = _ |- _ 
+    => destruct (x <=? y) eqn:?E; repeat Hb2p; try lia
+  | H: match ?x - ?y with _ => _ end = _ |- _ 
+    => destruct (x - y) eqn:?E; repeat Hb2p; try lia
+  | |- match (if ?x <=? ?y then _ else _) with _ => _ end = _ 
+    => destruct (x <=? y) eqn:?E; repeat Hb2p; try lia
+  | |- match ?x - ?y with _ => _ end = _
+    => destruct (x - y) eqn:?E; repeat Hb2p; try lia
+  | H: (if (?x =? ?y) then _ else _) = _ |- _
+    => destruct (x =? y) eqn:?E; repeat Hb2p; try lia
+  | |- (if ?x =? ?y then _ else _) = _
+    => destruct (x =? y) eqn:?E; repeat Hb2p; try lia
+  end.
+  repeat same_antidiagonal_destruct.
+Qed.
+
 Lemma squares_along_direction_aux_soundRU : forall s l1 l2,
   In l2 (squares_along_direction_aux l1 Right Up s) -> 
   (are_squares_on_same_diagonal l1 l2) = true.
@@ -1354,6 +1381,31 @@ Proof.
   repeat rewrite n_minus_n_minus_m; simpl; auto; lia. 
 Qed.
 
+Lemma are_squares_on_same_antidiagonal_one_stepLU : forall rank file,
+  file >= 1 ->
+  are_squares_on_same_antidiagonal (Loc rank file) (Loc (rank + 1) (file - 1))
+    = true.
+Proof.
+  intros rank file Hfl.
+  unfold are_squares_on_same_antidiagonal. simpl.
+  replace (file <=? file - 1) with false; try Gb2p; try lia.
+  rewrite n_leb_n_plus_1.
+  repeat rewrite n_minus_n_minus_m; try lia. rewrite n_plus_m_minus_n. simpl.
+  auto.
+Qed.
+
+Lemma are_squares_on_same_antidiagonal_one_stepRD : forall rank file,
+  rank >= 1 ->
+  are_squares_on_same_antidiagonal (Loc rank file) (Loc (rank - 1) (file + 1))
+    = true.
+Proof.
+  intros rank file Hrnk.
+  unfold are_squares_on_same_antidiagonal. simpl.
+  rewrite n_leb_n_plus_1.
+  replace (rank <=? rank - 1) with false; try Gb2p; try lia.
+  rewrite n_plus_m_minus_n. simpl. rewrite n_minus_n_minus_m; try lia.
+Qed.
+
 Lemma squares_along_direction_aux_soundLD : forall s rank file l2,
   s <= rank -> s <= file ->
   In l2 (squares_along_direction_aux (Loc rank file) Left Down s) -> 
@@ -1369,6 +1421,40 @@ Proof.
       specialize (IHs _ _ _ Hsleqr2 Hsleql2 Hin) as IHss.
       eapply are_squares_on_same_diagonal_trans.
       apply are_squares_on_same_diagonal_one_stepLD; try lia. auto.
+Qed.
+
+Lemma squares_along_direction_aux_soundLU : forall s rank file l2,
+  s <= file ->
+  In l2 (squares_along_direction_aux (Loc rank file) Left Up s) -> 
+  (are_squares_on_same_antidiagonal (Loc rank file) l2) = true.
+Proof.
+  induction s; intros rank file l2 Hsleqf Hin. 
+  - simpl in Hin. contradiction.
+  - destruct l2 eqn:El2.
+    simpl in Hin. destruct Hin as [Hin | Hin].
+    + inversion Hin. subst. apply are_squares_on_same_antidiagonal_one_stepLU;
+      lia.
+    + assert (Hsleql2: s <= file - 1). lia.
+      specialize (IHs _ _ _ Hsleql2 Hin) as IHss.
+      eapply are_squares_on_same_antidiagonal_trans.
+      apply are_squares_on_same_antidiagonal_one_stepLU; try lia. auto.
+Qed.
+
+Lemma squares_along_direction_aux_soundRD : forall s rank file l2,
+  s <= rank ->
+  In l2 (squares_along_direction_aux (Loc rank file) Right Down s) -> 
+  (are_squares_on_same_antidiagonal (Loc rank file) l2) = true.
+Proof.
+  induction s; intros rank file l2 Hsleqr Hin. 
+  - simpl in Hin. contradiction.
+  - destruct l2 eqn:El2.
+    simpl in Hin. destruct Hin as [Hin | Hin].
+    + inversion Hin. subst. apply are_squares_on_same_antidiagonal_one_stepRD;
+      lia.
+    + assert (Hsleqr2: s <= rank - 1). lia. 
+      specialize (IHs _ _ _ Hsleqr2 Hin) as IHss.
+      eapply are_squares_on_same_antidiagonal_trans.
+      apply are_squares_on_same_antidiagonal_one_stepRD; try lia. auto.
 Qed.
 
 Lemma squares_along_direction_soundRU : forall l1 l2,
@@ -1392,6 +1478,28 @@ Proof.
   auto.
 Qed.
 
+Lemma squares_along_direction_soundRD : forall l1 l2,
+  In l2 (squares_along_direction l1 Right Down) -> 
+  (are_squares_on_same_antidiagonal l1 l2) = true.
+Proof.
+  intros l1 l2 Hin.
+  destruct l1 eqn:Hl1. destruct l2 eqn:Hl2.
+  unfold squares_along_direction in Hin.
+  apply squares_along_direction_aux_soundRD with (s:=(min (7 - file) rank)); 
+  try lia. auto.
+Qed.
+
+Lemma squares_along_direction_soundLU : forall l1 l2,
+  In l2 (squares_along_direction l1 Left Up) -> 
+  (are_squares_on_same_antidiagonal l1 l2) = true.
+Proof.
+  intros l1 l2 Hin.
+  destruct l1 eqn:Hl1. destruct l2 eqn:Hl2.
+  unfold squares_along_direction in Hin.
+  apply squares_along_direction_aux_soundLU with (s:=(min file (7-rank))); 
+  try lia. auto.
+Qed.
+
 Lemma squares_on_same_diagonal_sound : forall l1 l2,
   In l2 (squares_on_same_diagonal l1) -> 
   (are_squares_on_same_diagonal l1 l2) = true.
@@ -1401,5 +1509,16 @@ Proof.
   destruct Hin as [Hin | Hin].
   - apply squares_along_direction_soundRU. auto.
   - apply squares_along_direction_soundLD. auto.
+Qed.
+
+Lemma squares_on_same_antidiagonal_sound : forall l1 l2,
+  In l2 (squares_on_same_antidiagonal l1) -> 
+  (are_squares_on_same_antidiagonal l1 l2) = true.
+Proof.
+  intros l1 l2 Hin.
+  unfold squares_on_same_antidiagonal in Hin. in_app_to_or.
+  destruct Hin as [Hin | Hin].
+  - apply squares_along_direction_soundRD. auto.
+  - apply squares_along_direction_soundLU. auto.
 Qed.
 
