@@ -54,3 +54,17 @@ Ltac in_app_to_or := match goal with
   | |- In _ (_ ++ _) => apply in_or_app
   end.
 
+Ltac diagonal_destruct := match goal with
+  | H: match (if ?x <=? ?y then _ else _) with _ => _ end = _ |- _ 
+    => destruct (x <=? y) eqn:?E; repeat Hb2p; try lia
+  | H: match ?x - ?y with _ => _ end = _ |- _ 
+    => destruct (x - y) eqn:?E; repeat Hb2p; try lia
+  | |- match (if ?x <=? ?y then _ else _) with _ => _ end = _ 
+    => destruct (x <=? y) eqn:?E; repeat Hb2p; try lia
+  | |- match ?x - ?y with _ => _ end = _
+    => destruct (x - y) eqn:?E; repeat Hb2p; try lia
+  | H: (if (?x =? ?y) then _ else _) = _ |- _
+    => destruct (x =? y) eqn:?E; repeat Hb2p; try lia
+  | |- (if ?x =? ?y then _ else _) = _
+    => destruct (x =? y) eqn:?E; repeat Hb2p; try lia
+  end.

@@ -1304,23 +1304,9 @@ Lemma are_squares_on_same_diagonal_trans : forall l1 l2 l3,
   are_squares_on_same_diagonal l2 l3 = true ->
   are_squares_on_same_diagonal l1 l3 = true.
 Proof.
-  intros l1 l2 l3 Hl1l2 Hl2l3.
-  destruct l1 eqn:Hl1.
-  destruct l2 eqn:Hl2.
-  destruct l3 eqn:Hl3.
-  unfold are_squares_on_same_diagonal in *. simpl in *.
-  destruct (file <=? file0) eqn:Eff0; repeat Hb2p; try lia; 
-  destruct (rank <=? rank0) eqn:Err0; repeat Hb2p; try lia;
-  destruct (file0 <=? file1) eqn:Ef0f1; repeat Hb2p; try lia; 
-  destruct (rank0 <=? rank1) eqn:Er0r1; repeat Hb2p; try lia;
-  destruct (file <=? file1) eqn:Eff1; repeat Hb2p; try lia; 
-  destruct (rank <=? rank1) eqn:Err1; repeat Hb2p; try lia;
-  destruct (file0 - file =? rank0 - rank) eqn:Edd0; repeat Hb2p; try lia;
-  destruct (file1 - file0 =? rank1 - rank0) eqn:Ed0d1; repeat Hb2p; try lia;
-  destruct (file0 - file1 =? rank0 - rank1) eqn:Ed1d0; repeat Hb2p; try lia;
-  destruct (file1 - file =? rank1 - rank) eqn:Edd1; repeat Hb2p; try lia;
-  destruct (file - file1 =? rank - rank1) eqn:Ed1d; repeat Hb2p; try lia;
-  destruct (file - file0 =? rank - rank0) eqn:Ed0d; repeat Hb2p; try lia.
+  intros l1 l2 l3 Hl1l2 Hl2l3. destruct l1 eqn:Hl1. destruct l2 eqn:Hl2.
+  destruct l3 eqn:Hl3. unfold are_squares_on_same_diagonal in *. simpl in *.
+  repeat diagonal_destruct.
 Qed.
 
 Lemma are_squares_on_same_antidiagonal_trans : forall l1 l2 l3,
@@ -1328,26 +1314,9 @@ Lemma are_squares_on_same_antidiagonal_trans : forall l1 l2 l3,
   are_squares_on_same_antidiagonal l2 l3 = true ->
   are_squares_on_same_antidiagonal l1 l3 = true.
 Proof.
-  intros l1 l2 l3 Hl1l2 Hl2l3.
-  destruct l1 eqn:Hl1.
-  destruct l2 eqn:Hl2.
-  destruct l3 eqn:Hl3.
-  unfold are_squares_on_same_antidiagonal in *. simpl in *.
-  Ltac same_antidiagonal_destruct := match goal with
-  | H: match (if ?x <=? ?y then _ else _) with _ => _ end = _ |- _ 
-    => destruct (x <=? y) eqn:?E; repeat Hb2p; try lia
-  | H: match ?x - ?y with _ => _ end = _ |- _ 
-    => destruct (x - y) eqn:?E; repeat Hb2p; try lia
-  | |- match (if ?x <=? ?y then _ else _) with _ => _ end = _ 
-    => destruct (x <=? y) eqn:?E; repeat Hb2p; try lia
-  | |- match ?x - ?y with _ => _ end = _
-    => destruct (x - y) eqn:?E; repeat Hb2p; try lia
-  | H: (if (?x =? ?y) then _ else _) = _ |- _
-    => destruct (x =? y) eqn:?E; repeat Hb2p; try lia
-  | |- (if ?x =? ?y then _ else _) = _
-    => destruct (x =? y) eqn:?E; repeat Hb2p; try lia
-  end.
-  repeat same_antidiagonal_destruct.
+  intros l1 l2 l3 Hl1l2 Hl2l3. destruct l1 eqn:Hl1. destruct l2 eqn:Hl2.
+  destruct l3 eqn:Hl3. unfold are_squares_on_same_antidiagonal in *. 
+  simpl in *. repeat diagonal_destruct.
 Qed.
 
 Lemma squares_along_direction_aux_soundRU : forall s l1 l2,
@@ -1521,4 +1490,48 @@ Proof.
   - apply squares_along_direction_soundRD. auto.
   - apply squares_along_direction_soundLU. auto.
 Qed.
+
+Lemma squares_along_direction_aux_completeRU: forall d s rank file rank1 file1,
+  rank <= 7 -> file <= 7 -> rank1 <= 7 -> file1 <= 7 ->
+  file <= file1 -> rank <= rank1 -> d = file1 - file -> d = rank1 - rank ->
+  d >= 1 -> s >= d -> 
+  In (Loc rank1 file1) (squares_along_direction_aux (Loc rank file) Right Up s).
+Proof.
+  induction d. intros. lia.
+  intros s rank file rank1 file1 Hrb Hfb Hr1b Hf1b Hff1 Hrr1 Hd1 Hd2 Hdge1
+    Hs.
+  destruct s eqn:Es; try lia. simpl.
+  destruct (rank + 1 =? rank1) eqn:Erp1r1; Hb2p. left. apply eq_Loc; lia.
+  right. apply IHd; try lia.
+Qed.
+
+Lemma squares_along_direction_aux_completeLD: forall d s rank file rank1 file1,
+  rank <= 7 -> file <= 7 -> rank1 <= 7 -> file1 <= 7 ->
+  file1 < file -> rank1 < rank -> d = file - file1 -> d = rank - rank1 ->
+  d >= 1 -> s >= d -> 
+  In (Loc rank1 file1) (squares_along_direction_aux (Loc rank file) Left Down s).
+Proof.
+  induction d. intros. lia.
+  intros s rank file rank1 file1 Hrb Hfb Hr1b Hf1b Hff1 Hrr1 Hd1 Hd2 Hdge1
+    Hs.
+  destruct s eqn:Es; try lia. simpl.
+  destruct (rank - 1 =? rank1) eqn:Erp1r1; Hb2p. left. apply eq_Loc; lia.
+  right. apply IHd; try lia.
+Qed.
+
+Lemma squares_on_same_diagonal_complete : forall l1 l2,
+  location_valid l1 -> location_valid l2 -> l1 <> l2 -> 
+  (are_squares_on_same_diagonal l1 l2) = true ->
+  In l2 (squares_on_same_diagonal l1).
+Proof.
+  intros l1 l2 Hv1 Hv2 Huneq Hason.
+  destruct l1 eqn:El1. destruct l2 eqn:El2. subst.
+  unfold are_squares_on_same_diagonal in *. simpl in *.
+  repeat diagonal_destruct; unfold squares_on_same_diagonal; in_app_to_or.
+  - left. eapply squares_along_direction_aux_completeRU; eauto; try lia.
+    destruct (file0 =? file) eqn:Ef0f; Hb2p; try lia. exfalso. apply Huneq. 
+    apply eq_Loc; auto; lia.
+  - right. eapply squares_along_direction_aux_completeLD; eauto; try lia.
+Qed.
+
 
