@@ -1573,5 +1573,5 @@ Proof.
   unfold squares_on_same_antidiagonal. repeat diagonal_destruct; in_app_to_or.
   - exfalso. apply Huneq. apply eq_Loc; lia.
   - left. eapply squares_along_direction_aux_completeRD; eauto; try lia.
-  - 
-
+  - right. eapply squares_along_direction_aux_completeLU; eauto; try lia.
+Qed.
