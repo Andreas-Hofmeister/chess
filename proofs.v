@@ -1519,6 +1519,34 @@ Proof.
   right. apply IHd; try lia.
 Qed.
 
+Lemma squares_along_direction_aux_completeRD: forall d s rank file rank1 file1,
+  rank <= 7 -> file <= 7 -> rank1 <= 7 -> file1 <= 7 ->
+  file <= file1 -> rank1 < rank -> d = file1 - file -> d = rank - rank1 ->
+  d >= 1 -> s >= d -> 
+  In (Loc rank1 file1) (squares_along_direction_aux (Loc rank file) Right Down s).
+Proof.
+  induction d. intros. lia.
+  intros s rank file rank1 file1 Hrb Hfb Hr1b Hf1b Hff1 Hrr1 Hd1 Hd2 Hdge1
+    Hs.
+  destruct s eqn:Es; try lia. simpl.
+  destruct (rank - 1 =? rank1) eqn:Erp1r1; Hb2p. left. apply eq_Loc; lia.
+  right. apply IHd; try lia.
+Qed.
+
+Lemma squares_along_direction_aux_completeLU: forall d s rank file rank1 file1,
+  rank <= 7 -> file <= 7 -> rank1 <= 7 -> file1 <= 7 ->
+  file1 < file -> rank <= rank1 -> d = file - file1 -> d = rank1 - rank ->
+  d >= 1 -> s >= d -> 
+  In (Loc rank1 file1) (squares_along_direction_aux (Loc rank file) Left Up s).
+Proof.
+  induction d. intros. lia.
+  intros s rank file rank1 file1 Hrb Hfb Hr1b Hf1b Hff1 Hrr1 Hd1 Hd2 Hdge1
+    Hs.
+  destruct s eqn:Es; try lia. simpl.
+  destruct (rank + 1 =? rank1) eqn:Erp1r1; Hb2p. left. apply eq_Loc; lia.
+  right. apply IHd; try lia.
+Qed.
+
 Lemma squares_on_same_diagonal_complete : forall l1 l2,
   location_valid l1 -> location_valid l2 -> l1 <> l2 -> 
   (are_squares_on_same_diagonal l1 l2) = true ->
@@ -1534,4 +1562,16 @@ Proof.
   - right. eapply squares_along_direction_aux_completeLD; eauto; try lia.
 Qed.
 
+Lemma squares_on_same_antidiagonal_complete : forall l1 l2,
+  location_valid l1 -> location_valid l2 -> l1 <> l2 -> 
+  (are_squares_on_same_antidiagonal l1 l2) = true ->
+  In l2 (squares_on_same_antidiagonal l1).
+Proof.
+  intros l1 l2 Hv1 Hv2 Huneq Hason.
+  destruct l1 eqn:El1. destruct l2 eqn:El2. subst.
+  unfold are_squares_on_same_antidiagonal in *. simpl in *.
+  unfold squares_on_same_antidiagonal. repeat diagonal_destruct; in_app_to_or.
+  - exfalso. apply Huneq. apply eq_Loc; lia.
+  - left. eapply squares_along_direction_aux_completeRD; eauto; try lia.
+  - 
 
