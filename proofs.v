@@ -1747,7 +1747,6 @@ Proof.
   destruct Hin as [Hin | Hin]; eapply squares_along_direction_valid; eauto.
 Qed.
 
-
 Lemma bishop_moves_sound : forall move fromL pos,
   location_valid fromL ->
   In move (bishop_moves fromL pos) -> BishopCanMakeMove pos fromL move.
