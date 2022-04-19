@@ -602,7 +602,8 @@ Function squares_on_same_file (l : SquareLocation) : (list SquareLocation) :=
     for_accumulate make_square (fun n => negb (n =? rank)) 0 7
   end.
 
-Function rook_move_to_square_on_same_rank_or_file (pos : Position) 
+(* rfd = rank, file, diagonal, or antidiagonal *)
+Function move_to_square_on_rfd (pos : Position) 
   (fromL : SquareLocation) (toL : SquareLocation) : option Move :=
   match pos with
   | Posn pp c _ =>
@@ -614,17 +615,17 @@ Function rook_move_to_square_on_same_rank_or_file (pos : Position)
     else None
   end.
 
-Function rook_moves_to_square_on_same_rank_or_file_list (pos : Position)
+Function moves_to_square_on_rfd_list (pos : Position)
   (fromL : SquareLocation) (toL : SquareLocation) : list Move :=
-  match (rook_move_to_square_on_same_rank_or_file pos fromL toL) with
+  match (move_to_square_on_rfd pos fromL toL) with
   | Some move => [move]
   | _ => []
   end.
 
 Function rook_moves (l : SquareLocation) (pos : Position) : (list Move) :=
-  (append_forall (rook_moves_to_square_on_same_rank_or_file_list pos l)
+  (append_forall (moves_to_square_on_rfd_list pos l)
     (squares_on_same_rank l)) ++
-  (append_forall (rook_moves_to_square_on_same_rank_or_file_list pos l)
+  (append_forall (moves_to_square_on_rfd_list pos l)
     (squares_on_same_file l)).
 
 Definition are_squares_on_same_diagonal (l1 l2 : SquareLocation) : bool :=
@@ -692,3 +693,10 @@ Definition squares_on_same_antidiagonal (l : SquareLocation)
   : list SquareLocation :=
   (squares_along_direction l Right Down) ++ 
   (squares_along_direction l Left Up).
+
+Function bishop_moves (l : SquareLocation) (pos : Position) : (list Move) :=
+  (append_forall (moves_to_square_on_rfd_list pos l)
+    (squares_on_same_diagonal l)) ++
+  (append_forall (moves_to_square_on_rfd_list pos l)
+    (squares_on_same_antidiagonal l)).
+

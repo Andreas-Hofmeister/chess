@@ -989,7 +989,7 @@ Qed.
 Lemma rook_move_to_square_on_same_rank_or_file_sound : forall pos fromL toL m,
   location_valid fromL -> location_valid toL ->
   SquaresOnSameFile fromL toL \/ SquaresOnSameRank fromL toL ->
-  rook_move_to_square_on_same_rank_or_file pos fromL toL = Some m ->
+  move_to_square_on_rfd pos fromL toL = Some m ->
   RookCanMakeMove pos fromL m.
 Proof.
   intros pos fromL toL m Hfromv Htov Hsamerf Hrmts.
@@ -1031,7 +1031,7 @@ Lemma rook_move_to_square_on_same_rank_or_file_complete :
   forall pos fromL toL m,
   RookCanMakeMove pos fromL m ->
   (m = (FromTo fromL toL) \/ m = (Capture fromL toL)) ->
-  rook_move_to_square_on_same_rank_or_file pos fromL toL = Some m.
+  move_to_square_on_rfd pos fromL toL = Some m.
 Proof.
   intros pos fromL toL m Hcan Hmove.
   inversion Hcan; subst.
@@ -1055,11 +1055,11 @@ Lemma rook_moves_to_square_on_same_rank_or_file_list_complete :
   forall pos fromL toL m,
   RookCanMakeMove pos fromL m ->
   (m = (FromTo fromL toL) \/ m = (Capture fromL toL)) ->
-  In m (rook_moves_to_square_on_same_rank_or_file_list pos fromL toL).
+  In m (moves_to_square_on_rfd_list pos fromL toL).
 Proof.
   intros pos fromL toL m Hcan Hmovetype.
-  unfold rook_moves_to_square_on_same_rank_or_file_list.
-  destruct (rook_move_to_square_on_same_rank_or_file pos fromL toL) eqn:Erm.
+  unfold moves_to_square_on_rfd_list.
+  destruct (move_to_square_on_rfd pos fromL toL) eqn:Erm.
   - constructor. 
     apply rook_move_to_square_on_same_rank_or_file_complete with (toL:=toL) 
       in Hcan; auto.
@@ -1072,12 +1072,12 @@ Lemma rook_moves_to_square_on_same_rank_or_file_list_sound :
   forall pos fromL toL m,
   location_valid fromL -> location_valid toL ->
   SquaresOnSameFile fromL toL \/ SquaresOnSameRank fromL toL -> 
-  In m (rook_moves_to_square_on_same_rank_or_file_list pos fromL toL) ->
+  In m (moves_to_square_on_rfd_list pos fromL toL) ->
   RookCanMakeMove pos fromL m.
 Proof.
-  intros. unfold rook_moves_to_square_on_same_rank_or_file_list in *.
-  destruct (rook_move_to_square_on_same_rank_or_file pos fromL toL) eqn:Hrm;
-  inversion H2; try inversion H3. subst. 
+  intros. unfold moves_to_square_on_rfd_list in *.
+  destruct (move_to_square_on_rfd pos fromL toL) eqn:Hrm; inversion H2; 
+  try inversion H3. subst. 
   eapply rook_move_to_square_on_same_rank_or_file_sound; eauto.
 Qed.
 
@@ -1273,6 +1273,91 @@ Inductive BishopCanMakeMove (pos : Position)
     SquaresBetweenEmpty pp from to ->
     is_square_occupied_by_enemy_piece to pp c = true ->
     BishopCanMakeMove pos from (Capture from to).
+
+Lemma bishop_move_to_square_on_same_diagonal_sound : forall pos fromL toL m,
+  location_valid fromL -> location_valid toL ->
+  are_squares_on_same_diagonal fromL toL = true \/   
+  are_squares_on_same_antidiagonal fromL toL = true ->
+  move_to_square_on_rfd pos fromL toL = Some m ->
+  BishopCanMakeMove pos fromL m.
+Proof.
+  intros pos fromL toL m Hfromv Htov Hsamed Hmts.
+  destruct pos eqn:Epos. destruct fromL eqn:Efrom. destruct toL eqn:Eto.
+  subst. simpl in Hmts.
+  destruct ((rank =? rank0) && (file =? file0))%bool eqn:EfromNotTo;
+  simpl in Hmts; try discriminate.
+  destruct (are_squares_between_empty pp (Loc rank file) (Loc rank0 file0))
+    eqn:Eempty; simpl in Hmts; try discriminate.
+  destruct (is_square_empty_rank_file rank0 file0 pp) eqn:Htoempty.
+  - inversion Hmts. subst. apply (BishopCanMove _ pp toMove pawnDoubleStep _ _); 
+    auto. intros C. inversion C; subst. Hb2p.
+    repeat rewrite PeanoNat.Nat.eqb_refl in EfromNotTo.
+    destruct EfromNotTo as [C1 | C1]; discriminate.
+    apply are_squares_between_empty_correct. auto.
+  - destruct (occupied_by_enemy_piece rank0 file0 pp toMove) eqn:Eoccupied;
+    simpl in Hmts; try discriminate.
+    inversion Hmts. subst. 
+    apply (BishopCanCapture _ pp toMove pawnDoubleStep _ _); auto. intros C. 
+    inversion C; subst. Hb2p. 
+    repeat rewrite PeanoNat.Nat.eqb_refl in EfromNotTo.
+    destruct EfromNotTo as [C1 | C1]; discriminate.
+    apply are_squares_between_empty_correct. auto.
+Qed.
+
+Lemma bishop_move_to_square_on_same_diagonal_complete : 
+  forall pos fromL toL m,
+  BishopCanMakeMove pos fromL m ->
+  (m = (FromTo fromL toL) \/ m = (Capture fromL toL)) ->
+  move_to_square_on_rfd pos fromL toL = Some m.
+Proof.
+  intros pos fromL toL m Hcan Hmove.
+  inversion Hcan; subst.
+  - assert (Hto: to = toL). 
+    { destruct Hmove as [Hmove | Hmove]; inversion Hmove; subst; auto. }
+    subst.
+    simpl. destruct (eqSL fromL toL) eqn:Enotsame.
+    + rewrite eqSL_iff in Enotsame. exfalso. apply H2. auto.
+    + simpl. rewrite are_squares_between_empty_correct in H4. rewrite H4.
+      rewrite H5. auto.
+  - assert (Hto: to = toL). 
+    { destruct Hmove as [Hmove | Hmove]; inversion Hmove; subst; auto. }
+    subst.
+    simpl. destruct (eqSL fromL toL) eqn:Enotsame.
+    + rewrite eqSL_iff in Enotsame. exfalso. apply H2. auto.
+    + simpl. rewrite are_squares_between_empty_correct in H4. rewrite H4.
+      rewrite H5. auto. rewrite (occupied_not_empty toL pp c H5). auto.
+Qed.
+
+Lemma bishop_moves_to_square_on_same_diagonal_complete : 
+  forall pos fromL toL m,
+  BishopCanMakeMove pos fromL m ->
+  (m = (FromTo fromL toL) \/ m = (Capture fromL toL)) ->
+  In m (moves_to_square_on_rfd_list pos fromL toL).
+Proof.
+  intros pos fromL toL m Hcan Hmovetype.
+  unfold moves_to_square_on_rfd_list.
+  destruct (move_to_square_on_rfd pos fromL toL) eqn:Erm.
+  - constructor. 
+    apply bishop_move_to_square_on_same_diagonal_complete with (toL:=toL) 
+      in Hcan; auto.
+    rewrite Hcan in Erm. inversion Erm. auto.
+  - apply bishop_move_to_square_on_same_diagonal_complete with (toL:=toL) 
+      in Hcan; auto. rewrite Hcan in Erm. inversion Erm.
+Qed.
+
+Lemma bishop_moves_to_square_on_same_diagonal_list_sound : 
+  forall pos fromL toL m,
+  location_valid fromL -> location_valid toL ->
+  are_squares_on_same_diagonal fromL toL = true \/   
+  are_squares_on_same_antidiagonal fromL toL = true ->
+  In m (moves_to_square_on_rfd_list pos fromL toL) ->
+  BishopCanMakeMove pos fromL m.
+Proof.
+  intros. unfold moves_to_square_on_rfd_list in *.
+  destruct (move_to_square_on_rfd pos fromL toL) eqn:Hrm; inversion H2; 
+  try inversion H3. subst. 
+  eapply bishop_move_to_square_on_same_diagonal_sound; eauto.
+Qed.
 
 Lemma n_leb_n_plus_1: forall n, n <=? n + 1 = true.
 Proof.
@@ -1575,3 +1660,105 @@ Proof.
   - left. eapply squares_along_direction_aux_completeRD; eauto; try lia.
   - right. eapply squares_along_direction_aux_completeLU; eauto; try lia.
 Qed.
+
+Lemma squares_along_direction_aux_validRU : forall s rank file rank0 file0,
+  In (Loc rank0 file0) (squares_along_direction_aux (Loc rank file) Right Up s)
+  -> rank0 <= rank + s /\ file0 <= file + s.
+Proof.
+  induction s; intros rank file rank0 file0 Hin.
+  - simpl in Hin. contradiction.
+  - simpl in Hin; destruct Hin as [Hin | Hin]; try inversion Hin; subst; 
+    try lia; specialize (IHs _ _ _ _ Hin) as Hin2; lia.
+Qed.
+
+Lemma squares_along_direction_aux_validRD : forall s rank file rank0 file0,
+  In (Loc rank0 file0) (squares_along_direction_aux (Loc rank file) Right Down s)
+  -> rank0 <= rank /\ file0 <= file + s.
+Proof.
+  induction s; intros rank file rank0 file0 Hin.
+  - simpl in Hin. contradiction.
+  - simpl in Hin; destruct Hin as [Hin | Hin]; try inversion Hin; subst; 
+    try lia; specialize (IHs _ _ _ _ Hin) as Hin2; lia.
+Qed.
+
+Lemma squares_along_direction_aux_validLU : forall s rank file rank0 file0,
+  In (Loc rank0 file0) (squares_along_direction_aux (Loc rank file) Left Up s)
+  -> rank0 <= rank + s /\ file0 <= file.
+Proof.
+  induction s; intros rank file rank0 file0 Hin.
+  - simpl in Hin. contradiction.
+  - simpl in Hin; destruct Hin as [Hin | Hin]; try inversion Hin; subst; 
+    try lia; specialize (IHs _ _ _ _ Hin) as Hin2; lia.
+Qed.
+
+Lemma squares_along_direction_aux_validLD : forall s rank file rank0 file0,
+  In (Loc rank0 file0) (squares_along_direction_aux (Loc rank file) Left Down s)
+  -> rank0 <= rank /\ file0 <= file.
+Proof.
+  induction s; intros rank file rank0 file0 Hin.
+  - simpl in Hin. contradiction.
+  - simpl in Hin; destruct Hin as [Hin | Hin]; try inversion Hin; subst; 
+    try lia; specialize (IHs _ _ _ _ Hin) as Hin2; lia.
+Qed.
+
+Lemma min_or: forall x y, (min x y = x \/ min x y = y).
+Proof.
+  intros. induction x.
+  - simpl. auto.
+  - simpl. destruct y; auto. destruct IHx as [IHx | IHx]; lia.
+Qed.
+
+Lemma squares_along_direction_valid : forall l1 l2 hd vd,
+  location_valid l1 -> In l2 (squares_along_direction l1 hd vd) ->
+  location_valid l2.
+Proof.
+  intros l1 l2 hd vd Hv Hin.
+  unfold squares_along_direction in *.
+  unfold location_valid in Hv.
+  destruct l1 eqn:El1. destruct l2 eqn:El2. subst. simpl.
+  destruct hd eqn:Ehd; destruct vd eqn:Evd; subst.
+  - specialize (squares_along_direction_aux_validLU _ _ _ _ _ Hin) as Hin2.
+    lia.
+  - specialize (squares_along_direction_aux_validLD _ _ _ _ _ Hin) as Hin2.
+    lia.
+  - specialize (squares_along_direction_aux_validRU _ _ _ _ _ Hin) as Hin2.
+    lia.
+  - specialize (squares_along_direction_aux_validRD _ _ _ _ _ Hin) as Hin2.
+    lia.
+Qed.
+
+Lemma squares_on_same_diagonal_valid : forall l1 l2,
+  location_valid l1 -> In l2 (squares_on_same_diagonal l1) -> 
+  location_valid l2.
+Proof.
+  intros l1 l2 Hvalid Hin.
+  destruct l1 eqn:El1. destruct l2 eqn:El2. subst.
+  unfold squares_on_same_diagonal in Hin. in_app_to_or.
+  destruct Hin as [Hin | Hin]; eapply squares_along_direction_valid; eauto.
+Qed.
+
+Lemma squares_on_same_antidiagonal_valid : forall l1 l2,
+  location_valid l1 -> In l2 (squares_on_same_antidiagonal l1) -> 
+  location_valid l2.
+Proof.
+  intros l1 l2 Hvalid Hin.
+  destruct l1 eqn:El1. destruct l2 eqn:El2. subst.
+  unfold squares_on_same_antidiagonal in Hin. in_app_to_or.
+  destruct Hin as [Hin | Hin]; eapply squares_along_direction_valid; eauto.
+Qed.
+
+
+Lemma bishop_moves_sound : forall move fromL pos,
+  location_valid fromL ->
+  In move (bishop_moves fromL pos) -> BishopCanMakeMove pos fromL move.
+Proof.
+  intros move fromL pos Hvalid Hin.
+  unfold bishop_moves in Hin. in_app_to_or. destruct Hin as [Hin | Hin];
+  apply in_append_forall_suf in Hin as [a [Hd Hm]];
+  apply bishop_moves_to_square_on_same_diagonal_list_sound in Hm; auto.
+  - eapply squares_on_same_diagonal_valid; eauto.
+  - left. apply squares_on_same_diagonal_sound. auto.
+  - eapply squares_on_same_antidiagonal_valid; eauto. 
+  - right. apply squares_on_same_antidiagonal_sound. auto.
+Qed.
+
