@@ -1761,3 +1761,23 @@ Proof.
   - right. apply squares_on_same_antidiagonal_sound. auto.
 Qed.
 
+Lemma bishop_moves_complete : forall pos fromL move,
+  BishopCanMakeMove pos fromL move -> In move (bishop_moves fromL pos).
+Proof.
+  intros pos fromL move Hcan.
+  inversion Hcan; subst.
+  - unfold bishop_moves. in_app_to_or. destruct H3 as [Hd | Had].
+    + left. apply in_append_forall_nec with (a:=to).
+      * apply squares_on_same_diagonal_complete; auto.
+      * apply bishop_moves_to_square_on_same_diagonal_complete; auto.
+    + right. apply in_append_forall_nec with (a:=to).
+      * apply squares_on_same_antidiagonal_complete; auto.
+      * apply bishop_moves_to_square_on_same_diagonal_complete; auto.
+  - unfold bishop_moves. in_app_to_or. destruct H3 as [Hd | Had].
+    + left. apply in_append_forall_nec with (a:=to).
+      * apply squares_on_same_diagonal_complete; auto.
+      * apply bishop_moves_to_square_on_same_diagonal_complete; auto.
+    + right. apply in_append_forall_nec with (a:=to).
+      * apply squares_on_same_antidiagonal_complete; auto.
+      * apply bishop_moves_to_square_on_same_diagonal_complete; auto.
+Qed.
