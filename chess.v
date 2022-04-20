@@ -700,3 +700,5 @@ Function bishop_moves (l : SquareLocation) (pos : Position) : (list Move) :=
   (append_forall (moves_to_square_on_rfd_list pos l)
     (squares_on_same_antidiagonal l)).
 
+Function queen_moves (l : SquareLocation) (pos : Position) : (list Move) :=
+  (rook_moves l pos) ++ (bishop_moves l pos).

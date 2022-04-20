@@ -1781,3 +1781,30 @@ Proof.
       * apply squares_on_same_antidiagonal_complete; auto.
       * apply bishop_moves_to_square_on_same_diagonal_complete; auto.
 Qed.
+
+Inductive QueenCanMakeMove (pos : Position)
+: SquareLocation -> Move -> Prop :=
+  | QueenCanMoveLikeRook : forall from move,
+    RookCanMakeMove pos from move -> QueenCanMakeMove pos from move
+  | QueenCanMoveLikeBishop : forall from move,
+    BishopCanMakeMove pos from move -> QueenCanMakeMove pos from move.
+
+Lemma queen_moves_sound : forall move fromL pos,
+  location_valid fromL ->
+  In move (queen_moves fromL pos) -> QueenCanMakeMove pos fromL move.
+Proof.
+  intros move fromL pos Hv Hin.
+  unfold queen_moves in *. in_app_to_or. destruct Hin as [Hin | Hin].
+  - apply QueenCanMoveLikeRook. apply rook_moves_sound; auto.
+  - apply QueenCanMoveLikeBishop. apply bishop_moves_sound; auto.
+Qed.
+
+Lemma queen_moves_complete : forall pos fromL move,
+  QueenCanMakeMove pos fromL move -> In move (queen_moves fromL pos).
+Proof.
+  intros pos fromL move Hcan.
+  unfold queen_moves. in_app_to_or. inversion Hcan; subst.
+  - left. apply rook_moves_complete. auto.
+  - right. apply bishop_moves_complete. auto.
+Qed.
+
