@@ -1808,3 +1808,28 @@ Proof.
   - right. apply bishop_moves_complete. auto.
 Qed.
 
+Definition is_knight_jump (from to : SquareLocation) :=
+  match (vector_from_a_to_b from to) with
+  | VectorHV (HStep _ 1) (VStep _ 2) => true
+  | VectorHV (HStep _ 2) (VStep _ 1) => true
+  | _ => false
+  end.
+
+Inductive KnightCanMakeMove (pos : Position)
+  : SquareLocation -> Move -> Prop :=
+  | KnightCanMove : forall pp c dstep from to, 
+    location_valid from -> location_valid to ->
+    pos = Posn pp c dstep ->
+    from <> to ->
+    is_knight_jump from to = true ->
+    is_square_empty to pp = true ->
+    KnightCanMakeMove pos from (FromTo from to)
+  | KnightCanCapture : forall pp c dstep from to, 
+    location_valid from -> location_valid to ->
+    pos = Posn pp c dstep ->
+    from <> to ->
+    is_knight_jump from to = true ->
+    is_square_occupied_by_enemy_piece to pp c = true ->
+    KnightCanMakeMove pos from (Capture from to).
+
+
