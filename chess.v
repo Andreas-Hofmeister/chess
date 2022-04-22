@@ -694,11 +694,65 @@ Definition squares_on_same_antidiagonal (l : SquareLocation)
   (squares_along_direction l Right Down) ++ 
   (squares_along_direction l Left Up).
 
-Function bishop_moves (l : SquareLocation) (pos : Position) : (list Move) :=
+Definition bishop_moves (l : SquareLocation) (pos : Position) : (list Move) :=
   (append_forall (moves_to_square_on_rfd_list pos l)
     (squares_on_same_diagonal l)) ++
   (append_forall (moves_to_square_on_rfd_list pos l)
     (squares_on_same_antidiagonal l)).
 
-Function queen_moves (l : SquareLocation) (pos : Position) : (list Move) :=
+Definition queen_moves (l : SquareLocation) (pos : Position) : (list Move) :=
   (rook_moves l pos) ++ (bishop_moves l pos).
+
+Definition does_vector_stay_within_boundaries (v : Vector) (l : SquareLocation) 
+  : bool :=
+  match l with
+  | Loc x y =>
+    match v with
+    | VectorHV (HStep Left n) (VStep Down m) => ((n <=? y) && (m <=? x))%bool
+    | VectorHV (HStep Left n) (VStep Up _) => (n <=? y)
+    | VectorHV (HStep Right _) (VStep Down m) => (m <=? x)
+    | _ => true
+    end
+  end.
+
+Fixpoint target_squares (from : SquareLocation) (vs : list Vector) :=
+  match vs with
+  | [] => []
+  | v :: rvs => if (does_vector_stay_within_boundaries v from) then
+    (apply_vector v from) :: (target_squares from rvs) else
+    (target_squares from rvs)
+  end.
+
+Definition knight_move_to_square (pos : Position) 
+  (fromL : SquareLocation) (toL : SquareLocation) : option Move :=
+  match pos with
+  | Posn pp c _ =>
+    if is_square_empty toL pp then Some (FromTo fromL toL)
+    else if is_square_occupied_by_enemy_piece toL pp c 
+      then Some (Capture fromL toL)
+      else None
+  end.
+
+Fixpoint knight_moves_to_squares (pos : Position) (from : SquareLocation)
+  (tos : list SquareLocation) :=
+  match tos with
+  | [] => []
+  | to :: rtos => 
+    match knight_move_to_square pos from to with
+    | Some move => move :: (knight_moves_to_squares pos from rtos)
+    | _ => (knight_moves_to_squares pos from rtos)
+    end
+  end.
+
+Definition knight_moves (l : SquareLocation) (pos : Position) : (list Move) :=
+  let llu := (VectorHV (HStep Left 2) (VStep Up 1)) in
+  let lld := (VectorHV (HStep Left 2) (VStep Down 1)) in
+  let rru := (VectorHV (HStep Right 2) (VStep Up 1)) in
+  let rrd := (VectorHV (HStep Right 2) (VStep Down 1)) in
+  let uul := (VectorHV (HStep Left 1) (VStep Up 2)) in
+  let uur := (VectorHV (HStep Right 1) (VStep Up 2)) in
+  let ddl := (VectorHV (HStep Left 1) (VStep Down 2)) in
+  let ddr := (VectorHV (HStep Right 1) (VStep Down 2)) in
+  knight_moves_to_squares pos l 
+    (target_squares l [llu;lld;rru;rrd;uul;uur;ddl;ddr]).
+
