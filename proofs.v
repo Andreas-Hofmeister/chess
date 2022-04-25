@@ -1832,4 +1832,68 @@ Inductive KnightCanMakeMove (pos : Position)
     is_square_occupied_by_enemy_piece to pp c = true ->
     KnightCanMakeMove pos from (Capture from to).
 
+Ltac HdestructIf := match goal with
+  | H : context[if ?x then _ else _] |- _ => destruct x eqn:?E
+  end.
+
+Lemma valid_squares : forall loc,
+  location_valid loc ->
+  In loc 
+  [Loc 0 0; Loc 0 1; Loc 0 2; Loc 0 3; Loc 0 4; Loc 0 5; Loc 0 6; Loc 0 7;
+   Loc 1 0; Loc 1 1; Loc 1 2; Loc 1 3; Loc 1 4; Loc 1 5; Loc 1 6; Loc 1 7;
+   Loc 2 0; Loc 2 1; Loc 2 2; Loc 2 3; Loc 2 4; Loc 2 5; Loc 2 6; Loc 2 7;
+   Loc 3 0; Loc 3 1; Loc 3 2; Loc 3 3; Loc 3 4; Loc 3 5; Loc 3 6; Loc 3 7;
+   Loc 4 0; Loc 4 1; Loc 4 2; Loc 4 3; Loc 4 4; Loc 4 5; Loc 4 6; Loc 4 7;
+   Loc 5 0; Loc 5 1; Loc 5 2; Loc 5 3; Loc 5 4; Loc 5 5; Loc 5 6; Loc 5 7;
+   Loc 6 0; Loc 6 1; Loc 6 2; Loc 6 3; Loc 6 4; Loc 6 5; Loc 6 6; Loc 6 7;
+   Loc 7 0; Loc 7 1; Loc 7 2; Loc 7 3; Loc 7 4; Loc 7 5; Loc 7 6; Loc 7 7].
+Proof.
+  intros loc Hv. unfold location_valid in *.
+  destruct loc eqn:Eloc.
+  destruct Hv as [Hvr Hvf].
+  Ltac fIn := repeat (apply in_eq || apply in_cons). 
+  destruct rank eqn:?E; destruct file eqn:?E.
+  repeat (apply in_eq || apply in_cons).
+  destruct n. fIn. destruct n. fIn. destruct n. fIn. destruct n. fIn.
+  destruct n. fIn. destruct n. fIn. destruct n. fIn. lia.
+  destruct n. fIn. destruct n. fIn. destruct n. fIn. destruct n. fIn.
+  destruct n. fIn. destruct n. fIn. destruct n. fIn. lia.
+  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  lia. 
+  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  lia. 
+  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  lia. 
+  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  lia. 
+  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  lia. 
+  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  lia. 
+  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  lia. 
+  lia.
+Qed.
+
+Lemma knight_moves_sound : forall pos from move,
+  location_valid from -> 
+  In move (knight_moves from pos) -> KnightCanMakeMove pos from move.
+Proof.
+  intros pos from move Hv Hin.
+  Ltac destruct_knight_move := match goal with
+    | H : context[match knight_move_to_square ?a ?b ?c with _ => _ end] |- _ 
+      => destruct (knight_move_to_square a b c) eqn:?E
+    end.
+  specialize (valid_squares from Hv) as Hvsq.
+  unfold knight_moves in *.
+  inversion Hvsq.
+  subst. simpl in Hin. destruct_knight_move. destruct_knight_move. 
+  
 
