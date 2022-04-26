@@ -41,6 +41,19 @@ repeat match goal with
   | H: match ?x with _ => _ end = _ |- _ => destruct x eqn:?H 
 end.
 
+Ltac DHif := match goal with
+  | H : context[if ?c then _ else _] |- _ => destruct c eqn:?E
+  end.
+
+Ltac HinNil := match goal with
+  | H : In _ nil |- _ => inversion H
+  end.
+
+Ltac HinCases := match goal with
+  | H : In _ (?x :: ?xs) |- _ => apply in_inv in H; destruct H
+  | H : In _ nil |- _ => inversion H
+  end.
+
 Ltac HreplaceInIf := match goal with
   | H : (if (?x <? ?y - ?z) then _ else _) <= _ |- _ =>
     replace (x <? y - z) with false in H; try Gb2p; try lia
@@ -67,4 +80,23 @@ Ltac diagonal_destruct := match goal with
     => destruct (x =? y) eqn:?E; repeat Hb2p; try lia
   | |- (if ?x =? ?y then _ else _) = _
     => destruct (x =? y) eqn:?E; repeat Hb2p; try lia
+  end.
+
+Ltac destruct_eq_leq_etc := match goal with
+  | H: context[if ?x <=? ?y then _ else _] |- _ 
+    => destruct (x <=? y) eqn:?E; repeat Hb2p; try lia
+  | H: context[match ?x - ?y with _ => _ end] |- _ 
+    => destruct (x - y) eqn:?E; repeat Hb2p; try lia
+  | |- context[if ?x <=? ?y then _ else _] 
+    => destruct (x <=? y) eqn:?E; repeat Hb2p; try lia
+  | |- context[match ?x - ?y with _ => _ end]
+    => destruct (x - y) eqn:?E; repeat Hb2p; try lia
+  | H: context[if (?x =? ?y) then _ else _] |- _
+    => destruct (x =? y) eqn:?E; repeat Hb2p; try lia
+  | |- context[if ?x =? ?y then _ else _]
+    => destruct (x =? y) eqn:?E; repeat Hb2p; try lia
+  end.
+
+Ltac HdAnd := match goal with
+  | H : _ /\ _ |- _ => destruct H as [?H ?H]
   end.

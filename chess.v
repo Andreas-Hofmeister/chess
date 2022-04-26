@@ -709,9 +709,9 @@ Definition does_vector_stay_within_boundaries (v : Vector) (l : SquareLocation)
   | Loc x y =>
     match v with
     | VectorHV (HStep Left n) (VStep Down m) => ((n <=? y) && (m <=? x))%bool
-    | VectorHV (HStep Left n) (VStep Up _) => (n <=? y)
-    | VectorHV (HStep Right _) (VStep Down m) => (m <=? x)
-    | _ => true
+    | VectorHV (HStep Left n) (VStep Up m) => ((n <=? y) && (x + m <=? 7))%bool
+    | VectorHV (HStep Right n) (VStep Down m) => ((m <=? x) && (y + n <=? 7))%bool
+    | VectorHV (HStep Right n) (VStep Up m) => ((x + m <=? 7) && (y + n <=? 7))%bool
     end
   end.
 
