@@ -509,7 +509,7 @@ Proof.
 Qed.
 
 Lemma  make_vector_stay_in_bounds_eq : forall v l,
-  location_valid l ->
+  location_valid l -> location_valid (apply_vector v l) ->
   apply_vector v l = apply_vector (make_vector_stay_in_bounds v l) l.
 Proof.
   intros.
@@ -518,10 +518,12 @@ Proof.
   destruct v eqn:Ev.
   destruct hstep eqn:Ehstep.
   destruct vstep eqn:Evstep.
-  destruct d eqn:Ed; destruct d0 eqn:Ed0; simpl; auto.
-  - subst. apply eq_Loc; auto. lia.
+  destruct d eqn:Ed; destruct d0 eqn:Ed0; simpl; simpl in H0; auto.
+  - subst. apply eq_Loc; auto. repeat (destruct rank; try lia). lia.
   - subst. apply eq_Loc; auto; lia.
-  - subst. apply eq_Loc; auto; lia.
+  - subst. apply eq_Loc; auto. repeat (destruct rank; try lia).
+    repeat (destruct file; try lia).
+  - subst. apply eq_Loc; auto. lia. repeat (destruct file; try lia).
 Qed.
 
 Lemma one_step_same : forall start v s v0,
@@ -758,9 +760,11 @@ Proof.
 Qed.
 
 Lemma vector_from_a_to_b_in_bounds : forall l1 l2,
+  location_valid l1 -> location_valid l2 ->
   vector_stays_within_boundaries (vector_from_a_to_b l1 l2) l1.
 Proof.
   intros l1 l2.
+  unfold location_valid in *.
   destruct l1 eqn:El1.
   destruct l2 eqn:El2.
   simpl. destruct (rank <=? rank0) eqn:Ernk.
@@ -832,15 +836,16 @@ Proof.
 Qed.
 
 Lemma are_squares_between_empty_complete : forall pp l1 l2,
+  location_valid l1 -> location_valid l2 ->
   SquaresBetweenEmpty pp l1 l2 -> are_squares_between_empty pp l1 l2 = true.
 Proof.
-  intros pp l1 l2 Hempty. unfold are_squares_between_empty.
+  intros pp l1 l2 Hv1 Hv2 Hempty. unfold are_squares_between_empty.
   destruct (one_step_along_vector_and_location l1 (vector_from_a_to_b l1 l2))
     eqn:Eos.
   inversion Hempty.
   - subst. assert (Hv0: vector_length v = 0). { 
       apply (one_step_along_short_vector (vector_from_a_to_b l1 l2) l1 v s);
-      auto. apply vector_from_a_to_b_in_bounds.
+      auto. apply vector_from_a_to_b_in_bounds; auto.
       rewrite (vector_from_a_to_b_correct l1 l2). auto.
     }
     rewrite are_squares_along_vector_empty_equation. Hp2b. rewrite Hv0. auto.
@@ -852,8 +857,8 @@ Proof.
     rewrite are_squares_along_vector_empty_equation. Hp2b. rewrite Hl1l2zero.
     auto.
   - subst. apply are_squares_along_vector_empty_complete.
-    + eapply one_step_stays_in_bounds. apply vector_from_a_to_b_in_bounds.
-      apply Eos.
+    + eapply one_step_stays_in_bounds. apply vector_from_a_to_b_in_bounds. apply Hv1.
+      apply Hv2. apply Eos.
     + right. split. rewrite (one_step_same _ _ _ _ Eos) in H1. auto.
       rewrite (one_step_same _ _ _ _ Eos) in H2. 
       rewrite <- (one_step_along_vector_and_location_correct _ _ _ _ Eos).
@@ -861,11 +866,12 @@ Proof.
 Qed.
 
 Lemma are_squares_between_empty_correct : forall pp l1 l2,
+  location_valid l1 -> location_valid l2 ->
   SquaresBetweenEmpty pp l1 l2 <-> are_squares_between_empty pp l1 l2 = true.
 Proof.
   intros. split.
-  - intros. apply are_squares_between_empty_complete. auto.
-  - intros. apply are_squares_between_empty_sound. auto.
+  - intros. apply are_squares_between_empty_complete; auto.
+  - intros. apply are_squares_between_empty_sound; auto.
 Qed.
 
 Lemma are_squares_on_same_diagonal_trans : forall l1 l2 l3,

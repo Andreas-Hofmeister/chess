@@ -1,3 +1,5 @@
+Require Import List.
+Require Import Nat.
 From CHESS Require Export proof_tactics.
 From CHESS Require Export basics.
 From CHESS Require Export movement_basics.

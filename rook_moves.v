@@ -1,3 +1,5 @@
+Require Import List.
+Require Import Nat.
 From CHESS Require Export proof_tactics.
 From CHESS Require Export basics.
 From CHESS Require Export movement_basics.
@@ -45,7 +47,7 @@ Proof.
     auto. intros C. inversion C; subst. Hb2p.
     repeat rewrite PeanoNat.Nat.eqb_refl in EfromNotTo.
     destruct EfromNotTo as [C1 | C1]; discriminate.
-    apply are_squares_between_empty_correct. auto.
+    apply are_squares_between_empty_correct. auto. auto. auto.
   - destruct (occupied_by_enemy_piece rank0 file0 pp toMove) eqn:Eoccupied;
     simpl in Hrmts; try discriminate.
     inversion Hrmts. subst. 
@@ -53,7 +55,7 @@ Proof.
     inversion C; subst. Hb2p. 
     repeat rewrite PeanoNat.Nat.eqb_refl in EfromNotTo.
     destruct EfromNotTo as [C1 | C1]; discriminate.
-    apply are_squares_between_empty_correct. auto.
+    apply are_squares_between_empty_correct. auto. auto. auto.
 Qed.
 
 Lemma rook_move_to_square_on_same_rank_or_file_complete : 
@@ -70,14 +72,15 @@ Proof.
     simpl. destruct (eqSL fromL toL) eqn:Enotsame.
     + rewrite eqSL_iff in Enotsame. exfalso. apply H2. auto.
     + simpl. rewrite are_squares_between_empty_correct in H4. rewrite H4.
-      rewrite H5. auto.
+      rewrite H5. auto. auto. auto.
   - assert (Hto: to = toL). 
     { destruct Hmove as [Hmove | Hmove]; inversion Hmove; subst; auto. }
     subst.
     simpl. destruct (eqSL fromL toL) eqn:Enotsame.
     + rewrite eqSL_iff in Enotsame. exfalso. apply H2. auto.
     + simpl. rewrite are_squares_between_empty_correct in H4. rewrite H4.
-      rewrite H5. auto. rewrite (occupied_not_empty toL pp c H5). auto.
+      rewrite H5. auto. rewrite (occupied_not_empty toL pp c H5). auto. auto.
+      auto.
 Qed.
 
 Lemma rook_moves_to_square_on_same_rank_or_file_list_complete : 

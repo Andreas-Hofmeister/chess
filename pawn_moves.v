@@ -1,6 +1,20 @@
+Require Import List.
+Require Import Nat.
 From CHESS Require Export proof_tactics.
 From CHESS Require Export basics.
 From CHESS Require Export movement_basics.
+
+Definition advance_pawn (c : Color) (rank_index : nat) :=
+  match c with
+  | White => (rank_index + 1)
+  | Black => (rank_index - 1)
+  end.
+
+Definition starting_rank_of_pawn (c : Color) : nat :=
+  match c with
+  | White => 1
+  | Black => 6
+  end.
 
 Inductive PawnCanMakeMove (pos : Position)
 : SquareLocation -> Move -> Prop :=
@@ -33,18 +47,6 @@ Inductive PawnCanMakeMove (pos : Position)
     (sf = dstf + 1 \/ sf = dstf - 1) ->
     tr = advance_pawn c sr ->
     PawnCanMakeMove pos loc (EnPassant loc (Loc tr dstf)).
-
-Definition advance_pawn (c : Color) (rank_index : nat) :=
-  match c with
-  | White => (rank_index + 1)
-  | Black => (rank_index - 1)
-  end.
-
-Definition starting_rank_of_pawn (c : Color) : nat :=
-  match c with
-  | White => 1
-  | Black => 6
-  end.
 
 Definition pawn_forward_moves (pawn_loc : SquareLocation)
   (pos : Position) : (list Move) :=
