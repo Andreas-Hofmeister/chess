@@ -288,24 +288,6 @@ Fixpoint target_squares (from : SquareLocation) (vs : list Vector) :=
     (target_squares from rvs)
   end.
 
-Lemma one_step_along_vector_adjacent : forall l l2 v,
-  l2 = (one_step_along_vector l v) -> l = l2 \/ SquaresAdjacent l l2.
-Proof.
-  Ltac split_and_differences := match goal with
-  | |- difference _ _ <= 1 /\ difference _ _ <= 1 => split
-  | |- difference ?x ?x <= 1 => rewrite difference_n_n; lia
-  | |- difference ?x (?x - 1) <= 1 => apply difference_n_nm1
-  | |- difference ?x (?x + 1) <= 1 => apply difference_n_np1
-  end.
-  intros. unfold one_step_along_vector in *.
-  destruct l eqn:El.
-  destruct v eqn:Ev.
-  destruct hstep eqn:Ehs.
-  destruct d eqn:Ed; destruct n eqn:En; destruct vstep eqn:Evs;
-  destruct d0 eqn:Ed0; destruct n0 eqn:En0; auto; right; simpl; rewrite H;
-  repeat split_and_differences; destruct n1 eqn:En1; repeat split_and_differences.
-Qed.
-
 Inductive SquaresBetweenEmpty (pp : PiecePlacements)
   : SquareLocation -> SquareLocation -> Prop :=
   | NothingOccupiedBetweenAdjacentSquares : forall loc1 loc2, 
@@ -321,15 +303,41 @@ Inductive SquaresBetweenEmpty (pp : PiecePlacements)
 
 (*****Proofs*****)
 
+Lemma one_step_along_vector_adjacent : forall l l2 v,
+  l2 = (one_step_along_vector l v) -> l = l2 \/ SquaresAdjacent l l2.
+Proof.
+  Ltac split_and_differences := match goal with
+  | |- _ /\ _ => repeat split
+  | |- difference _ _ <= 1 /\ difference _ _ <= 1 => split
+  | |- difference ?x ?x <= 1 => rewrite difference_n_n; lia
+  | |- difference ?x (?x - 1) <= 1 => apply difference_n_nm1
+  | |- difference ?x (?x + 1) <= 1 => apply difference_n_np1
+  end.
+  Ltac equality_cases := match goal with
+  | |- (Loc _ _ = Loc _ _) \/ _ => left; apply eq_Loc; lia
+  end.
+  intros. unfold one_step_along_vector in *.
+  destruct l eqn:El.
+  destruct v eqn:Ev.
+  destruct hstep eqn:Ehs.
+  destruct d eqn:Ed; destruct n eqn:En; destruct vstep eqn:Evs;
+  destruct d0 eqn:Ed0; destruct n0 eqn:En0; auto; simpl; rewrite H;
+  repeat split_and_differences; destruct n1 eqn:En1; repeat split_and_differences;
+  destruct rank eqn:?E; destruct file eqn:?E; try equality_cases; right; 
+  repeat split_and_differences; intros C; inversion C; lia.
+Qed.
+
 Lemma one_step_along_vector_and_location_adjacent : forall l v l1 v1,
   one_step_along_vector_and_location l v = (v1, l1) -> 
   l = l1 \/ SquaresAdjacent l l1.
 Proof.
   intros. unfold one_step_along_vector_and_location in H. repeat Hdestruct;
-  subst; inversion H; auto; right; split; unfold difference;
+  subst; inversion H; auto; destruct rank eqn:?E; destruct file eqn:?E;
+  try equality_cases; right; split; unfold difference;
   repeat match goal with
+  | |- _ /\ _ => repeat split
   | |- (if ?x <? ?y then _ else _) <= _ => destruct (x <? y) eqn:?H; lia
-  end.
+  end; intros C; inversion C; lia.
 Qed.
 
 Lemma one_step_along_vector_and_location_shorter : forall l v v1 l1,
@@ -682,25 +690,25 @@ Proof.
   destruct vstep eqn:Evstep.
   destruct d eqn:Ed; destruct d0 eqn:Ed0; simpl; auto.
   - simpl in Hos. simpl in Hadj. Hdestruct; unfold difference in Hadj; 
-    destruct Hadj as [Hadj1 Hadj2].
+    destruct Hadj as [Hadj1 [Hadj2a Hadj2b]].
     + inversion Hos. subst. simpl. auto.
     + repeat HreplaceInIf. inversion Hos. subst. simpl. lia.
     + HreplaceInIf. inversion Hos. simpl. simpl in Hbounds. lia.
     + repeat HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
-  - simpl in Hos. simpl in Hadj. Hdestruct; destruct Hadj as [Hadj1 Hadj2];
-    unfold difference in *.
+  - simpl in Hos. simpl in Hadj. Hdestruct; 
+    destruct Hadj as [Hadj1 [Hadj2a Hadj2b]]; unfold difference in *.
     + inversion Hos. simpl. auto.
     + repeat HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
     + repeat HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
     + repeat HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
-  - simpl in Hos. simpl in Hadj. Hdestruct; destruct Hadj as [Hadj1 Hadj2];
-    unfold difference in *.
+  - simpl in Hos. simpl in Hadj. Hdestruct; 
+    destruct Hadj as [Hadj1 [Hadj2a Hadj2b]]; unfold difference in *.
     + inversion Hos. simpl. auto.
     + HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
     + HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
     + repeat HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
-  - simpl in Hos. simpl in Hadj. Hdestruct; destruct Hadj as [Hadj1 Hadj2];
-    unfold difference in *.
+  - simpl in Hos. simpl in Hadj. Hdestruct; 
+    destruct Hadj as [Hadj1 [Hadj2a Hadj2b]]; unfold difference in *.
     + inversion Hos. simpl. auto.
     + repeat HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.
     + repeat HreplaceInIf. inversion Hos. subst. simpl. simpl in Hbounds. lia.

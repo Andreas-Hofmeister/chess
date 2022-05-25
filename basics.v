@@ -288,16 +288,17 @@ Definition is_square_occupied_by_enemy_piece (l : SquareLocation)
 Definition difference (i : nat) (j : nat) :=
   if (i <? j) then (j - i) else (i - j).
 
+Definition locations_equal (loc1 : SquareLocation) (loc2 : SquareLocation) :=
+  match loc1,loc2 with
+  | Loc x1 y1, Loc x2 y2 => ((x1 =? x2) && (y1 =? y2))%bool
+  end.
+
 Definition are_squares_adjacent (loc1 : SquareLocation) (loc2 : SquareLocation)
   : bool :=
   match loc1, loc2 with
   | Loc rank1 file1, Loc rank2 file2 => 
-    (andb ((difference rank1 rank2) <=? 1) ((difference file1 file2) <=? 1))
-  end.
-
-Definition locations_equal (loc1 : SquareLocation) (loc2 : SquareLocation) :=
-  match loc1,loc2 with
-  | Loc x1 y1, Loc x2 y2 => ((x1 =? x2) && (y1 =? y2))%bool
+    (andb (negb (locations_equal loc1 loc2))
+      (andb ((difference rank1 rank2) <=? 1) ((difference file1 file2) <=? 1)))
   end.
 
 Definition append_forall {A B : Type} (f : A -> list B) (l : list A) :=
@@ -339,7 +340,8 @@ Definition SquaresAdjacent (loc1 : SquareLocation) (loc2 : SquareLocation)
   | Loc rank1 file1 => 
     match loc2 with
     | Loc rank2 file2 => 
-      (difference rank1 rank2) <= 1 /\ (difference file1 file2) <= 1
+      (difference rank1 rank2) <= 1 /\ (difference file1 file2) <= 1 /\
+      loc1 <> loc2
     end
   end.
 
@@ -518,11 +520,21 @@ Lemma are_squares_adjacent_correct : forall loc1 loc2,
 Proof.
   intros. split.
   - intros. unfold are_squares_adjacent in H. destruct loc1 eqn:Eloc1.
-    destruct loc2 eqn:Eloc2. rewrite Bool.andb_true_iff in H.
-    repeat rewrite PeanoNat.Nat.leb_le in H. constructor; lia.
+    destruct loc2 eqn:Eloc2. repeat rewrite Bool.andb_true_iff in H.
+    repeat rewrite PeanoNat.Nat.leb_le in H. simpl in H.
+    rewrite Bool.negb_true_iff in H. destruct H as [H1 [H2 H3]]. Hb2p.
+    constructor; auto. split. auto. intros C. inversion C. subst.
+    repeat rewrite PeanoNat.Nat.eqb_refl in H1. lia.
   - intros. unfold SquaresAdjacent in H. destruct loc1 eqn:Eloc1.
-    destruct loc2 eqn:Eloc2. repeat rewrite <- PeanoNat.Nat.leb_le in H. 
-    rewrite <- Bool.andb_true_iff in H. auto.
+    destruct loc2 eqn:Eloc2. repeat rewrite <- PeanoNat.Nat.leb_le in H.
+    destruct H as [H1 [H2 H3]]. simpl.
+    repeat rewrite Bool.andb_true_iff. repeat split; auto. 
+    rewrite Bool.negb_true_iff. rewrite Bool.andb_false_iff.
+    destruct (rank =? rank0) eqn:?E; destruct (file =? file0) eqn:?E.
+    + repeat Hb2p. subst. contradiction.
+    + right. auto.
+    + left. auto.
+    + left. auto.
 Qed.
 
 Lemma Sn_lt_Snp1 : forall n, S n <? S (n + 1) = true.
