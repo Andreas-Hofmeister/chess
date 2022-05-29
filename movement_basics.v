@@ -7,7 +7,10 @@ Inductive Move : Type :=
   | FromTo (from : SquareLocation) (to : SquareLocation)
   | Capture (from : SquareLocation) (to : SquareLocation)
   | DoubleStep (from : SquareLocation) (to : SquareLocation)
-  | EnPassant (from : SquareLocation) (to : SquareLocation).
+  | EnPassant (from : SquareLocation) (to : SquareLocation)
+  | Promotion (from : SquareLocation) (to : SquareLocation) (piece : Piece)
+  | PromotionWithCapture (from : SquareLocation) (to : SquareLocation) 
+      (piece : Piece).
 
 Definition get_double_step_target_rank (dstep : PawnDoubleStep) :=
   match dstep with
