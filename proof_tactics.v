@@ -46,6 +46,10 @@ Ltac DHif := match goal with
   | H : context[if ?c then _ else _] |- _ => destruct c eqn:?E
   end.
 
+Ltac DHmatch := match goal with
+  | H : context[match ?c with _ => _ end] |- _ => destruct c eqn:?E
+  end.
+
 Ltac HinNil := match goal with
   | H : In _ nil |- _ => inversion H
   end.

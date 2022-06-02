@@ -70,7 +70,7 @@ Inductive PawnCanMakeMove (pos : Position)
     location_valid loc -> location_valid (Loc tr tf) ->
     get_square_by_index pp tr tf = Occupied tc p -> tc <> c -> 
     IsPromotionPiece piece ->
-    PawnCanMakeMove pos loc (Capture loc (Loc tr tf)).
+    PawnCanMakeMove pos loc (PromotionWithCapture loc (Loc tr tf) piece).
 
 Definition pawn_forward_moves (pawn_loc : SquareLocation)
   (pos : Position) : (list Move) :=
@@ -143,11 +143,61 @@ Definition en_passant_moves (pawn_loc : SquareLocation)
     else []
   end.
 
+Definition pawn_forward_promotions (pawn_loc : SquareLocation)
+  (pos : Position) : (list Move) :=
+  match pos with
+  | Posn pp c _ =>
+    match pawn_loc with
+    | Loc r f => 
+      let new_r := advance_pawn c r in
+        if andb (indices_valid r f) (indices_valid new_r f) then
+          if (andb (is_square_empty_rank_file new_r f pp)
+                (new_r =? final_rank_of_pawn c))
+          then [(Promotion pawn_loc (Loc new_r f) Rook);
+                (Promotion pawn_loc (Loc new_r f) Knight);
+                (Promotion pawn_loc (Loc new_r f) Bishop);
+                (Promotion pawn_loc (Loc new_r f) Queen)]
+          else nil
+        else nil
+    end
+  end.
+
+Definition pawn_promotion_captures (pawn_loc : SquareLocation)
+  (pos : Position) : (list Move) :=
+  match pos with
+  | Posn pp c _ =>
+    match pawn_loc with
+    | Loc r f =>
+      if (indices_valid r f) then
+        let new_r := advance_pawn c r in
+        let left_capture := 
+          if (occupied_by_enemy_piece new_r (f - 1) pp c) 
+          then [PromotionWithCapture pawn_loc (Loc new_r (f - 1)) Rook;
+                PromotionWithCapture pawn_loc (Loc new_r (f - 1)) Knight;
+                PromotionWithCapture pawn_loc (Loc new_r (f - 1)) Bishop;
+                PromotionWithCapture pawn_loc (Loc new_r (f - 1)) Queen] 
+          else []
+        in
+        let right_capture :=
+          if (occupied_by_enemy_piece new_r (f + 1) pp c) 
+          then [PromotionWithCapture pawn_loc (Loc new_r (f + 1)) Rook;
+                PromotionWithCapture pawn_loc (Loc new_r (f + 1)) Knight;
+                PromotionWithCapture pawn_loc (Loc new_r (f + 1)) Bishop;
+                PromotionWithCapture pawn_loc (Loc new_r (f + 1)) Queen] 
+          else []
+        in if (new_r =? final_rank_of_pawn c) 
+          then left_capture ++ right_capture
+          else []
+        else []
+    end
+  end.
+
 Definition pawn_moves (pawn_loc : SquareLocation) (pos : Position) :=
   (pawn_forward_moves pawn_loc pos) ++
   (pawn_captures pawn_loc pos) ++
   (pawn_double_steps pawn_loc pos) ++
-  (en_passant_moves pawn_loc pos).
+  (en_passant_moves pawn_loc pos) ++
+  (pawn_forward_promotions pawn_loc pos).
 
 (* Proofs *)
 
@@ -233,6 +283,28 @@ Proof.
   simpl. eapply PawnCanCaptureEnPassant; simpl; eauto; simpl; try lia.
 Qed.
 
+Lemma pawn_forward_promotions_sound : forall move loc pos,
+  In move (pawn_forward_promotions loc pos) -> 
+  PawnCanMakeMove pos loc move.
+Proof.
+  intros. 
+  simpl in H. unfold pawn_forward_promotions in H. repeat DHmatch; try HinNil.
+  repeat HinCases; subst; repeat Hb2p; repeat HdAnd; repeat Hb2p; 
+  rewrite <- location_valid_iff in *; 
+  repeat rewrite is_square_empty_rank_file_correct in *;
+  eapply PawnCanPromoteForward; eauto; unfold IsPromotionPiece; auto.
+Qed.
+
+Lemma pawn_promotion_captures_sound : forall move loc pos,
+  In move (pawn_promotion_captures loc pos) -> 
+  PawnCanMakeMove pos loc move.
+Proof.
+  intros move loc pos Hin. unfold pawn_promotion_captures in Hin.
+  repeat DHmatch; try HinNil; try simpl in Hin; try contradiction.
+  - 
+  - admit.
+  - admit.
+
 Lemma pawn_moves_sound : forall move loc pos,
   In move (pawn_moves loc pos) -> 
   PawnCanMakeMove pos loc move.
@@ -243,6 +315,7 @@ Proof.
   - apply pawn_captures_sound. auto.
   - apply pawn_double_steps_sound. auto.
   - apply en_passant_moves_sound. auto.
+  - apply pawn_forward_promotions_sound. auto.
 Qed.
 
 Lemma pawn_moves_complete : forall move loc pos,
