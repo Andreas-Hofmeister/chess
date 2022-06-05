@@ -197,7 +197,8 @@ Definition pawn_moves (pawn_loc : SquareLocation) (pos : Position) :=
   (pawn_captures pawn_loc pos) ++
   (pawn_double_steps pawn_loc pos) ++
   (en_passant_moves pawn_loc pos) ++
-  (pawn_forward_promotions pawn_loc pos).
+  (pawn_forward_promotions pawn_loc pos) ++
+  (pawn_promotion_captures pawn_loc pos).
 
 (* Proofs *)
 
@@ -301,9 +302,27 @@ Lemma pawn_promotion_captures_sound : forall move loc pos,
 Proof.
   intros move loc pos Hin. unfold pawn_promotion_captures in Hin.
   repeat DHmatch; try HinNil; try simpl in Hin; try contradiction.
-  - 
-  - admit.
-  - admit.
+  - repeat HdOr; repeat Hb2p;
+    apply occupied_by_enemy_piece_correct in E3; 
+    apply occupied_by_enemy_piece_correct in E4;
+    destruct E3 as [c3 [ep3 [Hval3 [Hgetsq3 Hisenemy3]]]];
+    destruct E4 as [c4 [ep4 [Hval4 [Hgetsq4 Hisenemy4]]]];
+    rewrite <- location_valid_iff in *; subst; 
+    try eapply PawnCanPromoteDiagonally; eauto; unfold IsPromotionPiece; auto.
+    contradiction.
+  - repeat HdOr; repeat Hb2p;
+    apply occupied_by_enemy_piece_correct in E3; 
+    destruct E3 as [c3 [ep3 [Hval3 [Hgetsq3 Hisenemy3]]]];
+    rewrite <- location_valid_iff in *; subst; 
+    try eapply PawnCanPromoteDiagonally; eauto; unfold IsPromotionPiece; auto.
+    contradiction.
+  - repeat HdOr; repeat Hb2p;
+    apply occupied_by_enemy_piece_correct in E4; 
+    destruct E4 as [c4 [ep4 [Hval4 [Hgetsq4 Hisenemy4]]]];
+    rewrite <- location_valid_iff in *; subst; 
+    try eapply PawnCanPromoteDiagonally; eauto; unfold IsPromotionPiece; auto.
+    contradiction.
+Qed.
 
 Lemma pawn_moves_sound : forall move loc pos,
   In move (pawn_moves loc pos) -> 
@@ -316,6 +335,7 @@ Proof.
   - apply pawn_double_steps_sound. auto.
   - apply en_passant_moves_sound. auto.
   - apply pawn_forward_promotions_sound. auto.
+  - apply pawn_promotion_captures_sound. auto.
 Qed.
 
 Lemma pawn_moves_complete : forall move loc pos,
@@ -327,11 +347,14 @@ Proof.
   end.
   inversion H; subst; unfold pawn_moves.
   - rewrite in_app_iff. left. simpl.
-    rewrite location_valid_iff in *. rewrite H3. rewrite H4. simpl.
-    rewrite <- is_square_empty_rank_file_correct in *. rewrite H5. constructor. auto.
+    rewrite location_valid_iff in *. rewrite H4. rewrite H5. simpl. 
+    rewrite <- PeanoNat.Nat.eqb_neq in *. rewrite H3.
+    rewrite <- is_square_empty_rank_file_correct in *. rewrite H6. simpl.
+    left. constructor.
   - rewrite in_app_iff. right. rewrite in_app_iff. left.
     rewrite location_valid_iff in *. 
-    simpl. rewrite H4. destruct H3 as [Hr | Hl].
+    simpl. rewrite <- PeanoNat.Nat.eqb_neq in *.
+    rewrite H5. rewrite H3. destruct H4 as [Hr | Hl].
     + rewrite in_app_iff. right. subst. if_cond_destruct_in_goal.
       * constructor. auto.
       * rewrite <- Bool.not_true_iff_false in H0. exfalso. apply H0. 
@@ -346,11 +369,33 @@ Proof.
     rewrite PeanoNat.Nat.eqb_refl. rewrite <- is_square_empty_rank_file_correct in *.
     rewrite H6. rewrite H7. simpl. left. auto.
   - rewrite in_app_iff. right. rewrite in_app_iff. right. rewrite in_app_iff.
-    right. simpl. rewrite location_valid_iff in *. rewrite H2. 
-    rewrite PeanoNat.Nat.eqb_refl. 
+    right. rewrite in_app_iff. left. simpl. rewrite location_valid_iff in *. 
+    rewrite H2. rewrite PeanoNat.Nat.eqb_refl.
     destruct ((dstf =? sf + 1) || (dstf =? sf - 1))%bool eqn:Edstf.
     + constructor. auto.
     + rewrite Bool.orb_false_iff in Edstf. 
       repeat rewrite PeanoNat.Nat.eqb_neq in Edstf. lia.
+  - repeat rewrite in_app_iff. right. right. right. right. left.
+    rewrite location_valid_iff in *. 
+    rewrite <- is_square_empty_rank_file_correct in *. Hp2b.
+    simpl. rewrite H4. rewrite H5. rewrite H6. rewrite H3. simpl.
+    unfold IsPromotionPiece in H7. repeat HdOr; subst; auto.
+  - repeat rewrite in_app_iff. right. right. right. right. right.
+    rewrite location_valid_iff in *. Hp2b. simpl. rewrite H5. rewrite H3.
+    assert (Hocc: occupied_by_enemy_piece (advance_pawn c sr) tf pp c = true).
+    { apply occupied_by_enemy_piece_correct. eauto. } 
+    repeat HdOr.
+    + subst. rewrite Hocc. rewrite in_app_iff. right. 
+      unfold IsPromotionPiece in *. repeat HdOr; subst.
+      * apply in_cons. apply in_cons. apply in_eq.
+      * apply in_cons. apply in_eq.
+      * apply in_eq.
+      * apply in_cons. apply in_cons. apply in_cons. apply in_eq.
+    + subst. rewrite Hocc. rewrite in_app_iff. left.
+      unfold IsPromotionPiece in *. repeat HdOr; subst.
+      * apply in_cons. apply in_cons. apply in_eq.
+      * apply in_cons. apply in_eq.
+      * apply in_eq.
+      * apply in_cons. apply in_cons. apply in_cons. apply in_eq.
 Qed.
 

@@ -106,6 +106,10 @@ Ltac HdAnd := match goal with
   | H : _ /\ _ |- _ => destruct H as [?H ?H]
   end.
 
+Ltac HdOr := match goal with
+  | H : _ \/ _ |- _ => destruct H as [?H | ?H]
+  end.
+
 Ltac HdestructIf := match goal with
   | H : context[if ?x then _ else _] |- _ => destruct x eqn:?E
   end.
