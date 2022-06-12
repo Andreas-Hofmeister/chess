@@ -251,6 +251,13 @@ Definition get_piece_placements (pos : Position) :=
   | Posn pp _ _ => pp
   end.
 
+Inductive IsOccupiedBy (pos : Position) 
+  : SquareLocation -> Color -> Piece -> Prop :=
+  | IsOccupiedBy_iff : forall pp rank_index file_index color piece,
+    pp = get_piece_placements pos -> 
+    get_square_by_index pp rank_index file_index = Occupied color piece ->
+    IsOccupiedBy pos (Loc rank_index file_index) color piece.
+
 Definition get_to_move (pos : Position) :=
   match pos with
   | Posn _ toMove _ => toMove

@@ -12,6 +12,43 @@ Inductive Move : Type :=
   | PromotionWithCapture (from : SquareLocation) (to : SquareLocation) 
       (piece : Piece).
 
+Definition fromOfMove (m : Move) : SquareLocation :=
+  match m with
+  | FromTo from _ => from
+  | Capture from _ => from
+  | DoubleStep from _ => from
+  | EnPassant from _ => from
+  | Promotion from _ _ => from
+  | PromotionWithCapture from _ _ => from
+  end.
+
+Definition toOfMove (m : Move) : SquareLocation :=
+  match m with
+  | FromTo _ to => to
+  | Capture _ to => to
+  | DoubleStep _ to => to
+  | EnPassant _ to => to
+  | Promotion _ to _ => to
+  | PromotionWithCapture _ to _ => to
+  end.
+
+
+Inductive IsMoveToEmptySquare : Move -> Prop :=
+  | IsFromTo : forall from to move, 
+    move = FromTo from to -> IsMoveToEmptySquare move
+  | IsEnPassant : forall from to move,
+    move = EnPassant from to -> IsMoveToEmptySquare move
+  | IsDoubleStep : forall from to move,
+    move = DoubleStep from to -> IsMoveToEmptySquare move
+  | IsPromotion : forall from to piece move,
+    move = Promotion from to piece -> IsMoveToEmptySquare move.
+
+Inductive IsCapturingMove : Move -> Prop :=
+  | IsNormalCapture : forall from to move,
+    move = Capture from to -> IsCapturingMove move
+  | IsPromotionWithCapture : forall from to piece move,
+    move = PromotionWithCapture from to piece -> IsCapturingMove move.
+
 Definition get_double_step_target_rank (dstep : PawnDoubleStep) :=
   match dstep with
   | DoubleStepRankFile r f => r
