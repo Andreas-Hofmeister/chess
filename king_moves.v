@@ -4,6 +4,8 @@ From CHESS Require Export proof_tactics.
 From CHESS Require Export basics.
 From CHESS Require Export movement_basics.
 
+(* Definitions *)
+
 Inductive KingCanMakeMove (pos : Position) : 
   SquareLocation -> Move -> Prop :=
   | KingCanMove : forall from to pp c dstep,
@@ -18,3 +20,4 @@ Inductive KingCanMakeMove (pos : Position) :
     is_square_occupied_by_enemy_piece to pp c = true ->
     KingCanMakeMove pos from (FromTo from to).
 
+Definition king_moves_to_empty_square 

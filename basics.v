@@ -341,6 +341,11 @@ Definition location_valid (loc : SquareLocation) : Prop :=
   | Loc r f => r <= 7 /\ f <= 7
   end.
 
+Definition is_location_valid (loc : SquareLocation) : bool :=
+  match loc with
+  | Loc r f => (r <=? 7) && (f <=? 7)
+  end.
+
 Definition SquaresAdjacent (loc1 : SquareLocation) (loc2 : SquareLocation)
   : Prop :=
   match loc1 with
@@ -350,6 +355,13 @@ Definition SquaresAdjacent (loc1 : SquareLocation) (loc2 : SquareLocation)
       (difference rank1 rank2) <= 1 /\ (difference file1 file2) <= 1 /\
       loc1 <> loc2
     end
+  end.
+
+Definition adjacent_squares (loc : SquareLocation) : (list SquareLocation) :=
+  match loc with
+  | Loc r f => filter is_location_valid 
+    [Loc r (f+1); Loc (r+1) (f+1); Loc (r+1) f; Loc (r+1) (f-1); Loc r (f-1);
+    Loc (r-1) (f-1); Loc (r-1) f; Loc (r-1) (f+1)]
   end.
 
 (******************************Proofs**********************************)
@@ -459,6 +471,16 @@ Proof.
   - constructor. all: lia.
 Qed.
 
+Lemma is_location_valid_correct : forall loc,
+  location_valid loc <-> is_location_valid loc = true.
+Proof.
+  intros loc. split.
+  - intros. unfold location_valid in *. unfold is_location_valid.
+    DHmatch. Gb2p. split; Gb2p; lia.
+  - intros. unfold location_valid in *. unfold is_location_valid in *.
+    DHmatch. Hb2p. destruct H as [H1 H2]. repeat Hb2p. auto.
+Qed.
+
 Lemma is_square_empty_rank_file_correct : forall r f pp,
   is_square_empty_rank_file r f pp = true <-> (get_square_by_index pp r f) = Empty.
 Proof.
@@ -565,6 +587,91 @@ Lemma n_lt_np1 : forall n, n <? n + 1 = true.
 Proof.
   intros. rewrite PeanoNat.Nat.ltb_lt in *. lia.
 Qed.
+
+Lemma adjacent_squares_correct : forall l1 l2,
+  (SquaresAdjacent l1 l2 /\ location_valid l1 /\ location_valid l2) <-> 
+  (location_valid l1 /\ In l2 (adjacent_squares l1)).
+Proof.
+  intros l1 l2. split.
+  - intros [Hadj [Hv1 Hv2]]. split; auto.
+    unfold SquaresAdjacent in *. 
+    unfold adjacent_squares. DGmatch. DHmatch. 
+    destruct Hadj as [Hdrank [Hdfile Huneq]]. unfold difference in *. 
+    repeat DHif; repeat Hb2p.
+    + assert (Hdrank2: rank0 = rank + 1). { lia. }
+      assert (Hdfile2: file0 = file + 1). { lia. }
+      subst. apply filter_In. split. apply in_cons. apply in_eq.
+      rewrite <- is_location_valid_correct. auto.
+    + assert (Hdfile2: file0 = file + 1). { lia. }
+      destruct (rank - rank0) eqn:?E.
+      * assert (Hdrank2: rank = rank0). { lia. } subst.
+        apply filter_In. split. apply in_eq. 
+        rewrite <- is_location_valid_correct. auto.
+      * destruct n eqn:?E; try lia.
+        assert (Hdrank2: rank = rank0 + 1). { lia. } subst.
+        apply filter_In. split. apply in_cons. apply in_cons. apply in_cons.
+        apply in_cons. apply in_cons. apply in_cons. apply in_cons.
+        replace (rank0 + 1 - 1) with rank0. apply in_eq. lia.
+        rewrite <- is_location_valid_correct. auto.
+    + assert (Hdrank2: rank0 = rank + 1). { lia. }
+      destruct (file - file0) eqn:?E.
+      * assert (Hfile2: file0 = file). { lia. } subst.
+        apply filter_In. split. apply in_cons. apply in_cons. apply in_eq.
+        rewrite <- is_location_valid_correct. auto.
+      * destruct n eqn:?E; try lia.
+        assert (Hfile2: file = file0 + 1). { lia. } subst.
+        apply filter_In. split. apply in_cons. apply in_cons. apply in_cons.
+        replace (file0 + 1 - 1) with file0. apply in_eq. lia.
+        rewrite <- is_location_valid_correct. auto.
+    + destruct (rank - rank0) eqn:?E; destruct (file - file0) eqn:?E.
+      * assert (Hfile2: file0 = file). { lia. }
+        assert (Hdrank2: rank = rank0). { lia. } subst.
+        contradiction.
+      * destruct n eqn:?E; try lia.
+        assert (Hdrank2: rank = rank0). { lia. }
+        assert (Hfile2: file = file0 + 1). { lia. } subst.
+        apply filter_In. split. apply in_cons. apply in_cons. apply in_cons.
+        apply in_cons. replace (file0 + 1 - 1) with file0. apply in_eq. lia.
+        rewrite <- is_location_valid_correct. auto.
+      * destruct n eqn:?E; try lia.
+        assert (Hdrank2: rank = rank0 + 1). { lia. }
+        assert (Hfile2: file = file0). { lia. } subst.
+        apply filter_In. split. apply in_cons. apply in_cons. apply in_cons.
+        apply in_cons. apply in_cons. apply in_cons.
+        replace (rank0 + 1 - 1) with rank0. apply in_eq. lia.
+        rewrite <- is_location_valid_correct. auto.
+      * destruct n eqn:?E; try lia. destruct n0 eqn:?E; try lia.
+        assert (Hdrank2: rank = rank0 + 1). { lia. }
+        assert (Hfile2: file = file0 + 1). { lia. } subst.
+        apply filter_In. split. apply in_cons. apply in_cons. apply in_cons.
+        apply in_cons. apply in_cons.
+        replace (rank0 + 1 - 1) with rank0. replace (file0 + 1 - 1) with file0. 
+        apply in_eq. lia. lia. rewrite <- is_location_valid_correct. auto.
+  - intros Hin. unfold adjacent_squares in *. DHmatch. rewrite filter_In in Hin.
+    destruct Hin as [Hvalid1 [Hin Hvalid2]]. 
+    rewrite <- is_location_valid_correct in *.
+    split; auto. repeat HinCases; subst.
+    + simpl. unfold difference. rewrite PeanoNat.Nat.ltb_irrefl.
+      rewrite n_lt_np1. rewrite PeanoNat.Nat.sub_diag.
+      replace (file + 1 - file) with 1; try lia. repeat split; try lia.
+      intros C. inversion C. lia.
+    + simpl. unfold difference. repeat rewrite n_lt_np1. 
+      repeat rewrite PeanoNat.Nat.ltb_irrefl. 
+      replace (file + 1 - file) with 1; try lia.
+      replace (rank + 1 - rank) with 1; try lia.
+      repeat split; try lia. intros C. inversion C. lia.
+    + simpl. unfold difference. repeat rewrite n_lt_np1. 
+      repeat rewrite PeanoNat.Nat.ltb_irrefl. 
+      replace (file + 1 - file) with 1; try lia.
+      replace (rank + 1 - rank) with 1; try lia.
+      repeat split; try lia. intros C. inversion C. lia.
+    + simpl. unfold difference. repeat rewrite n_lt_np1. 
+      repeat rewrite PeanoNat.Nat.ltb_irrefl. 
+      replace (file - 1 - file) with 0; try lia.
+      replace (rank + 1 - rank) with 1; try lia.
+      G
+
+
 
 Lemma append_forall_fold_acc : forall A B (f : A -> list B) l b accl,
   In b accl -> In b (fold_left (fun acc x => (f x) ++ acc) l accl).

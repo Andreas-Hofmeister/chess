@@ -32,7 +32,6 @@ Definition toOfMove (m : Move) : SquareLocation :=
   | PromotionWithCapture _ to _ => to
   end.
 
-
 Inductive IsMoveToEmptySquare : Move -> Prop :=
   | IsFromTo : forall from to move, 
     move = FromTo from to -> IsMoveToEmptySquare move

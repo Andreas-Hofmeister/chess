@@ -47,3 +47,22 @@ Inductive AttacksOccupiedSquare (pos : Position)
 Definition Attacks (pos : Position) (c : Color) (loc : SquareLocation) : Prop
   := AttacksEmptySquare pos c loc \/ AttacksOccupiedSquare pos c loc.
 
+Definition moves_by_player_from_square (pos : Position) (c : Color) 
+(loc : SquareLocation) : (list Move) :=
+  match pos, loc with
+  | Posn pp _ _ , Loc r f 
+    => match get_square_by_index pp r f with
+      | Empty => []
+      | Occupied sc p => 
+        if ceq c sc then match p with
+        | Pawn => pawn_moves loc pos
+        | Rook => rook_moves loc pos
+        | Bishop => bishop_moves loc pos
+        | Knight => knight_moves loc pos
+        | Queen => queen_moves loc pos
+        (*| King => king_moves loc pos*)
+        | _ => []
+        end else []
+      end
+  end.
+  

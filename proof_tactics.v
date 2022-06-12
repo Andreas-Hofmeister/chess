@@ -10,6 +10,8 @@ end.
 
 Ltac Hb2p := match goal with
   | H : (_ <=? _) = true |- _ => rewrite PeanoNat.Nat.leb_le in H
+  | H : (_ <? _) = true |- _ => rewrite PeanoNat.Nat.ltb_lt in H
+  | H : (_ <? _) = false |- _ => rewrite PeanoNat.Nat.ltb_ge in H
   | H : (_ <=? _) = false |- _ => rewrite PeanoNat.Nat.leb_gt in H
   | H : (_ =? _) = false |- _ => rewrite PeanoNat.Nat.eqb_neq in H
   | H : (_ =? _) = true |- _ => rewrite PeanoNat.Nat.eqb_eq in H
@@ -28,6 +30,8 @@ Ltac Gb2p := match goal with
   | |- true = (_ =? _) => symmetry; rewrite PeanoNat.Nat.eqb_eq
   | |- false = (_ <=? _) => symmetry; rewrite PeanoNat.Nat.leb_gt
   | |- false = (_ <? _) => symmetry; rewrite PeanoNat.Nat.ltb_ge
+  | |- (_ && _)%bool = true => rewrite Bool.andb_true_iff
+  | |- (_ && _)%bool = false => rewrite Bool.andb_false_iff
   | |- (_ =? _) = false => rewrite PeanoNat.Nat.eqb_neq
   end.
 
@@ -46,8 +50,16 @@ Ltac DHif := match goal with
   | H : context[if ?c then _ else _] |- _ => destruct c eqn:?E
   end.
 
+Ltac DGif := match goal with
+  | |- context[if ?c then _ else _] => destruct c eqn:?E
+  end.
+
 Ltac DHmatch := match goal with
   | H : context[match ?c with _ => _ end] |- _ => destruct c eqn:?E
+  end.
+
+Ltac DGmatch := match goal with
+  | |- context[match ?c with _ => _ end] => destruct c eqn:?E
   end.
 
 Ltac HinNil := match goal with
