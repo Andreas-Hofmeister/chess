@@ -210,10 +210,10 @@ Definition are_squares_between_empty (pp : PiecePlacements)
   are_squares_along_vector_empty pp start v.
 
 (* rfd = rank, file, diagonal, or antidiagonal *)
-Function move_to_square_on_rfd (pos : Position) 
+Function move_to_square_on_rfd (pos : Position) (c : Color)
   (fromL : SquareLocation) (toL : SquareLocation) : option Move :=
   match pos with
-  | Posn pp c _ =>
+  | Posn pp _ _ =>
     if ((negb (eqSL fromL toL)) && (are_squares_between_empty pp fromL toL))%bool
     then if is_square_empty toL pp then Some (FromTo fromL toL)
     else if is_square_occupied_by_enemy_piece toL pp c 
@@ -222,9 +222,9 @@ Function move_to_square_on_rfd (pos : Position)
     else None
   end.
 
-Function moves_to_square_on_rfd_list (pos : Position)
+Function moves_to_square_on_rfd_list (pos : Position) (c : Color)
   (fromL : SquareLocation) (toL : SquareLocation) : list Move :=
-  match (move_to_square_on_rfd pos fromL toL) with
+  match (move_to_square_on_rfd pos c fromL toL) with
   | Some move => [move]
   | _ => []
   end.

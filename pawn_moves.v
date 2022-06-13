@@ -26,56 +26,58 @@ Definition IsPromotionPiece (p : Piece) : Prop :=
   p = Bishop \/ p = Knight \/ p = Rook \/ p = Queen.
 
 Inductive PawnCanMakeMove (pos : Position)
-: SquareLocation -> Move -> Prop :=
-  | PawnCanMoveForward : forall pp c dstep loc sf sr tr,
-    pos = Posn pp c dstep -> loc = Loc sr sf ->
+: SquareLocation -> Color -> Move -> Prop :=
+  | PawnCanMoveForward : forall pp c pos_c dstep loc sf sr tr,
+    pos = Posn pp pos_c dstep -> loc = Loc sr sf ->
     tr = advance_pawn c sr -> tr <> final_rank_of_pawn c ->
     location_valid loc -> location_valid (Loc tr sf) ->
     get_square_by_index pp tr sf = Empty -> 
-    PawnCanMakeMove pos loc (FromTo loc (Loc tr sf))
-  | PawnCanCaptureDiagonallyForward : forall pp c dstep loc sf sr tf tr tc p,
-    pos = Posn pp c dstep -> loc = Loc sr sf ->
+    PawnCanMakeMove pos loc c (FromTo loc (Loc tr sf))
+  | PawnCanCaptureDiagonallyForward : forall pp c pos_c dstep loc sf sr tf tr 
+    tc p,
+    pos = Posn pp pos_c dstep -> loc = Loc sr sf ->
     tr = advance_pawn c sr -> tr <> final_rank_of_pawn c ->
     (tf = sf + 1 \/ tf = sf - 1) ->
     location_valid loc -> location_valid (Loc tr tf) ->
     get_square_by_index pp tr tf = Occupied tc p -> tc <> c -> 
-    PawnCanMakeMove pos loc (Capture loc (Loc tr tf))
-  | PawnCanDoubleStep : forall pp c dstep loc sf sr step1r tr,
-    pos = Posn pp c dstep -> loc = Loc sr sf ->
+    PawnCanMakeMove pos loc c (Capture loc (Loc tr tf))
+  | PawnCanDoubleStep : forall pp c pos_c dstep loc sf sr step1r tr,
+    pos = Posn pp pos_c dstep -> loc = Loc sr sf ->
     location_valid loc ->
     sr = starting_rank_of_pawn c ->
     step1r = advance_pawn c sr ->
     tr = advance_pawn c step1r ->
     get_square_by_index pp step1r sf = Empty ->
     get_square_by_index pp tr sf = Empty ->
-    PawnCanMakeMove pos loc (DoubleStep loc (Loc tr sf))
+    PawnCanMakeMove pos loc c (DoubleStep loc (Loc tr sf))
   | PawnCanCaptureEnPassant : forall pp c dstep loc dstf sf sr tr,
     pos = Posn pp c (Some dstep) -> loc = Loc sr sf ->
     location_valid loc ->
     dstep = (DoubleStepRankFile sr dstf) ->
     (sf = dstf + 1 \/ sf = dstf - 1) ->
     tr = advance_pawn c sr ->
-    PawnCanMakeMove pos loc (EnPassant loc (Loc tr dstf))
-  | PawnCanPromoteForward : forall pp c dstep loc sf sr tr piece,
-    pos = Posn pp c dstep -> loc = Loc sr sf ->
+    PawnCanMakeMove pos loc c (EnPassant loc (Loc tr dstf))
+  | PawnCanPromoteForward : forall pp c pos_c dstep loc sf sr tr piece,
+    pos = Posn pp pos_c dstep -> loc = Loc sr sf ->
     tr = advance_pawn c sr -> tr = final_rank_of_pawn c ->
     location_valid loc -> location_valid (Loc tr sf) ->
     get_square_by_index pp tr sf = Empty ->
     IsPromotionPiece piece ->
-    PawnCanMakeMove pos loc (Promotion loc (Loc tr sf) piece)
-  | PawnCanPromoteDiagonally : forall pp c dstep loc sf sr tf tr tc p piece,
-    pos = Posn pp c dstep -> loc = Loc sr sf ->
+    PawnCanMakeMove pos loc c (Promotion loc (Loc tr sf) piece)
+  | PawnCanPromoteDiagonally : forall pp c pos_c dstep loc sf sr tf tr tc p 
+    piece,
+    pos = Posn pp pos_c dstep -> loc = Loc sr sf ->
     tr = advance_pawn c sr -> tr = final_rank_of_pawn c ->
     (tf = sf + 1 \/ tf = sf - 1) ->
     location_valid loc -> location_valid (Loc tr tf) ->
     get_square_by_index pp tr tf = Occupied tc p -> tc <> c -> 
     IsPromotionPiece piece ->
-    PawnCanMakeMove pos loc (PromotionWithCapture loc (Loc tr tf) piece).
+    PawnCanMakeMove pos loc c (PromotionWithCapture loc (Loc tr tf) piece).
 
-Definition pawn_forward_moves (pawn_loc : SquareLocation)
+Definition pawn_forward_moves (pawn_loc : SquareLocation) (c : Color)
   (pos : Position) : (list Move) :=
   match pos with
-  | Posn pp c _ =>
+  | Posn pp _ _ =>
     match pawn_loc with
     | Loc r f => 
       let new_r := advance_pawn c r in
@@ -88,10 +90,10 @@ Definition pawn_forward_moves (pawn_loc : SquareLocation)
     end
   end.
 
-Definition pawn_captures (pawn_loc : SquareLocation) (pos : Position) 
-  : (list Move) :=
+Definition pawn_captures (pawn_loc : SquareLocation) (c : Color) 
+  (pos : Position) : (list Move) :=
   match pos with
-  | Posn pp c _ =>
+  | Posn pp _ _ =>
     match pawn_loc with
     | Loc r f =>
       if (indices_valid r f) then
@@ -109,10 +111,10 @@ Definition pawn_captures (pawn_loc : SquareLocation) (pos : Position)
     end
   end.
 
-Definition pawn_double_steps (pawn_loc : SquareLocation) 
+Definition pawn_double_steps (pawn_loc : SquareLocation) (c : Color)
   (pos : Position) :=
   match pos with
-  | Posn pp c _ =>
+  | Posn pp _ _ =>
     match pawn_loc with
     | Loc r f =>
       if (indices_valid r f) then
@@ -126,14 +128,14 @@ Definition pawn_double_steps (pawn_loc : SquareLocation)
     end
   end.
 
-Definition en_passant_moves (pawn_loc : SquareLocation) 
+Definition en_passant_moves (pawn_loc : SquareLocation) (c : Color)
   (pos : Position) : (list Move) :=
   match pawn_loc with
   | Loc r f =>
     if (indices_valid r f) then
       match pos with
       | Posn pp toMove (Some (DoubleStepRankFile dsr dsf)) =>
-        if (dsr =? r) then
+        if (andb (ceq c toMove) (dsr =? r)) then
           if (orb (dsf =? f + 1) (dsf =? f - 1)) then
             [EnPassant pawn_loc (Loc (advance_pawn toMove r) dsf)]
           else []
@@ -143,10 +145,10 @@ Definition en_passant_moves (pawn_loc : SquareLocation)
     else []
   end.
 
-Definition pawn_forward_promotions (pawn_loc : SquareLocation)
+Definition pawn_forward_promotions (pawn_loc : SquareLocation) (c : Color)
   (pos : Position) : (list Move) :=
   match pos with
-  | Posn pp c _ =>
+  | Posn pp _ _ =>
     match pawn_loc with
     | Loc r f => 
       let new_r := advance_pawn c r in
@@ -162,10 +164,10 @@ Definition pawn_forward_promotions (pawn_loc : SquareLocation)
     end
   end.
 
-Definition pawn_promotion_captures (pawn_loc : SquareLocation)
+Definition pawn_promotion_captures (pawn_loc : SquareLocation) (c : Color)
   (pos : Position) : (list Move) :=
   match pos with
-  | Posn pp c _ =>
+  | Posn pp _ _ =>
     match pawn_loc with
     | Loc r f =>
       if (indices_valid r f) then
@@ -192,40 +194,32 @@ Definition pawn_promotion_captures (pawn_loc : SquareLocation)
     end
   end.
 
-Definition pawn_moves (pawn_loc : SquareLocation) (pos : Position) :=
-  (pawn_forward_moves pawn_loc pos) ++
-  (pawn_captures pawn_loc pos) ++
-  (pawn_double_steps pawn_loc pos) ++
-  (en_passant_moves pawn_loc pos) ++
-  (pawn_forward_promotions pawn_loc pos) ++
-  (pawn_promotion_captures pawn_loc pos).
+Definition pawn_moves (pawn_loc : SquareLocation) (c : Color) (pos : Position) 
+:=
+  (pawn_forward_moves pawn_loc c pos) ++
+  (pawn_captures pawn_loc c pos) ++
+  (pawn_double_steps pawn_loc c pos) ++
+  (en_passant_moves pawn_loc c pos) ++
+  (pawn_forward_promotions pawn_loc c pos) ++
+  (pawn_promotion_captures pawn_loc c pos).
 
 (* Proofs *)
 
-Lemma pawn_forward_moves_sound : forall move loc pos,
-  In move (pawn_forward_moves loc pos) -> 
-  PawnCanMakeMove pos loc move.
+Lemma pawn_forward_moves_sound : forall move loc c pos,
+  In move (pawn_forward_moves loc c pos) -> 
+  PawnCanMakeMove pos loc c move.
 Proof.
   intros. 
-  simpl in H. unfold pawn_forward_moves in H.
-  destruct pos eqn:Epos. destruct loc eqn:Eloc.
-  destruct (indices_valid (advance_pawn toMove rank) file) eqn:Eiv; 
-    try rewrite Bool.andb_false_r in H; simpl in H; try contradiction.
-  destruct (indices_valid rank file) eqn:Eiv2; try simpl in H; 
-    try contradiction.
-  destruct (is_square_empty_rank_file (advance_pawn toMove rank) file pp) eqn:Eempty;
-    try simpl in H; try contradiction.
-  DHif.
-  - destruct H as [H | W]; try contradiction. subst. 
-    rewrite <- location_valid_iff in *. 
-    rewrite is_square_empty_rank_file_correct in *. eapply PawnCanMoveForward; 
-    auto. repeat Hb2p. auto.
-  - inversion H.
+  simpl in H. unfold pawn_forward_moves in H. 
+  repeat DHmatch; repeat Hb2p; repeat HdAnd; repeat Hb2p; 
+  inversion H; subst; repeat rewrite <- location_valid_iff in *; try HinNil.
+  rewrite is_square_empty_rank_file_correct in *. eapply PawnCanMoveForward; 
+  eauto.
 Qed.
 
-Lemma pawn_captures_sound : forall move loc pos,
-  In move (pawn_captures loc pos) -> 
-  PawnCanMakeMove pos loc move.
+Lemma pawn_captures_sound : forall move loc c pos,
+  In move (pawn_captures loc c pos) -> 
+  PawnCanMakeMove pos loc c move.
 Proof.
   intros. 
   simpl in H. unfold pawn_captures in H.
@@ -249,9 +243,9 @@ Proof.
   apply in_app_or in H. destruct H as [H | H]; tac1; repeat Hb2p; auto.
 Qed.
 
-Lemma pawn_double_steps_sound : forall move loc pos,
-  In move (pawn_double_steps loc pos) -> 
-  PawnCanMakeMove pos loc move.
+Lemma pawn_double_steps_sound : forall move loc c pos,
+  In move (pawn_double_steps loc c pos) -> 
+  PawnCanMakeMove pos loc c move.
 Proof.
   intros.
   simpl in H. unfold pawn_double_steps in H.
@@ -266,9 +260,9 @@ Proof.
   rewrite PeanoNat.Nat.eqb_eq in H1. eapply PawnCanDoubleStep; eauto.
 Qed.
 
-Lemma en_passant_moves_sound : forall move loc pos,
-  In move (en_passant_moves loc pos) -> 
-  PawnCanMakeMove pos loc move.
+Lemma en_passant_moves_sound : forall move loc c pos,
+  In move (en_passant_moves loc c pos) -> 
+  PawnCanMakeMove pos loc c move.
 Proof.
   intros. unfold en_passant_moves in H.
   destruct loc eqn:Eloc.
@@ -277,16 +271,18 @@ Proof.
   destruct pawnDoubleStep eqn:Edstep; try inversion H.
   destruct p eqn:Ep.
   repeat tac2.
+  Hb2p. destruct H1 as [Hc H1]. 
   rewrite PeanoNat.Nat.eqb_eq in H1.
   inversion H; inversion H3.
   rewrite Bool.orb_true_iff in H2. repeat rewrite PeanoNat.Nat.eqb_eq in H2.
   rewrite <- location_valid_iff in *.
   simpl. eapply PawnCanCaptureEnPassant; simpl; eauto; simpl; try lia.
+  rewrite ceq_eq in Hc. subst. auto. rewrite ceq_eq in Hc. subst. auto.
 Qed.
 
-Lemma pawn_forward_promotions_sound : forall move loc pos,
-  In move (pawn_forward_promotions loc pos) -> 
-  PawnCanMakeMove pos loc move.
+Lemma pawn_forward_promotions_sound : forall move loc c pos,
+  In move (pawn_forward_promotions loc c pos) -> 
+  PawnCanMakeMove pos loc c move.
 Proof.
   intros. 
   simpl in H. unfold pawn_forward_promotions in H. repeat DHmatch; try HinNil.
@@ -296,11 +292,11 @@ Proof.
   eapply PawnCanPromoteForward; eauto; unfold IsPromotionPiece; auto.
 Qed.
 
-Lemma pawn_promotion_captures_sound : forall move loc pos,
-  In move (pawn_promotion_captures loc pos) -> 
-  PawnCanMakeMove pos loc move.
+Lemma pawn_promotion_captures_sound : forall move loc c pos,
+  In move (pawn_promotion_captures loc c pos) -> 
+  PawnCanMakeMove pos loc c move.
 Proof.
-  intros move loc pos Hin. unfold pawn_promotion_captures in Hin.
+  intros move loc c pos Hin. unfold pawn_promotion_captures in Hin.
   repeat DHmatch; try HinNil; try simpl in Hin; try contradiction.
   - repeat HdOr; repeat Hb2p;
     apply occupied_by_enemy_piece_correct in E3; 
@@ -324,9 +320,9 @@ Proof.
     contradiction.
 Qed.
 
-Lemma pawn_moves_sound : forall move loc pos,
-  In move (pawn_moves loc pos) -> 
-  PawnCanMakeMove pos loc move.
+Lemma pawn_moves_sound : forall move loc c pos,
+  In move (pawn_moves loc c pos) -> 
+  PawnCanMakeMove pos loc c move.
 Proof.
   intros. unfold pawn_moves in H.
   repeat in_app_to_or.
@@ -338,8 +334,8 @@ Proof.
   - apply pawn_promotion_captures_sound. auto.
 Qed.
 
-Lemma pawn_moves_complete : forall move loc pos,
-  PawnCanMakeMove pos loc move -> In move (pawn_moves loc pos).
+Lemma pawn_moves_complete : forall move loc c pos,
+  PawnCanMakeMove pos loc c move -> In move (pawn_moves loc c pos).
 Proof.
   intros.
   Ltac if_cond_destruct_in_goal := match goal with
@@ -372,7 +368,8 @@ Proof.
     right. rewrite in_app_iff. left. simpl. rewrite location_valid_iff in *. 
     rewrite H2. rewrite PeanoNat.Nat.eqb_refl.
     destruct ((dstf =? sf + 1) || (dstf =? sf - 1))%bool eqn:Edstf.
-    + constructor. auto.
+    + replace (ceq c c) with true. simpl. constructor. auto.
+      symmetry. rewrite ceq_eq. auto.
     + rewrite Bool.orb_false_iff in Edstf. 
       repeat rewrite PeanoNat.Nat.eqb_neq in Edstf. lia.
   - repeat rewrite in_app_iff. right. right. right. right. left.

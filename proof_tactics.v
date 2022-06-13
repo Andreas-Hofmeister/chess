@@ -16,6 +16,8 @@ Ltac Hb2p := match goal with
   | H : (_ =? _) = false |- _ => rewrite PeanoNat.Nat.eqb_neq in H
   | H : (_ =? _) = true |- _ => rewrite PeanoNat.Nat.eqb_eq in H
   | H : (_ && _)%bool = true |- _ => rewrite Bool.andb_true_iff in H
+  | H : (_ || _)%bool = true |- _ => rewrite Bool.orb_true_iff in H
+  | H : (_ || _)%bool = false |- _ => rewrite Bool.orb_false_iff in H
   | H : (_ && _)%bool = false |- _ => rewrite Bool.andb_false_iff in H
   | H : context[negb _ = true] |- _ => rewrite Bool.negb_true_iff in H
   end.
@@ -32,6 +34,8 @@ Ltac Gb2p := match goal with
   | |- false = (_ <? _) => symmetry; rewrite PeanoNat.Nat.ltb_ge
   | |- (_ && _)%bool = true => rewrite Bool.andb_true_iff
   | |- (_ && _)%bool = false => rewrite Bool.andb_false_iff
+  | |- (_ || _)%bool = true => rewrite Bool.orb_true_iff
+  | |- (_ || _)%bool = false => rewrite Bool.orb_false_iff
   | |- (_ =? _) = false => rewrite PeanoNat.Nat.eqb_neq
   end.
 

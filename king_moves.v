@@ -20,4 +20,6 @@ Inductive KingCanMakeMove (pos : Position) :
     is_square_occupied_by_enemy_piece to pp c = true ->
     KingCanMakeMove pos from (FromTo from to).
 
-Definition king_moves_to_empty_square 
+Definition king_moves_to_empty_square (loc : SquareLocation) (pos : Position)
+  : (list Move) :=
+  

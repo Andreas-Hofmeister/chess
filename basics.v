@@ -357,14 +357,29 @@ Definition SquaresAdjacent (loc1 : SquareLocation) (loc2 : SquareLocation)
     end
   end.
 
+Definition locations_neq (loc1 loc2 : SquareLocation) : bool :=
+  match loc1,loc2 with
+  | Loc rnk1 fl1, Loc rnk2 fl2 => (negb (rnk1 =? rnk2)) || (negb (fl1 =? fl2))
+  end.
+
 Definition adjacent_squares (loc : SquareLocation) : (list SquareLocation) :=
   match loc with
-  | Loc r f => filter is_location_valid 
+  | Loc r f => filter (locations_neq loc) (filter is_location_valid 
     [Loc r (f+1); Loc (r+1) (f+1); Loc (r+1) f; Loc (r+1) (f-1); Loc r (f-1);
-    Loc (r-1) (f-1); Loc (r-1) f; Loc (r-1) (f+1)]
+    Loc (r-1) (f-1); Loc (r-1) f; Loc (r-1) (f+1)])
   end.
 
 (******************************Proofs**********************************)
+
+Lemma locations_neq_iff: forall loc1 loc2,
+  locations_neq loc1 loc2 = true <-> loc1 <> loc2.
+Proof.
+  intros loc1 loc2. unfold locations_neq. repeat DGmatch. split.
+  - intros H. Hb2p. HdOr; repeat Hb2p; intros C; inversion C; lia.
+  - intros H. Gb2p. destruct (rank =? rank0) eqn:?E; 
+    destruct (file =? file0) eqn:?E; simpl; auto. repeat Hb2p. exfalso.
+    apply H. subst. auto.
+Qed.
 
 Theorem strong_induction:
   forall P : nat -> Prop,
@@ -588,41 +603,51 @@ Proof.
   intros. rewrite PeanoNat.Nat.ltb_lt in *. lia.
 Qed.
 
+Lemma n_minus_1_minus_n : forall n, n - 1 - n = 0.
+Proof. lia. Qed.
+
 Lemma adjacent_squares_correct : forall l1 l2,
   (SquaresAdjacent l1 l2 /\ location_valid l1 /\ location_valid l2) <-> 
   (location_valid l1 /\ In l2 (adjacent_squares l1)).
 Proof.
   intros l1 l2. split.
   - intros [Hadj [Hv1 Hv2]]. split; auto.
-    unfold SquaresAdjacent in *. 
+    unfold SquaresAdjacent in *.
     unfold adjacent_squares. DGmatch. DHmatch. 
     destruct Hadj as [Hdrank [Hdfile Huneq]]. unfold difference in *. 
     repeat DHif; repeat Hb2p.
     + assert (Hdrank2: rank0 = rank + 1). { lia. }
       assert (Hdfile2: file0 = file + 1). { lia. }
-      subst. apply filter_In. split. apply in_cons. apply in_eq.
-      rewrite <- is_location_valid_correct. auto.
+      subst. apply filter_In. split. apply filter_In. split. 
+      apply in_cons. apply in_eq. rewrite <- is_location_valid_correct. auto.
+      apply locations_neq_iff. auto.
     + assert (Hdfile2: file0 = file + 1). { lia. }
       destruct (rank - rank0) eqn:?E.
       * assert (Hdrank2: rank = rank0). { lia. } subst.
-        apply filter_In. split. apply in_eq. 
-        rewrite <- is_location_valid_correct. auto.
+        apply filter_In. split. apply filter_In. split. apply in_eq. 
+        rewrite <- is_location_valid_correct. auto. apply locations_neq_iff. 
+        auto.
       * destruct n eqn:?E; try lia.
         assert (Hdrank2: rank = rank0 + 1). { lia. } subst.
-        apply filter_In. split. apply in_cons. apply in_cons. apply in_cons.
-        apply in_cons. apply in_cons. apply in_cons. apply in_cons.
-        replace (rank0 + 1 - 1) with rank0. apply in_eq. lia.
-        rewrite <- is_location_valid_correct. auto.
+        apply filter_In. split. apply filter_In. split.
+        replace (rank0 + 1 - 1) with rank0. 
+        repeat (apply in_eq || apply in_cons). lia. 
+        rewrite <- is_location_valid_correct. auto. apply locations_neq_iff. 
+        auto.
     + assert (Hdrank2: rank0 = rank + 1). { lia. }
       destruct (file - file0) eqn:?E.
       * assert (Hfile2: file0 = file). { lia. } subst.
-        apply filter_In. split. apply in_cons. apply in_cons. apply in_eq.
+        apply filter_In. split. apply filter_In. split.
+        repeat (apply in_eq || apply in_cons).
         rewrite <- is_location_valid_correct. auto.
+        apply locations_neq_iff. auto.
       * destruct n eqn:?E; try lia.
         assert (Hfile2: file = file0 + 1). { lia. } subst.
-        apply filter_In. split. apply in_cons. apply in_cons. apply in_cons.
-        replace (file0 + 1 - 1) with file0. apply in_eq. lia.
+        apply filter_In. split. apply filter_In. split.
+        replace (file0 + 1 - 1) with file0.
+        repeat (apply in_eq || apply in_cons). lia.
         rewrite <- is_location_valid_correct. auto.
+        apply locations_neq_iff. auto.
     + destruct (rank - rank0) eqn:?E; destruct (file - file0) eqn:?E.
       * assert (Hfile2: file0 = file). { lia. }
         assert (Hdrank2: rank = rank0). { lia. } subst.
@@ -630,26 +655,31 @@ Proof.
       * destruct n eqn:?E; try lia.
         assert (Hdrank2: rank = rank0). { lia. }
         assert (Hfile2: file = file0 + 1). { lia. } subst.
-        apply filter_In. split. apply in_cons. apply in_cons. apply in_cons.
-        apply in_cons. replace (file0 + 1 - 1) with file0. apply in_eq. lia.
-        rewrite <- is_location_valid_correct. auto.
+        apply filter_In. split. apply filter_In. split. 
+        replace (file0 + 1 - 1) with file0. 
+        repeat (apply in_eq || apply in_cons). lia.
+        rewrite <- is_location_valid_correct. auto. apply locations_neq_iff. 
+        auto.
       * destruct n eqn:?E; try lia.
         assert (Hdrank2: rank = rank0 + 1). { lia. }
         assert (Hfile2: file = file0). { lia. } subst.
-        apply filter_In. split. apply in_cons. apply in_cons. apply in_cons.
-        apply in_cons. apply in_cons. apply in_cons.
-        replace (rank0 + 1 - 1) with rank0. apply in_eq. lia.
-        rewrite <- is_location_valid_correct. auto.
+        apply filter_In. split. apply filter_In. split.
+        replace (rank0 + 1 - 1) with rank0.
+        repeat (apply in_eq || apply in_cons). lia.
+        rewrite <- is_location_valid_correct. auto. apply locations_neq_iff.
+        auto.
       * destruct n eqn:?E; try lia. destruct n0 eqn:?E; try lia.
         assert (Hdrank2: rank = rank0 + 1). { lia. }
         assert (Hfile2: file = file0 + 1). { lia. } subst.
-        apply filter_In. split. apply in_cons. apply in_cons. apply in_cons.
-        apply in_cons. apply in_cons.
-        replace (rank0 + 1 - 1) with rank0. replace (file0 + 1 - 1) with file0. 
-        apply in_eq. lia. lia. rewrite <- is_location_valid_correct. auto.
+        apply filter_In. split. apply filter_In. split.
+        replace (rank0 + 1 - 1) with rank0. replace (file0 + 1 - 1) with file0.
+        repeat (apply in_eq || apply in_cons). lia. lia. 
+        rewrite <- is_location_valid_correct. auto. apply locations_neq_iff. 
+        auto.
   - intros Hin. unfold adjacent_squares in *. DHmatch. rewrite filter_In in Hin.
-    destruct Hin as [Hvalid1 [Hin Hvalid2]]. 
-    rewrite <- is_location_valid_correct in *.
+    destruct Hin as [Hvalid1 [Hin Hneq]]. rewrite filter_In in Hin.
+    destruct Hin as [Hin Hvalid2].
+    rewrite <- is_location_valid_correct in *. rewrite locations_neq_iff in *.
     split; auto. repeat HinCases; subst.
     + simpl. unfold difference. rewrite PeanoNat.Nat.ltb_irrefl.
       rewrite n_lt_np1. rewrite PeanoNat.Nat.sub_diag.
@@ -669,9 +699,19 @@ Proof.
       repeat rewrite PeanoNat.Nat.ltb_irrefl. 
       replace (file - 1 - file) with 0; try lia.
       replace (rank + 1 - rank) with 1; try lia.
-      G
-
-
+      destruct (file <? file - 1) eqn:?E; repeat split; auto; try lia.
+    + simpl. unfold difference. destruct file eqn:?E. simpl in *. contradiction. 
+      rewrite PeanoNat.Nat.ltb_irrefl.
+      replace (rank - rank) with 0; try lia. simpl. rewrite PeanoNat.Nat.sub_0_r.
+      rewrite Sn_lt_n. DGmatch; repeat split; try lia; auto.
+    + simpl. unfold difference. repeat rewrite n_minus_1_minus_n. 
+      repeat rewrite n_lt_nm1. repeat split; try lia. auto.
+    + simpl. unfold difference. repeat rewrite n_lt_nm1. 
+      repeat rewrite PeanoNat.Nat.ltb_irrefl. rewrite PeanoNat.Nat.sub_diag.
+      repeat split; try lia. auto.
+    + simpl. unfold difference. repeat rewrite n_lt_nm1. repeat rewrite n_lt_np1.
+      repeat split; try lia. auto.
+Qed.
 
 Lemma append_forall_fold_acc : forall A B (f : A -> list B) l b accl,
   In b accl -> In b (fold_left (fun acc x => (f x) ++ acc) l accl).
