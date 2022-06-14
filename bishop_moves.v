@@ -5,42 +5,43 @@ From CHESS Require Export basics.
 From CHESS Require Export movement_basics.
 
 Inductive BishopCanMakeMove (pos : Position)
-: SquareLocation -> Move -> Prop :=
-  | BishopCanMove : forall pp c dstep from to, 
+: SquareLocation -> Color -> Move -> Prop :=
+  | BishopCanMove : forall pp c pos_c dstep from to, 
     location_valid from -> location_valid to ->
-    pos = Posn pp c dstep ->
+    pos = Posn pp pos_c dstep ->
     from <> to ->
     are_squares_on_same_diagonal from to = true \/ 
     are_squares_on_same_antidiagonal from to = true ->
     SquaresBetweenEmpty pp from to ->
     is_square_empty to pp = true ->
-    BishopCanMakeMove pos from (FromTo from to)
-  | BishopCanCapture : forall pp c dstep from to,
+    BishopCanMakeMove pos from c (FromTo from to)
+  | BishopCanCapture : forall pp c pos_c dstep from to,
     location_valid from -> location_valid to -> 
-    pos = Posn pp c dstep ->
+    pos = Posn pp pos_c dstep ->
     from <> to ->
     are_squares_on_same_diagonal from to = true \/ 
     are_squares_on_same_antidiagonal from to = true ->
     SquaresBetweenEmpty pp from to ->
     is_square_occupied_by_enemy_piece to pp c = true ->
-    BishopCanMakeMove pos from (Capture from to).
+    BishopCanMakeMove pos from c (Capture from to).
 
-Definition bishop_moves (l : SquareLocation) (pos : Position) : (list Move) :=
-  (append_forall (moves_to_square_on_rfd_list pos l)
+Definition bishop_moves (l : SquareLocation) (c : Color) (pos : Position) 
+: (list Move) :=
+  (append_forall (moves_to_square_on_rfd_list pos c l)
     (squares_on_same_diagonal l)) ++
-  (append_forall (moves_to_square_on_rfd_list pos l)
+  (append_forall (moves_to_square_on_rfd_list pos c l)
     (squares_on_same_antidiagonal l)).
 
 (******Proofs*****)
 
-Lemma bishop_move_to_square_on_same_diagonal_sound : forall pos fromL toL m,
+Lemma bishop_move_to_square_on_same_diagonal_sound : forall pos c fromL toL m,
   location_valid fromL -> location_valid toL ->
   are_squares_on_same_diagonal fromL toL = true \/   
   are_squares_on_same_antidiagonal fromL toL = true ->
-  move_to_square_on_rfd pos fromL toL = Some m ->
-  BishopCanMakeMove pos fromL m.
+  move_to_square_on_rfd pos c fromL toL = Some m ->
+  BishopCanMakeMove pos fromL c m.
 Proof.
-  intros pos fromL toL m Hfromv Htov Hsamed Hmts.
+  intros pos c fromL toL m Hfromv Htov Hsamed Hmts.
   destruct pos eqn:Epos. destruct fromL eqn:Efrom. destruct toL eqn:Eto.
   subst. simpl in Hmts.
   destruct ((rank =? rank0) && (file =? file0))%bool eqn:EfromNotTo;
@@ -48,15 +49,16 @@ Proof.
   destruct (are_squares_between_empty pp (Loc rank file) (Loc rank0 file0))
     eqn:Eempty; simpl in Hmts; try discriminate.
   destruct (is_square_empty_rank_file rank0 file0 pp) eqn:Htoempty.
-  - inversion Hmts. subst. apply (BishopCanMove _ pp toMove pawnDoubleStep _ _); 
+  - inversion Hmts. subst. 
+    apply (BishopCanMove _ pp c toMove pawnDoubleStep _ _); 
     auto. intros C. inversion C; subst. Hb2p.
     repeat rewrite PeanoNat.Nat.eqb_refl in EfromNotTo.
     destruct EfromNotTo as [C1 | C1]; discriminate.
     apply are_squares_between_empty_correct; auto.
-  - destruct (occupied_by_enemy_piece rank0 file0 pp toMove) eqn:Eoccupied;
+  - destruct (occupied_by_enemy_piece rank0 file0 pp c) eqn:Eoccupied;
     simpl in Hmts; try discriminate.
     inversion Hmts. subst. 
-    apply (BishopCanCapture _ pp toMove pawnDoubleStep _ _); auto. intros C. 
+    apply (BishopCanCapture _ pp c toMove pawnDoubleStep _ _); auto. intros C. 
     inversion C; subst. Hb2p. 
     repeat rewrite PeanoNat.Nat.eqb_refl in EfromNotTo.
     destruct EfromNotTo as [C1 | C1]; discriminate.
@@ -64,12 +66,12 @@ Proof.
 Qed.
 
 Lemma bishop_move_to_square_on_same_diagonal_complete : 
-  forall pos fromL toL m,
-  BishopCanMakeMove pos fromL m ->
+  forall pos fromL c toL m,
+  BishopCanMakeMove pos fromL c m ->
   (m = (FromTo fromL toL) \/ m = (Capture fromL toL)) ->
-  move_to_square_on_rfd pos fromL toL = Some m.
+  move_to_square_on_rfd pos c fromL toL = Some m.
 Proof.
-  intros pos fromL toL m Hcan Hmove.
+  intros pos fromL c toL m Hcan Hmove.
   inversion Hcan; subst.
   - assert (Hto: to = toL). 
     { destruct Hmove as [Hmove | Hmove]; inversion Hmove; subst; auto. }
@@ -89,14 +91,14 @@ Proof.
 Qed.
 
 Lemma bishop_moves_to_square_on_same_diagonal_complete : 
-  forall pos fromL toL m,
-  BishopCanMakeMove pos fromL m ->
+  forall pos c fromL toL m,
+  BishopCanMakeMove pos fromL c m ->
   (m = (FromTo fromL toL) \/ m = (Capture fromL toL)) ->
-  In m (moves_to_square_on_rfd_list pos fromL toL).
+  In m (moves_to_square_on_rfd_list pos c fromL toL).
 Proof.
-  intros pos fromL toL m Hcan Hmovetype.
+  intros pos c fromL toL m Hcan Hmovetype.
   unfold moves_to_square_on_rfd_list.
-  destruct (move_to_square_on_rfd pos fromL toL) eqn:Erm.
+  destruct (move_to_square_on_rfd pos c fromL toL) eqn:Erm.
   - constructor. 
     apply bishop_move_to_square_on_same_diagonal_complete with (toL:=toL) 
       in Hcan; auto.
@@ -106,24 +108,24 @@ Proof.
 Qed.
 
 Lemma bishop_moves_to_square_on_same_diagonal_list_sound : 
-  forall pos fromL toL m,
+  forall pos c fromL toL m,
   location_valid fromL -> location_valid toL ->
   are_squares_on_same_diagonal fromL toL = true \/   
   are_squares_on_same_antidiagonal fromL toL = true ->
-  In m (moves_to_square_on_rfd_list pos fromL toL) ->
-  BishopCanMakeMove pos fromL m.
+  In m (moves_to_square_on_rfd_list pos c fromL toL) ->
+  BishopCanMakeMove pos fromL c m.
 Proof.
   intros. unfold moves_to_square_on_rfd_list in *.
-  destruct (move_to_square_on_rfd pos fromL toL) eqn:Hrm; inversion H2; 
+  destruct (move_to_square_on_rfd pos c fromL toL) eqn:Hrm; inversion H2; 
   try inversion H3. subst. 
   eapply bishop_move_to_square_on_same_diagonal_sound; eauto.
 Qed.
 
-Lemma bishop_moves_sound : forall move fromL pos,
+Lemma bishop_moves_sound : forall move fromL c pos,
   location_valid fromL ->
-  In move (bishop_moves fromL pos) -> BishopCanMakeMove pos fromL move.
+  In move (bishop_moves fromL c pos) -> BishopCanMakeMove pos fromL c move.
 Proof.
-  intros move fromL pos Hvalid Hin.
+  intros move fromL c pos Hvalid Hin.
   unfold bishop_moves in Hin. in_app_to_or. destruct Hin as [Hin | Hin];
   apply in_append_forall_suf in Hin as [a [Hd Hm]];
   apply bishop_moves_to_square_on_same_diagonal_list_sound in Hm; auto.
@@ -133,10 +135,10 @@ Proof.
   - right. apply squares_on_same_antidiagonal_sound. auto.
 Qed.
 
-Lemma bishop_moves_complete : forall pos fromL move,
-  BishopCanMakeMove pos fromL move -> In move (bishop_moves fromL pos).
+Lemma bishop_moves_complete : forall pos fromL c move,
+  BishopCanMakeMove pos fromL c move -> In move (bishop_moves fromL c pos).
 Proof.
-  intros pos fromL move Hcan.
+  intros pos fromL c move Hcan.
   inversion Hcan; subst.
   - unfold bishop_moves. in_app_to_or. destruct H3 as [Hd | Had].
     + left. apply in_append_forall_nec with (a:=to).
