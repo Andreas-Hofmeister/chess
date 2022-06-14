@@ -42,11 +42,27 @@ Inductive IsMoveToEmptySquare : Move -> Prop :=
   | IsPromotion : forall from to piece move,
     move = Promotion from to piece -> IsMoveToEmptySquare move.
 
+Definition is_move_to_empty_square (m : Move) : bool :=
+  match m with
+  | FromTo _ _ => true
+  | EnPassant _ _ => true
+  | DoubleStep _ _ => true
+  | Promotion _ _ _ => true
+  | _ => false
+  end.
+
 Inductive IsCapturingMove : Move -> Prop :=
   | IsNormalCapture : forall from to move,
     move = Capture from to -> IsCapturingMove move
   | IsPromotionWithCapture : forall from to piece move,
     move = PromotionWithCapture from to piece -> IsCapturingMove move.
+
+Definition is_capturing_move (m : Move) : bool :=
+  match m with
+  | Capture _ _ => true
+  | PromotionWithCapture _ _ _ => true
+  | _ => false
+  end.
 
 Definition get_double_step_target_rank (dstep : PawnDoubleStep) :=
   match dstep with
@@ -341,6 +357,28 @@ Inductive SquaresBetweenEmpty (pp : PiecePlacements)
     SquaresBetweenEmpty pp loc1 loc2.
 
 (*****Proofs*****)
+
+Lemma is_move_to_empty_square_correct : forall m,
+  IsMoveToEmptySquare m <-> is_move_to_empty_square m = true.
+Proof.
+  intros m. split.
+  - intros. inversion H; subst; simpl; auto.
+  - intros. unfold is_move_to_empty_square in *. DHmatch; try discriminate.
+    + eapply IsFromTo; eauto.
+    + eapply IsDoubleStep; eauto.
+    + eapply IsEnPassant; eauto.
+    + eapply IsPromotion; eauto.
+Qed.
+
+Lemma is_capturing_move_correct : forall m,
+  IsCapturingMove m <-> is_capturing_move m = true.
+Proof.
+  intros m. split.
+  - intros H. inversion H; subst; simpl; auto.
+  - intros H. unfold is_capturing_move in *. DHmatch; try discriminate.
+    + eapply IsNormalCapture; eauto.
+    + eapply IsPromotionWithCapture; eauto.
+Qed.
 
 Lemma one_step_along_vector_adjacent : forall l l2 v,
   l2 = (one_step_along_vector l v) -> l = l2 \/ SquaresAdjacent l l2.

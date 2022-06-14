@@ -10,7 +10,7 @@ From CHESS Require Export king_moves.
 
 (* Definition of when a piece attacks a square or another piece *)
 
-(* Definitions *)
+(** Definitions **)
 
 Inductive APieceCanMakeMove (pos : Position) : Color -> Move -> Prop := 
   | MoveCanBeMadeByPawn : forall color move from,
@@ -60,9 +60,15 @@ Definition moves_by_player_from_square (pos : Position) (c : Color)
         | Bishop => bishop_moves loc c pos
         | Knight => knight_moves loc c pos
         | Queen => queen_moves loc c pos
-        (*| King => king_moves loc pos*)
-        | _ => []
+        | King => king_moves loc c pos
         end else []
       end
   end.
-  
+
+Definition moves_by_player (pos : Position) (c : Color) : (list Move) :=
+  append_forall (fun sq => moves_by_player_from_square pos c sq) 
+  valid_locations.
+
+(** Proofs **)
+
+

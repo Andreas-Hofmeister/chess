@@ -138,9 +138,9 @@ Lemma knight_jump_vector_from_a_to_b_eq : forall from v,
   is_knight_jump_vector v = true ->
   v = vector_from_a_to_b from (apply_vector v from).
 Proof.
-  intros. apply valid_squares in H. repeat HinCases;
-  rewrite is_knight_jump_vector_iff in H1; repeat HinCases; subst; simpl;
-  simpl in H0; try discriminate; auto.
+  intros. apply valid_squares in H. unfold valid_locations in H. 
+  repeat HinCases; rewrite is_knight_jump_vector_iff in H1; repeat HinCases; 
+  subst; simpl; simpl in H0; try discriminate; auto.
 Qed.
 
 Lemma knight_moves_sound_aux : forall vs from c pos move,
