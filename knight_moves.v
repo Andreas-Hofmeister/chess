@@ -15,44 +15,45 @@ Definition is_knight_jump (from to : SquareLocation) :=
   is_knight_jump_vector (vector_from_a_to_b from to).
 
 Inductive KnightCanMakeMove (pos : Position)
-  : SquareLocation -> Move -> Prop :=
-  | KnightCanMove : forall pp c dstep from to, 
+  : SquareLocation -> Color -> Move -> Prop :=
+  | KnightCanMove : forall pp c pos_c dstep from to, 
     location_valid from -> location_valid to ->
-    pos = Posn pp c dstep ->
+    pos = Posn pp pos_c dstep ->
     from <> to ->
     is_knight_jump from to = true ->
     is_square_empty to pp = true ->
-    KnightCanMakeMove pos from (FromTo from to)
-  | KnightCanCapture : forall pp c dstep from to, 
+    KnightCanMakeMove pos from c (FromTo from to)
+  | KnightCanCapture : forall pp c pos_c dstep from to, 
     location_valid from -> location_valid to ->
-    pos = Posn pp c dstep ->
+    pos = Posn pp pos_c dstep ->
     from <> to ->
     is_knight_jump from to = true ->
     is_square_occupied_by_enemy_piece to pp c = true ->
-    KnightCanMakeMove pos from (Capture from to).
+    KnightCanMakeMove pos from c (Capture from to).
 
-Definition knight_move_to_square (pos : Position) 
+Definition knight_move_to_square (pos : Position) (c : Color)
   (fromL : SquareLocation) (toL : SquareLocation) : option Move :=
   match pos with
-  | Posn pp c _ =>
+  | Posn pp _ _ =>
     if is_square_empty toL pp then Some (FromTo fromL toL)
     else if is_square_occupied_by_enemy_piece toL pp c 
       then Some (Capture fromL toL)
       else None
   end.
 
-Fixpoint knight_moves_to_squares (pos : Position) (from : SquareLocation)
-  (tos : list SquareLocation) :=
+Fixpoint knight_moves_to_squares (pos : Position) (c : Color)
+(from : SquareLocation) (tos : list SquareLocation) :=
   match tos with
   | [] => []
   | to :: rtos => 
-    match knight_move_to_square pos from to with
-    | Some move => move :: (knight_moves_to_squares pos from rtos)
-    | _ => (knight_moves_to_squares pos from rtos)
+    match knight_move_to_square pos c from to with
+    | Some move => move :: (knight_moves_to_squares pos c from rtos)
+    | _ => (knight_moves_to_squares pos c from rtos)
     end
   end.
 
-Definition knight_moves (l : SquareLocation) (pos : Position) : (list Move) :=
+Definition knight_moves (l : SquareLocation) (c: Color) (pos : Position) 
+: (list Move) :=
   let llu := (VectorHV (HStep Left 2) (VStep Up 1)) in
   let lld := (VectorHV (HStep Left 2) (VStep Down 1)) in
   let rru := (VectorHV (HStep Right 2) (VStep Up 1)) in
@@ -61,19 +62,19 @@ Definition knight_moves (l : SquareLocation) (pos : Position) : (list Move) :=
   let uur := (VectorHV (HStep Right 1) (VStep Up 2)) in
   let ddl := (VectorHV (HStep Left 1) (VStep Down 2)) in
   let ddr := (VectorHV (HStep Right 1) (VStep Down 2)) in
-  knight_moves_to_squares pos l 
+  knight_moves_to_squares pos c l 
     (target_squares l [llu;lld;rru;rrd;uul;uur;ddl;ddr]).
 
 
 (******Proofs******)
 
-Lemma knight_move_to_square_iff : forall pp toMove pds m from to,
-  knight_move_to_square (Posn pp toMove pds) from to = Some m <-> 
+Lemma knight_move_to_square_iff : forall pp c toMove pds m from to,
+  knight_move_to_square (Posn pp toMove pds) c from to = Some m <-> 
   ((is_square_empty to pp = true) /\ m = (FromTo from to)) \/
-  ((is_square_occupied_by_enemy_piece to pp toMove = true) /\ 
+  ((is_square_occupied_by_enemy_piece to pp c = true) /\ 
     m = (Capture from to)).
 Proof.
-  intros pp toMove pds m from to.
+  intros pp c toMove pds m from to.
   split.
   - intros Hkm. unfold knight_move_to_square in *. DHif.
     + inversion Hkm. subst. auto.
@@ -93,18 +94,18 @@ Proof.
 Qed.
 
 Ltac destruct_knight_move := match goal with
-    | H : context[match knight_move_to_square ?a ?b ?c with _ => _ end] |- _ 
-      => destruct (knight_move_to_square a b c) eqn:?E
+    | H : context[match knight_move_to_square ?a ?b ?c ?d with _ => _ end] |- _ 
+      => destruct (knight_move_to_square a b c d) eqn:?E
     end.
 
 Ltac knight_move_cases := match goal with
-  | H : knight_move_to_square ?p _ _ = Some ?m |- KnightCanMakeMove ?p _ ?m
+  | H : knight_move_to_square ?p _ _ _ = Some ?m |- KnightCanMakeMove ?p _ _ ?m
     => destruct p; rewrite knight_move_to_square_iff in H; 
        destruct H as [[?H ?H] | [?H ?H]]; subst
-  | |- KnightCanMakeMove _ _ (FromTo _ _)
+  | |- KnightCanMakeMove _ _ _ (FromTo _ _)
     => eapply KnightCanMove; eauto; unfold location_valid; try lia; 
        discriminate
-  | |- KnightCanMakeMove _ _ (Capture _ _)
+  | |- KnightCanMakeMove _ _ _ (Capture _ _)
     => eapply KnightCanCapture; eauto; unfold location_valid; try lia; 
        discriminate
   end.
@@ -142,13 +143,13 @@ Proof.
   simpl in H0; try discriminate; auto.
 Qed.
 
-Lemma knight_moves_sound_aux : forall vs from pos move,
+Lemma knight_moves_sound_aux : forall vs from c pos move,
   location_valid from ->
   (forall v, In v vs -> is_knight_jump_vector v = true) ->
-  In move (knight_moves_to_squares pos from (target_squares from vs)) ->
-  KnightCanMakeMove pos from move.
+  In move (knight_moves_to_squares pos c from (target_squares from vs)) ->
+  KnightCanMakeMove pos from c move.
 Proof.
-  induction vs; intros from pos move Hfromv Hjvs Hin. 
+  induction vs; intros from c pos move Hfromv Hjvs Hin. 
   - simpl in Hin. contradiction.
   - simpl in Hin. DHif.
     + simpl in Hin. destruct_knight_move.
@@ -173,9 +174,9 @@ Proof.
     + apply IHvs; auto. intros. apply Hjvs. apply in_cons. auto.
 Qed.
 
-Lemma knight_moves_sound : forall pos from move,
+Lemma knight_moves_sound : forall pos from c move,
   location_valid from -> 
-  In move (knight_moves from pos) -> KnightCanMakeMove pos from move.
+  In move (knight_moves from c pos) -> KnightCanMakeMove pos from c move.
 Proof.
   intros pos from move Hv Hin.
   Ltac knight_move_finish_case := repeat destruct_knight_move; 
