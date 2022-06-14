@@ -713,6 +713,12 @@ Proof.
       repeat split; try lia. auto.
 Qed.
 
+Lemma adjacent_squares_valid : forall l1 l2,
+  (location_valid l1 /\ In l2 (adjacent_squares l1)) -> location_valid l2.
+Proof.
+  intros l1 l2 H. rewrite <- adjacent_squares_correct in H. repeat HdAnd. auto.
+Qed.
+
 Lemma append_forall_fold_acc : forall A B (f : A -> list B) l b accl,
   In b accl -> In b (fold_left (fun acc x => (f x) ++ acc) l accl).
 Proof.

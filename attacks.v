@@ -15,25 +15,25 @@ From CHESS Require Export king_moves.
 Inductive APieceCanMakeMove (pos : Position) : Color -> Move -> Prop := 
   | MoveCanBeMadeByPawn : forall color move from,
     from = fromOfMove move -> IsOccupiedBy pos from color Pawn ->
-    PawnCanMakeMove pos from move -> APieceCanMakeMove pos color move
+    PawnCanMakeMove pos from color move -> APieceCanMakeMove pos color move
   | MoveCanBeMadeByRook : forall color move from,
     from = fromOfMove move -> IsOccupiedBy pos from color Rook ->
-    RookCanMakeMove pos from move -> APieceCanMakeMove pos color move
+    RookCanMakeMove pos from color move -> APieceCanMakeMove pos color move
   | MoveCanBeMadeByBishop : forall color move from,
     from = fromOfMove move -> IsOccupiedBy pos from color Bishop ->
-    BishopCanMakeMove pos from move -> APieceCanMakeMove pos color move
+    BishopCanMakeMove pos from color move -> APieceCanMakeMove pos color move
   | MoveCanBeMadeByKnight : forall color move from,
     from = fromOfMove move -> IsOccupiedBy pos from color Knight ->
-    KnightCanMakeMove pos from move -> APieceCanMakeMove pos color move
+    KnightCanMakeMove pos from color  move -> APieceCanMakeMove pos color move
   | MoveCanBeMadeByQueen : forall color move from,
     from = fromOfMove move -> IsOccupiedBy pos from color Queen ->
-    QueenCanMakeMove pos from move -> APieceCanMakeMove pos color move
+    QueenCanMakeMove pos from color move -> APieceCanMakeMove pos color move
   | MoveCanBeMadeByKing : forall color move from,
     from = fromOfMove move -> IsOccupiedBy pos from color King ->
-    KingCanMakeMove pos from move -> APieceCanMakeMove pos color move.
+    KingCanMakeMove pos from color move -> APieceCanMakeMove pos color move.
 
 Inductive AttacksEmptySquare (pos : Position) 
-  : Color -> SquareLocation -> Prop :=
+: Color -> SquareLocation -> Prop :=
   | AttacksEmptySquare_iff : forall color loc move,
     loc = toOfMove move -> IsMoveToEmptySquare move ->
     APieceCanMakeMove pos color move -> AttacksEmptySquare pos color loc.
@@ -55,11 +55,11 @@ Definition moves_by_player_from_square (pos : Position) (c : Color)
       | Empty => []
       | Occupied sc p => 
         if ceq c sc then match p with
-        | Pawn => pawn_moves loc pos
-        | Rook => rook_moves loc pos
-        | Bishop => bishop_moves loc pos
-        | Knight => knight_moves loc pos
-        | Queen => queen_moves loc pos
+        | Pawn => pawn_moves loc c pos
+        | Rook => rook_moves loc c pos
+        | Bishop => bishop_moves loc c pos
+        | Knight => knight_moves loc c pos
+        | Queen => queen_moves loc c pos
         (*| King => king_moves loc pos*)
         | _ => []
         end else []
