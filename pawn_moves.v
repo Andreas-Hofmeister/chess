@@ -205,6 +205,24 @@ Definition pawn_moves (pawn_loc : SquareLocation) (c : Color) (pos : Position)
 
 (* Proofs *)
 
+Lemma pawn_moves_from : forall move loc c pos,
+  In move (pawn_moves loc c pos) -> fromOfMove move = loc.
+Proof.
+  intros move loc c pos Hin. unfold pawn_moves in *. repeat in_app_to_or.
+  - unfold pawn_forward_moves in *. repeat DHmatch; try HinNil. inversion Hin;
+    try HinNil. subst. simpl. auto.
+  - unfold pawn_captures in *. repeat DHmatch; try HinNil; 
+    repeat in_app_to_or; inversion Hin; try HinNil; subst; simpl; auto.
+  - unfold pawn_double_steps in *. repeat DHmatch; try HinNil. inversion Hin;
+    try HinNil. subst. simpl. auto.
+  - unfold en_passant_moves in *. repeat DHmatch; try HinNil. inversion Hin;
+    try HinNil. subst. simpl. auto.
+  - unfold pawn_forward_promotions in *. repeat DHmatch; try HinNil. 
+    repeat HinCases; subst; simpl; auto.
+  - unfold pawn_promotion_captures in *. repeat DHmatch; try HinNil;
+    repeat in_app_to_or; repeat HinCases; subst; simpl; auto.
+Qed.
+
 Lemma pawn_forward_moves_sound : forall move loc c pos,
   In move (pawn_forward_moves loc c pos) -> 
   PawnCanMakeMove pos loc c move.

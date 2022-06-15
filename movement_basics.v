@@ -358,6 +358,22 @@ Inductive SquaresBetweenEmpty (pp : PiecePlacements)
 
 (*****Proofs*****)
 
+Lemma move_to_square_on_rfd_from : forall pos c fromL toL move,
+  move_to_square_on_rfd pos c fromL toL = Some move -> fromOfMove move = fromL.
+Proof.
+  intros pos c fromL toL move Hmove. unfold move_to_square_on_rfd in *.
+  repeat DHmatch; inversion Hmove; auto.
+Qed.
+
+Lemma moves_to_square_on_rfd_list_from : forall move pos c l a,
+  In move (moves_to_square_on_rfd_list pos c l a) -> fromOfMove move = l.
+Proof.
+  intros move pos c l a Hin. unfold moves_to_square_on_rfd_list in *.
+  repeat DHmatch; inversion Hin; subst.
+  - apply move_to_square_on_rfd_from with (pos:=pos) (c:=c) (toL:=a). auto.
+  - HinNil.
+Qed.
+
 Lemma is_move_to_empty_square_correct : forall m,
   IsMoveToEmptySquare m <-> is_move_to_empty_square m = true.
 Proof.

@@ -30,6 +30,18 @@ Definition rook_moves (l : SquareLocation) (c : Color) (pos : Position)
   (append_forall (moves_to_square_on_rfd_list pos c l)
     (squares_on_same_file l)).
 
+(** Proofs **)
+
+Lemma rook_moves_from : forall pos l c move,
+  In move (rook_moves l c pos) -> fromOfMove move = l.
+Proof.
+  intros pos l c move Hin. unfold rook_moves in *. repeat in_app_to_or.
+  - apply in_append_forall_suf in Hin as [a [Ha Hb]]. 
+    eapply moves_to_square_on_rfd_list_from. eauto.
+  - apply in_append_forall_suf in Hin as [a [Ha Hb]]. 
+    eapply moves_to_square_on_rfd_list_from. eauto.
+Qed.
+
 Lemma rook_move_to_square_on_same_rank_or_file_sound : forall pos c fromL toL 
   m,
   location_valid fromL -> location_valid toL ->

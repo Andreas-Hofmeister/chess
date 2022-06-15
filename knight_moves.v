@@ -68,6 +68,32 @@ Definition knight_moves (l : SquareLocation) (c: Color) (pos : Position)
 
 (******Proofs******)
 
+Lemma knight_move_to_square_from : forall pos c fromL toL move,
+  knight_move_to_square pos c fromL toL = Some move -> fromOfMove move = fromL.
+Proof.
+  intros pos c fromL toL move Hkm. unfold knight_move_to_square in *. 
+  repeat DHmatch; inversion Hkm; simpl; auto.
+Qed.
+
+Lemma knight_moves_to_squares_from : forall tos pos c from move,
+  In move (knight_moves_to_squares pos c from tos) -> fromOfMove move = from.
+Proof.
+  induction tos.
+  - intros. simpl in *. contradiction.
+  - intros pos c from move Hin. simpl in Hin. repeat DHmatch.
+    + HinCases; subst.
+      * eapply knight_move_to_square_from. eauto.
+      * eapply IHtos. eauto.
+    + eapply IHtos. eauto.
+Qed.
+
+Lemma knight_moves_from : forall l c pos move,
+  In move (knight_moves l c pos) -> fromOfMove move = l.
+Proof.
+  intros l c pos move Hin. unfold knight_moves in *. 
+  eapply knight_moves_to_squares_from. eauto.
+Qed.
+
 Lemma knight_move_to_square_iff : forall pp c toMove pds m from to,
   knight_move_to_square (Posn pp toMove pds) c from to = Some m <-> 
   ((is_square_empty to pp = true) /\ m = (FromTo from to)) \/
