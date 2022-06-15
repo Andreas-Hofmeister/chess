@@ -408,7 +408,7 @@ Proof.
   - intros. apply Hsi with (n:=n). auto.
 Qed. 
 
-Lemma valid_squares : forall loc,
+Lemma valid_squares_nec : forall loc,
   location_valid loc ->
   In loc valid_locations.
 Proof.
@@ -443,6 +443,22 @@ Proof.
   destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
   lia. 
   lia.
+Qed.
+
+Lemma valid_squares_suf : forall loc,
+  In loc valid_locations -> location_valid loc.
+Proof.
+  intros loc Hin.
+  unfold valid_locations in *. unfold location_valid. repeat HinCases; subst;
+  lia.
+Qed.
+
+Lemma valid_squares : forall loc,
+  location_valid loc <-> In loc valid_locations.
+Proof.
+  intros. split.
+  - apply valid_squares_nec.
+  - apply valid_squares_suf.
 Qed.
 
 Lemma get_set_file_correct : forall pp fn f,

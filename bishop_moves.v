@@ -34,6 +34,14 @@ Definition bishop_moves (l : SquareLocation) (c : Color) (pos : Position)
 
 (******Proofs*****)
 
+Lemma bishop_moves_from : forall l c pos move,
+  In move (bishop_moves l c pos) -> fromOfMove move = l.
+Proof.
+  intros l c pos move Hin. unfold bishop_moves in *. repeat in_app_to_or;
+  apply in_append_forall_suf in Hin; destruct Hin as [a [Hd Hin]];
+  eapply moves_to_square_on_rfd_list_from; eauto.
+Qed.
+
 Lemma bishop_move_to_square_on_same_diagonal_sound : forall pos c fromL toL m,
   location_valid fromL -> location_valid toL ->
   are_squares_on_same_diagonal fromL toL = true \/   

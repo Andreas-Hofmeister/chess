@@ -90,15 +90,26 @@ Proof.
     eapply MoveCanBeMadeByKnight; eauto; rewrite Hfrom.
     + econstructor; eauto.
     + apply knight_moves_sound; auto.
-  - admit.
-  - admit.
-  - admit.
-Admitted.
+  - apply bishop_moves_from in Hin as Hfrom. subst.
+    eapply MoveCanBeMadeByBishop; eauto; rewrite Hfrom.
+    + econstructor; eauto.
+    + apply bishop_moves_sound; auto.
+  - apply queen_moves_from in Hin as Hfrom. subst.
+    eapply MoveCanBeMadeByQueen; eauto; rewrite Hfrom.
+    + econstructor; eauto.
+    + apply queen_moves_sound; auto.
+  - apply king_moves_from in Hin as Hfrom. subst.
+    eapply MoveCanBeMadeByKing; eauto; rewrite Hfrom.
+    + econstructor; eauto.
+    + apply king_moves_sound; auto.
+Qed.
 
 Lemma moves_by_player_sound : forall pos c move,
   In move (moves_by_player pos c) -> APieceCanMakeMove pos c move. 
 Proof.
   intros pos c move Hin. unfold moves_by_player in Hin. 
   apply in_append_forall_suf in Hin. destruct Hin as [a [Hv Hin]].
-Admitted.
+  eapply moves_by_player_from_square_sound; eauto. rewrite valid_squares.
+  auto.
+Qed.
 

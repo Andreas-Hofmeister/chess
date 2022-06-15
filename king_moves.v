@@ -41,6 +41,16 @@ Definition king_moves (loc : SquareLocation) (c : Color) (pos : Position)
 
 (*** Proofs ***)
 
+Lemma king_moves_from : forall l c pos move,
+  In move (king_moves l c pos) -> fromOfMove move = l.
+Proof.
+  intros l c pos move Hin. unfold king_moves in *. repeat in_app_to_or.
+  - unfold king_moves_to_empty_square in *. repeat DHmatch.
+    rewrite in_map_iff in Hin. destruct Hin as [x [Hm _]]. subst. simpl. auto.
+  - unfold king_captures in *. repeat DHmatch.
+    rewrite in_map_iff in Hin. destruct Hin as [x [Hm _]]. subst. simpl. auto.
+Qed.
+
 Lemma king_moves_to_empty_square_sound : forall loc c pos move,
   location_valid loc ->
   In move (king_moves_to_empty_square loc c pos) 

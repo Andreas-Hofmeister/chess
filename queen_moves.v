@@ -19,6 +19,14 @@ Definition queen_moves (l : SquareLocation) (c : Color) (pos : Position)
 
 (*****Proofs*****)
 
+Lemma queen_moves_from : forall l c pos move,
+  In move (queen_moves l c pos) -> fromOfMove move = l.
+Proof.
+  intros l c pos move Hin. unfold queen_moves in *. repeat in_app_to_or.
+  - eapply rook_moves_from; eauto.
+  - eapply bishop_moves_from; eauto.
+Qed.
+
 Lemma queen_moves_sound : forall move fromL c pos,
   location_valid fromL ->
   In move (queen_moves fromL c pos) -> QueenCanMakeMove pos fromL c move.
