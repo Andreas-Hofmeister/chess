@@ -71,6 +71,22 @@ Definition moves_by_player (pos : Position) (c : Color) : (list Move) :=
 
 (** Proofs **)
 
+Lemma a_piece_can_make_move_from_valid : forall pos c move,
+  APieceCanMakeMove pos c move -> location_valid (fromOfMove move).
+Proof.
+  intros pos c move Hcan. inversion Hcan; subst; inversion H1; auto.
+  - inversion H; auto.
+  - inversion H; auto.
+Qed.
+
+Lemma a_piece_can_make_move_from_occupied : forall pos c move,
+  APieceCanMakeMove pos c move -> 
+  is_square_empty (fromOfMove move) (get_piece_placements pos) = false.
+Proof.
+  intros pos c move Hcan. inversion Hcan; subst; inversion H0; subst; simpl;
+  unfold is_square_empty_rank_file; rewrite H3; auto.
+Qed.
+
 Lemma moves_by_player_from_square_sound : forall pos c loc move,
   location_valid loc ->
   In move (moves_by_player_from_square pos c loc) ->
@@ -113,3 +129,22 @@ Proof.
   auto.
 Qed.
 
+Lemma moves_by_player_complete : forall pos c move,
+  APieceCanMakeMove pos c move -> In move (moves_by_player pos c).
+Proof.
+  intros pos c move Hcan. unfold moves_by_player. 
+  unfold moves_by_player_from_square.
+  specialize (a_piece_can_make_move_from_valid pos c move Hcan) as Hv.
+  specialize (a_piece_can_make_move_from_occupied pos c move Hcan) as Hocc.
+  unfold is_square_empty in Hocc. DHmatch. 
+  unfold is_square_empty_rank_file in Hocc.
+  apply in_append_forall_nec with (a:=fromOfMove move). apply valid_squares.
+  rewrite E. auto. inversion Hcan; subst; inversion H0; subst; DGmatch; 
+  simpl in *; rewrite H3; rewrite ceq_refl.
+  - apply pawn_moves_complete. rewrite H. auto.
+  - apply rook_moves_complete. rewrite H. auto.
+  - apply bishop_moves_complete. rewrite H. auto.
+  - admit.
+  - apply queen_moves_complete. rewrite H. auto.
+  - apply king_moves_complete. rewrite H. auto.
+Admitted.

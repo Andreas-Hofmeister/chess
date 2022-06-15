@@ -532,6 +532,11 @@ Proof.
   - intros. rewrite H. destruct c2; simpl; auto.
 Qed.
 
+Lemma ceq_refl : forall c, ceq c c = true.
+Proof.
+  intros c. apply ceq_eq. auto.
+Qed.
+
 Lemma occupied_by_enemy_piece_correct : forall f r pp c,
   occupied_by_enemy_piece r f pp c = true <-> exists c2 piece,
   (indices_valid r f = true) /\ 
