@@ -68,6 +68,19 @@ Definition knight_moves (l : SquareLocation) (c: Color) (pos : Position)
 
 (******Proofs******)
 
+Lemma in_knight_moves_to_squares : forall pos c from to tos move,
+  toOfMove move = to -> fromOfMove move = from ->
+  In to tos -> knight_move_to_square pos c from to = Some move ->
+  In move (knight_moves_to_squares pos c from tos).
+Proof.
+  intros pos c from to tos move Hto Hfrom Hin Hkm. generalize dependent tos.
+  induction tos; intros Hin; try HinNil; subst. inversion Hin; subst.
+  - simpl. rewrite Hkm. apply in_eq.
+  - simpl. DGmatch.
+    + apply in_cons. apply IHtos. auto.
+    + apply IHtos. auto.
+Qed.
+
 Lemma knight_move_to_square_from : forall pos c fromL toL move,
   knight_move_to_square pos c fromL toL = Some move -> fromOfMove move = fromL.
 Proof.
@@ -220,3 +233,18 @@ Proof.
   intros. rewrite Heqvs in H. apply is_knight_jump_vector_iff; auto.
 Qed.
 
+Lemma knight_moves_complete : forall pos from c move,
+  KnightCanMakeMove pos from c move -> In move (knight_moves from c pos).
+Proof.
+  intros pos from c move Hcan. unfold knight_moves. inversion Hcan; subst.
+  - apply in_knight_moves_to_squares with (to:=to); auto.
+    + apply in_target_squares; auto. unfold is_knight_jump in H3.
+      rewrite is_knight_jump_vector_iff in H3. auto.
+    + simpl. rewrite H4. auto.
+  - apply in_knight_moves_to_squares with (to:=to); auto.
+    + apply in_target_squares; auto. unfold is_knight_jump in H3.
+      rewrite is_knight_jump_vector_iff in H3. auto.
+    + simpl. replace (is_square_empty to pp) with false. 
+      * rewrite H4. auto.
+      * symmetry. eapply occupied_not_empty. eauto.
+Qed.

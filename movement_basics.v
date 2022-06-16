@@ -331,9 +331,10 @@ Definition vector_stays_within_boundaries (v : Vector) (l : SquareLocation)
     | VectorHV (HStep Left n) (VStep Down m) => (n <= y) /\ (m <= x)
     | VectorHV (HStep Left n) (VStep Up m) => (n <= y) /\ (x + m <= 7)
     | VectorHV (HStep Right n) (VStep Down m) => (m <= x) /\ (y + n <= 7)
-    | _ => True
+    | VectorHV (HStep Right n) (VStep Up m) => (x + m <= 7) /\ (y + n <= 7)
     end
   end.
+
 
 Fixpoint target_squares (from : SquareLocation) (vs : list Vector) :=
   match vs with
@@ -589,7 +590,8 @@ Proof.
   destruct d eqn:Ed; destruct d0 eqn:Ed0; simpl; auto.
   - split. apply PeanoNat.Nat.le_min_r. repeat (destruct rank; try lia).
   - split. apply PeanoNat.Nat.le_min_r. apply PeanoNat.Nat.le_min_r.
-  - split. apply PeanoNat.Nat.le_min_r. repeat (destruct file; try lia).
+  - split; repeat DGmatch; simpl; try lia.
+  - repeat DGmatch; simpl; try lia.
 Qed.
 
 Lemma one_step_stays_in_bounds : forall v l v0 l0,
@@ -868,9 +870,8 @@ Proof.
   unfold location_valid in *.
   destruct l1 eqn:El1.
   destruct l2 eqn:El2.
-  simpl. destruct (rank <=? rank0) eqn:Ernk.
-  - destruct (file <=? file0) eqn:Efl; auto. lia.
-  - destruct (file <=? file0) eqn:Efl; auto. lia. split; auto; lia.
+  simpl. destruct (rank <=? rank0) eqn:Ernk;
+  repeat DGmatch; repeat DHif; repeat Hb2p; intros; try inversion E; try lia.
 Qed.
 
 Lemma are_squares_along_vector_empty_correct : forall pp v start,
@@ -1341,3 +1342,29 @@ Proof.
   simpl in H0; Hb2p; HdAnd; repeat Hb2p; lia.
 Qed.
 
+Lemma does_vector_stay_within_boundaries_iff : forall from v,
+  does_vector_stay_within_boundaries v from = true <->
+  vector_stays_within_boundaries v from.
+Proof.
+  intros from v. split; intros H.
+  - unfold vector_stays_within_boundaries. repeat DGmatch; simpl in *; Hb2p; 
+    destruct H as [H1 H2]; repeat Hb2p; auto.
+  - unfold vector_stays_within_boundaries in *. repeat DHmatch; simpl in *;
+    Gb2p; split; Gb2p; lia; Gb2p; lia.
+Qed.
+
+Lemma in_target_squares : forall from to vs,
+  location_valid from -> location_valid to -> 
+  In (vector_from_a_to_b from to) vs ->
+  In to (target_squares from vs).
+Proof.
+  intros from to. induction vs; intros Hvf Hvt Hin. HinNil.
+  inversion Hin; subst.
+  - simpl. 
+    replace (does_vector_stay_within_boundaries (vector_from_a_to_b from to) from)
+    with true.
+    + rewrite vector_from_a_to_b_correct. apply in_eq.
+    + symmetry. rewrite does_vector_stay_within_boundaries_iff.
+      apply vector_from_a_to_b_in_bounds; auto.
+  - simpl. DGif; try apply in_cons; apply IHvs; auto.
+Qed.

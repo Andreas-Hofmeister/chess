@@ -144,7 +144,7 @@ Proof.
   - apply pawn_moves_complete. rewrite H. auto.
   - apply rook_moves_complete. rewrite H. auto.
   - apply bishop_moves_complete. rewrite H. auto.
-  - admit.
+  - apply knight_moves_complete. rewrite H. auto.
   - apply queen_moves_complete. rewrite H. auto.
   - apply king_moves_complete. rewrite H. auto.
-Admitted.
+Qed.
