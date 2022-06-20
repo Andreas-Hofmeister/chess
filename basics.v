@@ -379,7 +379,39 @@ Definition adjacent_squares (loc : SquareLocation) : (list SquareLocation) :=
     Loc (r-1) (f-1); Loc (r-1) f; Loc (r-1) (f+1)])
   end.
 
+Fixpoint exists_in {A} (l : list A) (f : A -> bool) : bool :=
+  match l with
+  | [] => false
+  | x::xs => if f x then true else exists_in xs f
+  end.
+
+
 (******************************Proofs**********************************)
+
+Lemma locations_equal_iff : forall loc1 loc2,
+  locations_equal loc1 loc2 = true <-> loc1 = loc2.
+Proof.
+  intros loc1 loc2. split; intros H.
+  - unfold locations_equal in *. repeat DHmatch. Hb2p. HdAnd. repeat Hb2p.
+    subst. auto.
+  - subst. unfold locations_equal. repeat DGmatch. 
+    repeat rewrite PeanoNat.Nat.eqb_refl. simpl. auto.
+Qed.
+
+Lemma exists_in_iff : forall A (l : list A) (f : A -> bool), 
+  exists_in l f = true <-> (exists x, (In x l) /\ (f x) = true).
+Proof.
+  intros A l f. split; intros H.
+  - induction l; simpl in H; try discriminate.
+    DHif.
+    + exists a. split. apply in_eq. auto.
+    + specialize (IHl H) as [x [Hin Htr]]. exists x. split. apply in_cons.
+      all: auto.
+  - destruct H as [x [Hin Htr]]. induction l; try HinNil.
+    inversion Hin; subst.
+    + simpl. rewrite Htr. auto.
+    + apply IHl in H. simpl. DGif; auto.
+Qed.
 
 Lemma locations_neq_iff: forall loc1 loc2,
   locations_neq loc1 loc2 = true <-> loc1 <> loc2.

@@ -44,8 +44,9 @@ Inductive AttacksOccupiedSquare (pos : Position)
     loc = toOfMove move -> IsCapturingMove move ->
     APieceCanMakeMove pos color move -> AttacksOccupiedSquare pos color loc.
 
-Definition Attacks (pos : Position) (c : Color) (loc : SquareLocation) : Prop
-  := AttacksEmptySquare pos c loc \/ AttacksOccupiedSquare pos c loc.
+Definition AttacksSquare (pos : Position) (c : Color) (loc : SquareLocation) 
+: Prop := 
+  AttacksEmptySquare pos c loc \/ AttacksOccupiedSquare pos c loc.
 
 Definition moves_by_player_from_square (pos : Position) (c : Color) 
 (loc : SquareLocation) : (list Move) :=
@@ -68,6 +69,26 @@ Definition moves_by_player_from_square (pos : Position) (c : Color)
 Definition moves_by_player (pos : Position) (c : Color) : (list Move) :=
   append_forall (fun sq => moves_by_player_from_square pos c sq) 
   valid_locations.
+
+Definition is_move_that_attacks_empty_square (loc : SquareLocation) 
+(move : Move) : bool :=
+  (is_move_to_empty_square move) && (locations_equal (toOfMove move) loc).
+
+Definition attacks_empty_square (pos : Position) (c : Color) 
+(loc : SquareLocation) : bool :=
+  exists_in (moves_by_player pos c) (is_move_that_attacks_empty_square loc).
+
+Definition is_move_that_attacks_occupied_square (loc : SquareLocation) 
+(move : Move) : bool :=
+  (is_capturing_move move) && (locations_equal (toOfMove move) loc).
+
+Definition attacks_occupied_square (pos : Position) (c : Color) 
+(loc : SquareLocation) : bool :=
+  exists_in (moves_by_player pos c) (is_move_that_attacks_occupied_square loc).
+
+Definition attacks_square (pos : Position) (c : Color) (loc : SquareLocation)
+: bool :=
+  (attacks_empty_square pos c loc) || (attacks_occupied_square pos c loc).
 
 (** Proofs **)
 
@@ -147,4 +168,70 @@ Proof.
   - apply knight_moves_complete. rewrite H. auto.
   - apply queen_moves_complete. rewrite H. auto.
   - apply king_moves_complete. rewrite H. auto.
+Qed.
+
+Lemma is_move_that_attacks_empty_square_iff : forall loc move,
+  is_move_that_attacks_empty_square loc move = true <->
+  (loc = toOfMove move /\ IsMoveToEmptySquare move).
+Proof.
+  intros loc move. split; intros H.
+  - unfold is_move_that_attacks_empty_square in *. Hb2p. HdAnd.
+    split. rewrite locations_equal_iff in H0. auto. 
+    apply is_move_to_empty_square_correct. auto.
+  - HdAnd. subst. unfold is_move_that_attacks_empty_square. Gb2p. split.
+    apply is_move_to_empty_square_correct. auto. rewrite locations_equal_iff.
+    auto.
+Qed.
+
+Lemma is_move_that_attacks_occupied_square_iff : forall loc move,
+  is_move_that_attacks_occupied_square loc move = true <->
+  (loc = toOfMove move /\ IsCapturingMove move).
+Proof.
+  intros loc move. split; intros H.
+  - unfold is_move_that_attacks_occupied_square in *. Hb2p. HdAnd.
+    split. rewrite locations_equal_iff in H0. auto. 
+    apply is_capturing_move_correct. auto.
+  - HdAnd. subst. unfold is_move_that_attacks_occupied_square. Gb2p. split.
+    apply is_capturing_move_correct. auto. rewrite locations_equal_iff.
+    auto.
+Qed.
+
+Lemma attacks_empty_square_correct : forall pos c loc,
+  attacks_empty_square pos c loc = true <-> AttacksEmptySquare pos c loc.
+Proof.
+  intros pos c loc. split; intros H.
+  - unfold attacks_empty_square in *. rewrite exists_in_iff in H. 
+    destruct H as [x [Hmove HtoEmpty]]. apply moves_by_player_sound in Hmove.
+    rewrite is_move_that_attacks_empty_square_iff in *. HdAnd.
+    apply AttacksEmptySquare_iff with (move:=x); auto.
+  - unfold attacks_empty_square. rewrite exists_in_iff. inversion H; subst.
+    exists move. split.
+    + apply moves_by_player_complete. auto.
+    + rewrite is_move_that_attacks_empty_square_iff. auto.
+Qed.
+
+Lemma attacks_occupied_square_correct : forall pos c loc,
+  attacks_occupied_square pos c loc = true <-> AttacksOccupiedSquare pos c loc.
+Proof.
+  intros pos c loc. split; intros H.
+  - unfold attacks_occupied_square in *. rewrite exists_in_iff in H. 
+    destruct H as [x [Hmove HtoEmpty]]. apply moves_by_player_sound in Hmove.
+    rewrite is_move_that_attacks_occupied_square_iff in *. HdAnd.
+    apply AttacksOccupiedSquare_iff with (move:=x); auto.
+  - unfold attacks_occupied_square. rewrite exists_in_iff. inversion H; subst.
+    exists move. split.
+    + apply moves_by_player_complete. auto.
+    + rewrite is_move_that_attacks_occupied_square_iff. auto.
+Qed.
+
+Lemma attacks_square_correct : forall pos c loc,
+  attacks_square pos c loc = true <-> AttacksSquare pos c loc.
+Proof.
+  intros pos c loc. split; intros H.
+  - unfold attacks_square in H. Hb2p. 
+    rewrite attacks_occupied_square_correct in *. 
+    rewrite attacks_empty_square_correct in *. auto.
+  - unfold attacks_square. Gb2p.
+    rewrite attacks_occupied_square_correct. 
+    rewrite attacks_empty_square_correct. auto.
 Qed.
