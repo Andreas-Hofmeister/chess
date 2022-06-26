@@ -51,7 +51,7 @@ Definition AttacksSquare (pos : Position) (c : Color) (loc : SquareLocation)
 Definition moves_by_player_from_square (pos : Position) (c : Color) 
 (loc : SquareLocation) : (list Move) :=
   match pos, loc with
-  | Posn pp _ _ , Loc r f 
+  | Posn pp _ _ _, Loc r f 
     => match get_square_by_index pp r f with
       | Empty => []
       | Occupied sc p => 

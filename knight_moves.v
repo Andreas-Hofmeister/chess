@@ -16,16 +16,16 @@ Definition is_knight_jump (from to : SquareLocation) :=
 
 Inductive KnightCanMakeMove (pos : Position)
   : SquareLocation -> Color -> Move -> Prop :=
-  | KnightCanMove : forall pp c pos_c dstep from to, 
+  | KnightCanMove : forall pp c pos_c dstep cavl from to, 
     location_valid from -> location_valid to ->
-    pos = Posn pp pos_c dstep ->
+    pos = Posn pp pos_c dstep cavl ->
     from <> to ->
     is_knight_jump from to = true ->
     is_square_empty to pp = true ->
     KnightCanMakeMove pos from c (FromTo from to)
-  | KnightCanCapture : forall pp c pos_c dstep from to, 
+  | KnightCanCapture : forall pp c pos_c dstep cavl from to, 
     location_valid from -> location_valid to ->
-    pos = Posn pp pos_c dstep ->
+    pos = Posn pp pos_c dstep cavl ->
     from <> to ->
     is_knight_jump from to = true ->
     is_square_occupied_by_enemy_piece to pp c = true ->
@@ -34,7 +34,7 @@ Inductive KnightCanMakeMove (pos : Position)
 Definition knight_move_to_square (pos : Position) (c : Color)
   (fromL : SquareLocation) (toL : SquareLocation) : option Move :=
   match pos with
-  | Posn pp _ _ =>
+  | Posn pp _ _ _ =>
     if is_square_empty toL pp then Some (FromTo fromL toL)
     else if is_square_occupied_by_enemy_piece toL pp c 
       then Some (Capture fromL toL)
@@ -107,8 +107,8 @@ Proof.
   eapply knight_moves_to_squares_from. eauto.
 Qed.
 
-Lemma knight_move_to_square_iff : forall pp c toMove pds m from to,
-  knight_move_to_square (Posn pp toMove pds) c from to = Some m <-> 
+Lemma knight_move_to_square_iff : forall pp c toMove pds cavl m from to,
+  knight_move_to_square (Posn pp toMove pds cavl) c from to = Some m <-> 
   ((is_square_empty to pp = true) /\ m = (FromTo from to)) \/
   ((is_square_occupied_by_enemy_piece to pp c = true) /\ 
     m = (Capture from to)).

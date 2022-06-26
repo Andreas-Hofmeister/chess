@@ -8,14 +8,14 @@ From CHESS Require Export movement_basics.
 
 Inductive KingCanMakeMove (pos : Position) : 
   SquareLocation -> Color -> Move -> Prop :=
-  | KingCanMove : forall from to pp c pos_c dstep,
+  | KingCanMove : forall from to pp c pos_c dstep cavl,
     location_valid from -> location_valid to ->
-    pos = Posn pp pos_c dstep ->
+    pos = Posn pp pos_c dstep cavl ->
     SquaresAdjacent from to -> is_square_empty to pp = true ->
     KingCanMakeMove pos from c (FromTo from to)
-  | KingCanCapture : forall from to pp c pos_c dstep,
+  | KingCanCapture : forall from to pp c pos_c dstep cavl,
     location_valid from -> location_valid to ->
-    pos = Posn pp pos_c dstep ->
+    pos = Posn pp pos_c dstep cavl ->
     SquaresAdjacent from to -> 
     is_square_occupied_by_enemy_piece to pp c = true ->
     KingCanMakeMove pos from c (Capture from to). 
@@ -23,14 +23,14 @@ Inductive KingCanMakeMove (pos : Position) :
 Definition king_moves_to_empty_square (loc : SquareLocation) (c : Color)
 (pos : Position) : (list Move) :=
   match pos with
-  | Posn pp _ _ => map (fun to => (FromTo loc to)) 
+  | Posn pp _ _ _ => map (fun to => (FromTo loc to)) 
   (filter (fun sq => is_square_empty sq pp) (adjacent_squares loc))
   end.
 
 Definition king_captures (loc : SquareLocation) (c : Color)
 (pos : Position) : (list Move) :=
   match pos with
-  | Posn pp _ _ => map (fun to => (Capture loc to)) 
+  | Posn pp _ _ _ => map (fun to => (Capture loc to)) 
   (filter (fun sq => is_square_occupied_by_enemy_piece sq pp c) 
   (adjacent_squares loc))
   end.

@@ -242,13 +242,25 @@ Definition eqSL (l1 l2: SquareLocation) :=
 Inductive PawnDoubleStep : Type :=
   | DoubleStepRankFile (toRank : nat) (onFile : nat).
 
+Inductive CastlingAvailability : Type :=
+  | WhiteKS
+  | WhiteQS
+  | BlackKS
+  | BlackQS.
+
 Inductive Position : Type :=
   | Posn (pp : PiecePlacements) (toMove : Color) 
-    (pawnDoubleStep : option PawnDoubleStep).
+    (pawnDoubleStep : option PawnDoubleStep) 
+    (castlingAvailabilities : CastlingAvailability).
 
 Definition get_piece_placements (pos : Position) :=
   match pos with
-  | Posn pp _ _ => pp
+  | Posn pp _ _ _ => pp
+  end.
+
+Definition castling_availabilities (pos : Position) :=
+  match pos with
+  | Posn _ _ _ cavl => cavl
   end.
 
 Inductive IsOccupiedBy (pos : Position) 
@@ -260,12 +272,12 @@ Inductive IsOccupiedBy (pos : Position)
 
 Definition get_to_move (pos : Position) :=
   match pos with
-  | Posn _ toMove _ => toMove
+  | Posn _ toMove _ _ => toMove
   end.
 
 Definition get_pawn_double_step (pos : Position) :=
   match pos with
-  | Posn _ _ dstep => dstep
+  | Posn _ _ dstep _ => dstep
   end.
 
 Definition is_square_empty_rank_file (rank : nat) (file : nat) 

@@ -6,17 +6,17 @@ From CHESS Require Export movement_basics.
 
 Inductive RookCanMakeMove (pos : Position)
 : SquareLocation -> Color -> Move -> Prop :=
-  | RookCanMove : forall pp c pos_c dstep from to, 
+  | RookCanMove : forall pp c pos_c dstep cavl from to, 
     location_valid from -> location_valid to ->
-    pos = Posn pp pos_c dstep ->
+    pos = Posn pp pos_c dstep cavl ->
     from <> to ->
     SquaresOnSameFile from to \/ SquaresOnSameRank from to ->
     SquaresBetweenEmpty pp from to ->
     is_square_empty to pp = true ->
     RookCanMakeMove pos from c (FromTo from to)
-  | RookCanCapture : forall pp c pos_c dstep from to,
+  | RookCanCapture : forall pp c pos_c dstep cavl from to,
     location_valid from -> location_valid to -> 
-    pos = Posn pp pos_c dstep ->
+    pos = Posn pp pos_c dstep cavl ->
     from <> to ->
     SquaresOnSameFile from to \/ SquaresOnSameRank from to ->
     SquaresBetweenEmpty pp from to ->
@@ -57,7 +57,8 @@ Proof.
   destruct (are_squares_between_empty pp (Loc rank file) (Loc rank0 file0))
     eqn:Eempty; simpl in Hrmts; try discriminate.
   destruct (is_square_empty_rank_file rank0 file0 pp) eqn:Htoempty.
-  - inversion Hrmts. subst. apply (RookCanMove _ pp c toMove pawnDoubleStep _ _); 
+  - inversion Hrmts. subst. 
+    apply (RookCanMove _ pp c toMove pawnDoubleStep castlingAvailabilities _ _); 
     auto. intros C. inversion C; subst. Hb2p.
     repeat rewrite PeanoNat.Nat.eqb_refl in EfromNotTo.
     destruct EfromNotTo as [C1 | C1]; discriminate.
@@ -65,8 +66,8 @@ Proof.
   - destruct (occupied_by_enemy_piece rank0 file0 pp c) eqn:Eoccupied;
     simpl in Hrmts; try discriminate.
     inversion Hrmts. subst.
-    apply (RookCanCapture _ pp c toMove pawnDoubleStep _ _); auto. intros C. 
-    inversion C; subst. Hb2p. 
+    apply (RookCanCapture _ pp c toMove pawnDoubleStep castlingAvailabilities _ _); 
+    auto. intros C. inversion C; subst. Hb2p. 
     repeat rewrite PeanoNat.Nat.eqb_refl in EfromNotTo.
     destruct EfromNotTo as [C1 | C1]; discriminate.
     apply are_squares_between_empty_correct. auto. auto. auto.

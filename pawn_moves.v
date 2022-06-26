@@ -27,22 +27,22 @@ Definition IsPromotionPiece (p : Piece) : Prop :=
 
 Inductive PawnCanMakeMove (pos : Position)
 : SquareLocation -> Color -> Move -> Prop :=
-  | PawnCanMoveForward : forall pp c pos_c dstep loc sf sr tr,
-    pos = Posn pp pos_c dstep -> loc = Loc sr sf ->
+  | PawnCanMoveForward : forall pp c pos_c dstep cavl loc sf sr tr,
+    pos = Posn pp pos_c dstep cavl -> loc = Loc sr sf ->
     tr = advance_pawn c sr -> tr <> final_rank_of_pawn c ->
     location_valid loc -> location_valid (Loc tr sf) ->
     get_square_by_index pp tr sf = Empty -> 
     PawnCanMakeMove pos loc c (FromTo loc (Loc tr sf))
-  | PawnCanCaptureDiagonallyForward : forall pp c pos_c dstep loc sf sr tf tr 
-    tc p,
-    pos = Posn pp pos_c dstep -> loc = Loc sr sf ->
+  | PawnCanCaptureDiagonallyForward : forall pp c pos_c dstep cavl loc sf sr 
+    tf tr tc p,
+    pos = Posn pp pos_c dstep cavl -> loc = Loc sr sf ->
     tr = advance_pawn c sr -> tr <> final_rank_of_pawn c ->
     (tf = sf + 1 \/ tf = sf - 1) ->
     location_valid loc -> location_valid (Loc tr tf) ->
     get_square_by_index pp tr tf = Occupied tc p -> tc <> c -> 
     PawnCanMakeMove pos loc c (Capture loc (Loc tr tf))
-  | PawnCanDoubleStep : forall pp c pos_c dstep loc sf sr step1r tr,
-    pos = Posn pp pos_c dstep -> loc = Loc sr sf ->
+  | PawnCanDoubleStep : forall pp c pos_c dstep cavl loc sf sr step1r tr,
+    pos = Posn pp pos_c dstep cavl -> loc = Loc sr sf ->
     location_valid loc ->
     sr = starting_rank_of_pawn c ->
     step1r = advance_pawn c sr ->
@@ -50,23 +50,23 @@ Inductive PawnCanMakeMove (pos : Position)
     get_square_by_index pp step1r sf = Empty ->
     get_square_by_index pp tr sf = Empty ->
     PawnCanMakeMove pos loc c (DoubleStep loc (Loc tr sf))
-  | PawnCanCaptureEnPassant : forall pp c dstep loc dstf sf sr tr,
-    pos = Posn pp c (Some dstep) -> loc = Loc sr sf ->
+  | PawnCanCaptureEnPassant : forall pp c dstep cavl loc dstf sf sr tr,
+    pos = Posn pp c (Some dstep) cavl -> loc = Loc sr sf ->
     location_valid loc ->
     dstep = (DoubleStepRankFile sr dstf) ->
     (sf = dstf + 1 \/ sf = dstf - 1) ->
     tr = advance_pawn c sr ->
     PawnCanMakeMove pos loc c (EnPassant loc (Loc tr dstf))
-  | PawnCanPromoteForward : forall pp c pos_c dstep loc sf sr tr piece,
-    pos = Posn pp pos_c dstep -> loc = Loc sr sf ->
+  | PawnCanPromoteForward : forall pp c pos_c dstep cavl loc sf sr tr piece,
+    pos = Posn pp pos_c dstep cavl -> loc = Loc sr sf ->
     tr = advance_pawn c sr -> tr = final_rank_of_pawn c ->
     location_valid loc -> location_valid (Loc tr sf) ->
     get_square_by_index pp tr sf = Empty ->
     IsPromotionPiece piece ->
     PawnCanMakeMove pos loc c (Promotion loc (Loc tr sf) piece)
-  | PawnCanPromoteDiagonally : forall pp c pos_c dstep loc sf sr tf tr tc p 
-    piece,
-    pos = Posn pp pos_c dstep -> loc = Loc sr sf ->
+  | PawnCanPromoteDiagonally : forall pp c pos_c dstep cavl loc sf sr tf tr tc 
+    p piece,
+    pos = Posn pp pos_c dstep cavl -> loc = Loc sr sf ->
     tr = advance_pawn c sr -> tr = final_rank_of_pawn c ->
     (tf = sf + 1 \/ tf = sf - 1) ->
     location_valid loc -> location_valid (Loc tr tf) ->
@@ -77,7 +77,7 @@ Inductive PawnCanMakeMove (pos : Position)
 Definition pawn_forward_moves (pawn_loc : SquareLocation) (c : Color)
   (pos : Position) : (list Move) :=
   match pos with
-  | Posn pp _ _ =>
+  | Posn pp _ _ _ =>
     match pawn_loc with
     | Loc r f => 
       let new_r := advance_pawn c r in
@@ -93,7 +93,7 @@ Definition pawn_forward_moves (pawn_loc : SquareLocation) (c : Color)
 Definition pawn_captures (pawn_loc : SquareLocation) (c : Color) 
   (pos : Position) : (list Move) :=
   match pos with
-  | Posn pp _ _ =>
+  | Posn pp _ _ _ =>
     match pawn_loc with
     | Loc r f =>
       if (indices_valid r f) then
@@ -114,7 +114,7 @@ Definition pawn_captures (pawn_loc : SquareLocation) (c : Color)
 Definition pawn_double_steps (pawn_loc : SquareLocation) (c : Color)
   (pos : Position) :=
   match pos with
-  | Posn pp _ _ =>
+  | Posn pp _ _ _ =>
     match pawn_loc with
     | Loc r f =>
       if (indices_valid r f) then
@@ -134,7 +134,7 @@ Definition en_passant_moves (pawn_loc : SquareLocation) (c : Color)
   | Loc r f =>
     if (indices_valid r f) then
       match pos with
-      | Posn pp toMove (Some (DoubleStepRankFile dsr dsf)) =>
+      | Posn pp toMove (Some (DoubleStepRankFile dsr dsf)) _ =>
         if (andb (ceq c toMove) (dsr =? r)) then
           if (orb (dsf =? f + 1) (dsf =? f - 1)) then
             [EnPassant pawn_loc (Loc (advance_pawn toMove r) dsf)]
@@ -148,7 +148,7 @@ Definition en_passant_moves (pawn_loc : SquareLocation) (c : Color)
 Definition pawn_forward_promotions (pawn_loc : SquareLocation) (c : Color)
   (pos : Position) : (list Move) :=
   match pos with
-  | Posn pp _ _ =>
+  | Posn pp _ _ _ =>
     match pawn_loc with
     | Loc r f => 
       let new_r := advance_pawn c r in
@@ -167,7 +167,7 @@ Definition pawn_forward_promotions (pawn_loc : SquareLocation) (c : Color)
 Definition pawn_promotion_captures (pawn_loc : SquareLocation) (c : Color)
   (pos : Position) : (list Move) :=
   match pos with
-  | Posn pp _ _ =>
+  | Posn pp _ _ _ =>
     match pawn_loc with
     | Loc r f =>
       if (indices_valid r f) then

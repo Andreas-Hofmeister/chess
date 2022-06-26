@@ -229,7 +229,7 @@ Definition are_squares_between_empty (pp : PiecePlacements)
 Function move_to_square_on_rfd (pos : Position) (c : Color)
   (fromL : SquareLocation) (toL : SquareLocation) : option Move :=
   match pos with
-  | Posn pp _ _ =>
+  | Posn pp _ _ _ =>
     if ((negb (eqSL fromL toL)) && (are_squares_between_empty pp fromL toL))%bool
     then if is_square_empty toL pp then Some (FromTo fromL toL)
     else if is_square_occupied_by_enemy_piece toL pp c 

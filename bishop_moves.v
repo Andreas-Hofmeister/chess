@@ -6,18 +6,18 @@ From CHESS Require Export movement_basics.
 
 Inductive BishopCanMakeMove (pos : Position)
 : SquareLocation -> Color -> Move -> Prop :=
-  | BishopCanMove : forall pp c pos_c dstep from to, 
+  | BishopCanMove : forall pp c pos_c dstep cavl from to, 
     location_valid from -> location_valid to ->
-    pos = Posn pp pos_c dstep ->
+    pos = Posn pp pos_c dstep cavl ->
     from <> to ->
     are_squares_on_same_diagonal from to = true \/ 
     are_squares_on_same_antidiagonal from to = true ->
     SquaresBetweenEmpty pp from to ->
     is_square_empty to pp = true ->
     BishopCanMakeMove pos from c (FromTo from to)
-  | BishopCanCapture : forall pp c pos_c dstep from to,
+  | BishopCanCapture : forall pp c pos_c dstep cavl from to,
     location_valid from -> location_valid to -> 
-    pos = Posn pp pos_c dstep ->
+    pos = Posn pp pos_c dstep cavl ->
     from <> to ->
     are_squares_on_same_diagonal from to = true \/ 
     are_squares_on_same_antidiagonal from to = true ->
@@ -58,7 +58,7 @@ Proof.
     eqn:Eempty; simpl in Hmts; try discriminate.
   destruct (is_square_empty_rank_file rank0 file0 pp) eqn:Htoempty.
   - inversion Hmts. subst. 
-    apply (BishopCanMove _ pp c toMove pawnDoubleStep _ _); 
+    apply (BishopCanMove _ pp c toMove pawnDoubleStep castlingAvailabilities _ _); 
     auto. intros C. inversion C; subst. Hb2p.
     repeat rewrite PeanoNat.Nat.eqb_refl in EfromNotTo.
     destruct EfromNotTo as [C1 | C1]; discriminate.
@@ -66,8 +66,8 @@ Proof.
   - destruct (occupied_by_enemy_piece rank0 file0 pp c) eqn:Eoccupied;
     simpl in Hmts; try discriminate.
     inversion Hmts. subst. 
-    apply (BishopCanCapture _ pp c toMove pawnDoubleStep _ _); auto. intros C. 
-    inversion C; subst. Hb2p. 
+    apply (BishopCanCapture _ pp c toMove pawnDoubleStep castlingAvailabilities _ _); 
+    auto. intros C. inversion C; subst. Hb2p. 
     repeat rewrite PeanoNat.Nat.eqb_refl in EfromNotTo.
     destruct EfromNotTo as [C1 | C1]; discriminate.
     apply are_squares_between_empty_correct; auto.
