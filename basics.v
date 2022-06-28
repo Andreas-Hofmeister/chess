@@ -12,6 +12,12 @@ Inductive Color : Type :=
   | White
   | Black.
 
+Definition opponent_of (c : Color) :=
+  match c with
+  | White => Black
+  | Black => White
+  end.
+
 Definition ceq (c1 : Color) (c2 : Color) :=
   match c1 with
   | White => match c2 with White => true | Black => false end
@@ -242,16 +248,17 @@ Definition eqSL (l1 l2: SquareLocation) :=
 Inductive PawnDoubleStep : Type :=
   | DoubleStepRankFile (toRank : nat) (onFile : nat).
 
+Inductive CastlingType : Type :=
+  | QueenSide
+  | KingSide.
+
 Inductive CastlingAvailability : Type :=
-  | WhiteKS
-  | WhiteQS
-  | BlackKS
-  | BlackQS.
+  | Cavl (ctype : CastlingType) (c : Color).
 
 Inductive Position : Type :=
   | Posn (pp : PiecePlacements) (toMove : Color) 
     (pawnDoubleStep : option PawnDoubleStep) 
-    (castlingAvailabilities : CastlingAvailability).
+    (castlingAvailabilities : list CastlingAvailability).
 
 Definition get_piece_placements (pos : Position) :=
   match pos with

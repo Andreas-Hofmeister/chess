@@ -10,7 +10,8 @@ Inductive Move : Type :=
   | EnPassant (from : SquareLocation) (to : SquareLocation)
   | Promotion (from : SquareLocation) (to : SquareLocation) (piece : Piece)
   | PromotionWithCapture (from : SquareLocation) (to : SquareLocation) 
-      (piece : Piece).
+      (piece : Piece)
+  | Castle (c : Color) (castling_type : CastlingType).
 
 Definition fromOfMove (m : Move) : SquareLocation :=
   match m with
@@ -20,6 +21,8 @@ Definition fromOfMove (m : Move) : SquareLocation :=
   | EnPassant from _ => from
   | Promotion from _ _ => from
   | PromotionWithCapture from _ _ => from
+  | Castle White _ => (Loc 0 4)
+  | Castle Black _ => (Loc 7 4)
   end.
 
 Definition toOfMove (m : Move) : SquareLocation :=
@@ -30,6 +33,10 @@ Definition toOfMove (m : Move) : SquareLocation :=
   | EnPassant _ to => to
   | Promotion _ to _ => to
   | PromotionWithCapture _ to _ => to
+  | Castle White QueenSide => (Loc 0 2)
+  | Castle White KingSide => (Loc 0 6)
+  | Castle Black QueenSide => (Loc 7 2)
+  | Castle Black KingSide => (Loc 7 6)
   end.
 
 Inductive IsMoveToEmptySquare : Move -> Prop :=
