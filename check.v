@@ -15,10 +15,7 @@ Definition find_king (pos : Position) (c : Color) :=
   find_piece pos c King valid_locations.
 
 Definition is_in_check (pos : Position) (c : Color) : bool :=
-  match (find_king pos c) with
-  | None => false
-  | Some king_loc => if (attacks_occupied_square pos c king_loc) then true
-    else false
-  end.
+  exists_in (find_king pos c) 
+  (fun king_loc => (attacks_occupied_square pos c king_loc)).
 
 

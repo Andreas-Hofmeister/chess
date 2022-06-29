@@ -423,11 +423,11 @@ Fixpoint exists_in {A} (l : list A) (f : A -> bool) : bool :=
   end.
 
 Fixpoint find_piece (pos : Position) (c : Color) (p : Piece) 
-(locs : list SquareLocation) : option SquareLocation :=
+(locs : list SquareLocation) : list SquareLocation :=
   match locs with
-  | [] => None
+  | [] => []
   | (Loc r f)::rlocs => if (eqSq (get_square_by_index (get_piece_placements 
-    pos) r f) (Occupied c p)) then (Some (Loc r f)) 
+    pos) r f) (Occupied c p)) then (Loc r f)::(find_piece pos c p rlocs)
     else find_piece pos c p rlocs
   end.
 
