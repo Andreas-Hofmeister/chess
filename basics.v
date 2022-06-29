@@ -32,9 +32,27 @@ Inductive Piece : Type :=
   | Queen
   | King.
 
+Definition eqPiece (p1 p2 : Piece) :=
+  match p1,p2 with
+  | Pawn, Pawn => true
+  | Rook, Rook => true
+  | Knight, Knight => true
+  | Bishop, Bishop => true
+  | Queen, Queen => true
+  | King, King => true
+  | _,_ => false
+  end.
+
 Inductive Square : Type :=
   | Empty
   | Occupied (c : Color) (p : Piece).
+
+Definition eqSq (s1 s2 : Square) : bool :=
+  match s1,s2 with
+  | Empty, Empty => true
+  | Occupied c1 p1, Occupied c2 p2 => (andb (eqPiece p1 p2) (ceq c1 c2))
+  | _, _ => false
+  end.
 
 Inductive File : Type :=
   | Squares (s1 : Square) (s2 : Square) (s3 : Square) (s4 : Square)
@@ -404,6 +422,14 @@ Fixpoint exists_in {A} (l : list A) (f : A -> bool) : bool :=
   | x::xs => if f x then true else exists_in xs f
   end.
 
+Fixpoint find_piece (pos : Position) (c : Color) (p : Piece) 
+(locs : list SquareLocation) : option SquareLocation :=
+  match locs with
+  | [] => None
+  | (Loc r f)::rlocs => if (eqSq (get_square_by_index (get_piece_placements 
+    pos) r f) (Occupied c p)) then (Some (Loc r f)) 
+    else find_piece pos c p rlocs
+  end.
 
 (******************************Proofs**********************************)
 
