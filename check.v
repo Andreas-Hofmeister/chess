@@ -16,6 +16,34 @@ Definition find_king (pos : Position) (c : Color) :=
 
 Definition is_in_check (pos : Position) (c : Color) : bool :=
   exists_in (find_king pos c) 
-  (fun king_loc => (attacks_occupied_square pos c king_loc)).
+  (fun king_loc => (attacks_occupied_square pos (opponent_of c) king_loc)).
 
+(** Proofs **)
 
+Lemma find_king_correct : forall pos c king_rank king_file,
+  In (Loc king_rank king_file) (find_king pos c) <-> 
+  (location_valid (Loc king_rank king_file)) /\
+  (get_square_by_index (get_piece_placements pos) king_rank king_file = 
+  Occupied c King).
+Proof.
+  intros pos c king_rank king_file. split; intros H.
+  - unfold find_king in *. apply find_piece_correct in H. HdAnd. split; auto.
+    apply valid_squares_suf in H. auto.
+  - unfold find_king in *. HdAnd. apply valid_squares_nec in H. 
+    apply find_piece_correct. split; auto.
+Qed.
+
+Lemma is_in_check_sound : forall pos c,
+  is_in_check pos c = true -> IsInCheck pos c.
+Proof.
+  intros pos c H. unfold is_in_check in *. rewrite exists_in_iff in *.
+  destruct H as [loc [Hinkp Hattacked]]. destruct loc eqn:?E.
+  destruct pos eqn:?E. subst. rewrite find_king_correct in *. HdAnd. 
+  simpl in Hinkp0. eapply IsInCheckIff; eauto. 
+  apply attacks_occupied_square_correct. auto.
+Qed.
+(*
+Lemma is_in_check_complete : forall pos c,
+  IsInCheck pos c -> is_in_check pos c = true.
+Proof.
+*)

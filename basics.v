@@ -252,6 +252,16 @@ Definition set_square_by_index (pp : PiecePlacements) (ri : nat) (fi : nat)
 Inductive SquareLocation : Type :=
   | Loc (rank : nat) (file : nat).
 
+Definition rank_of_loc (loc : SquareLocation) :=
+  match loc with
+  | Loc rank _ => rank
+  end.
+
+Definition file_of_loc (loc : SquareLocation) :=
+  match loc with
+  | Loc _ file => file
+  end.
+
 Definition SquaresOnSameFile (l1 l2 : SquareLocation) : Prop :=
   match l1,l2 with Loc _ file1, Loc _ file2 => file1 = file2 end.
 
@@ -433,6 +443,53 @@ Fixpoint find_piece (pos : Position) (c : Color) (p : Piece)
 
 (******************************Proofs**********************************)
 
+Lemma ceq_eq : forall c1 c2, ceq c1 c2 = true <-> (c1 = c2).
+Proof.
+  intros. split.
+  - intros. destruct c1; destruct c2; auto; try simpl in H; try discriminate.
+  - intros. rewrite H. destruct c2; simpl; auto.
+Qed.
+
+Lemma eqPiece_iff : forall p1 p2, eqPiece p1 p2 = true <-> p1 = p2.
+Proof.
+  intros p1 p2. split; intros H.
+  - unfold eqPiece in *. repeat DHmatch; auto; try discriminate.
+  - unfold eqPiece in *. subst. repeat DGmatch; auto.
+Qed.
+
+Lemma eqSq_iff : forall s1 s2, eqSq s1 s2 = true <-> s1 = s2.
+Proof.
+  intros s1 s2. split; intros H.
+  - unfold eqSq in *. repeat DHmatch; auto; try discriminate. Hb2p.
+    HdAnd. rewrite ceq_eq in *. rewrite eqPiece_iff in *. subst. auto.
+  - subst. unfold eqSq in *. repeat DGmatch; auto. Gb2p. split.
+    + rewrite eqPiece_iff. auto.
+    + rewrite ceq_eq. auto.
+Qed.
+
+Lemma find_piece_correct : forall pos c p loc locs,
+  In loc (find_piece pos c p locs) <-> 
+  In loc locs /\ (get_square_by_index (get_piece_placements pos)
+  (rank_of_loc loc) (file_of_loc loc)) = Occupied c p.
+Proof.
+  intros pos c p loc locs. split; intros H.
+  - induction locs; simpl in *; try contradiction. DHmatch. DHif.
+    + inversion H; subst.
+      * split. auto. rewrite eqSq_iff in *. simpl. auto.
+      * specialize (IHlocs H0) as [Hinlocs Hsq]. split. auto.
+        rewrite eqSq_iff in *. auto.
+    + specialize (IHlocs H) as [Hinlocs Hsq]. split. auto. auto.
+  - induction locs. HdAnd. HinNil. destruct H as [Hin Hsq].
+    inversion Hin; subst.
+    + simpl. repeat DGmatch.
+      * apply in_eq.
+      * rewrite <- eqSq_iff in Hsq. simpl in Hsq. rewrite Hsq in E0. 
+        discriminate.
+    + simpl. repeat DGmatch. 
+      * apply in_cons. apply IHlocs. auto.
+      * apply IHlocs. auto.
+Qed.
+
 Lemma locations_equal_iff : forall loc1 loc2,
   locations_equal loc1 loc2 = true <-> loc1 = loc2.
 Proof.
@@ -600,13 +657,6 @@ Proof.
     destruct (get_square_by_index pp r f) eqn:Egs; auto. discriminate.
   - intros. unfold is_square_empty_rank_file in *. 
     destruct (get_square_by_index pp r f) eqn:Egs; auto. discriminate.
-Qed.
-
-Lemma ceq_eq : forall c1 c2, ceq c1 c2 = true <-> (c1 = c2).
-Proof.
-  intros. split.
-  - intros. destruct c1; destruct c2; auto; try simpl in H; try discriminate.
-  - intros. rewrite H. destruct c2; simpl; auto.
 Qed.
 
 Lemma ceq_refl : forall c, ceq c c = true.
