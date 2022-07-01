@@ -30,7 +30,7 @@ Definition eqPiece (p1 p2 : Piece) :=
   match p1,p2 with
   | Pawn, Pawn => true
   | King, King => true
-  | _, _ => false
+  | _,_ => false
   end.
 
 Inductive Square : Type := Empty | Occupied (c : Color) (p : Piece).
@@ -42,38 +42,96 @@ Definition eqSq (s1 s2 : Square) : bool :=
   | _, _ => false
   end.
 
-Inductive File : Type := Squares (s1 : Square).
+Inductive File : Type :=
+  | Squares (s1 : Square) (s2 : Square) (s3 : Square) (s4 : Square)
+            (s5 : Square) (s6 : Square) (s7 : Square) (s8 : Square).
 
-Inductive PiecePlacements : Type := Files (a : File).
+Inductive PiecePlacements : Type :=
+  | Files (a : File) (b : File) (c : File) (d : File)
+          (e : File) (f : File) (g : File) (h : File).
 
-Inductive FileName : Type := fa.
+Inductive FileName : Type := fa | fb | fc | fd | fe | ff | fg | fh.
 
-Inductive RankName : Type := r1.
+Inductive RankName : Type := r1 | r2 | r3 | r4 | r5 | r6 | r7 | r8.
 
-Definition rank_index (rn : RankName) : nat :=match rn with r1 => 0 end.
+Definition rank_index (rn : RankName) : nat :=
+  match rn with
+  | r1 => 0
+  | r2 => 1
+  | r3 => 2
+  | r4 => 3
+  | r5 => 4
+  | r6 => 5
+  | r7 => 6
+  | r8 => 7
+  end.
 
 Definition index_to_rank (i : nat) : RankName :=
-  match i with 0 => r1 | _ => r1 end.
+  match i with
+  | 0 => r1
+  | 1 => r2
+  | 2 => r3
+  | 3 => r4
+  | 4 => r5
+  | 5 => r6
+  | 6 => r7
+  | 7 => r8
+  | _ => r8
+  end.
 
-Definition file_index (fn : FileName) : nat := match fn with fa => 0 end.
+Definition file_index (fn : FileName) : nat :=
+  match fn with
+  | fa => 0
+  | fb => 1
+  | fc => 2
+  | fd => 3
+  | fe => 4
+  | ff => 5
+  | fg => 6
+  | fh => 7
+  end.
 
 Definition index_to_file (i : nat) : FileName :=
-  match i with 0 => fa  | _ => fa end.
+  match i with
+  | 0 => fa
+  | 1 => fb
+  | 2 => fc
+  | 3 => fd
+  | 4 => fe
+  | 5 => ff
+  | 6 => fg
+  | 7 => fh
+  | _ => fh
+  end.
 
 Definition get_file (pp : PiecePlacements) (fn : FileName) : File :=
   match pp with
-  | Files a =>
+  | Files a b c d e f g h =>
     match fn with
     | fa => a
+    | fb => b
+    | fc => c
+    | fd => d
+    | fe => e
+    | ff => f
+    | fg => g
+    | fh => h
     end
   end.
 
 Definition get_square (pp : PiecePlacements) (rn : RankName) (fn : FileName)
   : Square :=
   match (get_file pp fn) with
-  | Squares s1 =>
+  | Squares s1 s2 s3 s4 s5 s6 s7 s8 =>
     match rn with
     | r1 => s1
+    | r2 => s2
+    | r3 => s3
+    | r4 => s4
+    | r5 => s5
+    | r6 => s6
+    | r7 => s7
+    | r8 => s8
     end
   end.
 
@@ -95,9 +153,17 @@ Definition file_of_loc (loc : SquareLocation) :=
   end.
 
 Definition location_valid (loc : SquareLocation) : Prop :=
-  match loc with Loc r f => r <= 0 /\ f <= 0 end.
+  match loc with Loc r f => r <= 7 /\ f <= 7 end.
 
-Definition valid_locations := [Loc 0 0].
+Definition valid_locations := 
+[Loc 0 0; Loc 0 1; Loc 0 2; Loc 0 3; Loc 0 4; Loc 0 5; Loc 0 6; Loc 0 7;
+Loc 1 0; Loc 1 1; Loc 1 2; Loc 1 3; Loc 1 4; Loc 1 5; Loc 1 6; Loc 1 7;
+Loc 2 0; Loc 2 1; Loc 2 2; Loc 2 3; Loc 2 4; Loc 2 5; Loc 2 6; Loc 2 7;
+Loc 3 0; Loc 3 1; Loc 3 2; Loc 3 3; Loc 3 4; Loc 3 5; Loc 3 6; Loc 3 7;
+Loc 4 0; Loc 4 1; Loc 4 2; Loc 4 3; Loc 4 4; Loc 4 5; Loc 4 6; Loc 4 7;
+Loc 5 0; Loc 5 1; Loc 5 2; Loc 5 3; Loc 5 4; Loc 5 5; Loc 5 6; Loc 5 7;
+Loc 6 0; Loc 6 1; Loc 6 2; Loc 6 3; Loc 6 4; Loc 6 5; Loc 6 6; Loc 6 7;
+Loc 7 0; Loc 7 1; Loc 7 2; Loc 7 3; Loc 7 4; Loc 7 5; Loc 7 6; Loc 7 7].
 
 Fixpoint find_piece (pp : PiecePlacements) (c : Color) (p : Piece) 
 (locs : list SquareLocation) : list SquareLocation :=
@@ -143,12 +209,11 @@ Lemma find_king_correct : forall pp c king_rank king_file,
   (get_square_by_index pp king_rank king_file = 
   Occupied c King).
 Proof.
-  intros pp c king_rank king_file. split; intros H; unfold find_king in *. 
-  - apply find_piece_correct in H. HdAnd. split; auto.
+  intros pp c king_rank king_file. split; intros H.
+  - unfold find_king in *. apply find_piece_correct in H. HdAnd. split; auto.
     apply valid_squares_suf in H. auto.
   - unfold find_king in *. HdAnd. apply valid_squares_nec in H. 
     apply find_piece_correct. split; auto.
 Qed.
-
 
 
