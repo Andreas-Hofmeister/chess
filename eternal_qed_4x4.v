@@ -150,15 +150,6 @@ Definition find_king (pp : PiecePlacements) (c : Color) :=
 
 (* Proofs *)
 
-Lemma ceq_eq : forall c1 c2, ceq c1 c2 = true <-> (c1 = c2).
-Admitted.
-
-Lemma eqPiece_iff : forall p1 p2, eqPiece p1 p2 = true <-> p1 = p2.
-Admitted.
-
-Lemma eqSq_iff : forall s1 s2, eqSq s1 s2 = true <-> s1 = s2.
-Admitted.
-
 Lemma find_piece_correct : forall pp c p loc locs,
   In loc (find_piece pp c p locs) <-> 
   In loc locs /\ (get_square_by_index pp (rank_of_loc loc) (file_of_loc loc)) 
@@ -186,5 +177,3 @@ Proof.
   - unfold find_king in *. HdAnd. apply valid_squares_nec in H. 
     apply find_piece_correct. split; auto.
 Qed.
-
-
