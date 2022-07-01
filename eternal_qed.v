@@ -44,15 +44,15 @@ Definition eqSq (s1 s2 : Square) : bool :=
 
 Inductive File : Type :=
   | Squares (s1 : Square) (s2 : Square) (s3 : Square) (s4 : Square)
-            (s5 : Square) (s6 : Square) (s7 : Square) (s8 : Square).
+            (s5 : Square) (s6 : Square) (s7 : Square).
 
 Inductive PiecePlacements : Type :=
   | Files (a : File) (b : File) (c : File) (d : File)
-          (e : File) (f : File) (g : File) (h : File).
+          (e : File) (f : File) (g : File).
 
-Inductive FileName : Type := fa | fb | fc | fd | fe | ff | fg | fh.
+Inductive FileName : Type := fa | fb | fc | fd | fe | ff | fg.
 
-Inductive RankName : Type := r1 | r2 | r3 | r4 | r5 | r6 | r7 | r8.
+Inductive RankName : Type := r1 | r2 | r3 | r4 | r5 | r6 | r7.
 
 Definition rank_index (rn : RankName) : nat :=
   match rn with
@@ -63,7 +63,6 @@ Definition rank_index (rn : RankName) : nat :=
   | r5 => 4
   | r6 => 5
   | r7 => 6
-  | r8 => 7
   end.
 
 Definition index_to_rank (i : nat) : RankName :=
@@ -75,8 +74,7 @@ Definition index_to_rank (i : nat) : RankName :=
   | 4 => r5
   | 5 => r6
   | 6 => r7
-  | 7 => r8
-  | _ => r8
+  | _ => r7
   end.
 
 Definition file_index (fn : FileName) : nat :=
@@ -88,7 +86,6 @@ Definition file_index (fn : FileName) : nat :=
   | fe => 4
   | ff => 5
   | fg => 6
-  | fh => 7
   end.
 
 Definition index_to_file (i : nat) : FileName :=
@@ -100,13 +97,12 @@ Definition index_to_file (i : nat) : FileName :=
   | 4 => fe
   | 5 => ff
   | 6 => fg
-  | 7 => fh
-  | _ => fh
+  | _ => fg
   end.
 
 Definition get_file (pp : PiecePlacements) (fn : FileName) : File :=
   match pp with
-  | Files a b c d e f g h =>
+  | Files a b c d e f g =>
     match fn with
     | fa => a
     | fb => b
@@ -115,14 +111,13 @@ Definition get_file (pp : PiecePlacements) (fn : FileName) : File :=
     | fe => e
     | ff => f
     | fg => g
-    | fh => h
     end
   end.
 
 Definition get_square (pp : PiecePlacements) (rn : RankName) (fn : FileName)
   : Square :=
   match (get_file pp fn) with
-  | Squares s1 s2 s3 s4 s5 s6 s7 s8 =>
+  | Squares s1 s2 s3 s4 s5 s6 s7 =>
     match rn with
     | r1 => s1
     | r2 => s2
@@ -131,7 +126,6 @@ Definition get_square (pp : PiecePlacements) (rn : RankName) (fn : FileName)
     | r5 => s5
     | r6 => s6
     | r7 => s7
-    | r8 => s8
     end
   end.
 
@@ -153,17 +147,16 @@ Definition file_of_loc (loc : SquareLocation) :=
   end.
 
 Definition location_valid (loc : SquareLocation) : Prop :=
-  match loc with Loc r f => r <= 7 /\ f <= 7 end.
+  match loc with Loc r f => r <= 6 /\ f <= 6 end.
 
 Definition valid_locations := 
-[Loc 0 0; Loc 0 1; Loc 0 2; Loc 0 3; Loc 0 4; Loc 0 5; Loc 0 6; Loc 0 7;
-Loc 1 0; Loc 1 1; Loc 1 2; Loc 1 3; Loc 1 4; Loc 1 5; Loc 1 6; Loc 1 7;
-Loc 2 0; Loc 2 1; Loc 2 2; Loc 2 3; Loc 2 4; Loc 2 5; Loc 2 6; Loc 2 7;
-Loc 3 0; Loc 3 1; Loc 3 2; Loc 3 3; Loc 3 4; Loc 3 5; Loc 3 6; Loc 3 7;
-Loc 4 0; Loc 4 1; Loc 4 2; Loc 4 3; Loc 4 4; Loc 4 5; Loc 4 6; Loc 4 7;
-Loc 5 0; Loc 5 1; Loc 5 2; Loc 5 3; Loc 5 4; Loc 5 5; Loc 5 6; Loc 5 7;
-Loc 6 0; Loc 6 1; Loc 6 2; Loc 6 3; Loc 6 4; Loc 6 5; Loc 6 6; Loc 6 7;
-Loc 7 0; Loc 7 1; Loc 7 2; Loc 7 3; Loc 7 4; Loc 7 5; Loc 7 6; Loc 7 7].
+[Loc 0 0; Loc 0 1; Loc 0 2; Loc 0 3; Loc 0 4; Loc 0 5; Loc 0 6;
+Loc 1 0; Loc 1 1; Loc 1 2; Loc 1 3; Loc 1 4; Loc 1 5; Loc 1 6;
+Loc 2 0; Loc 2 1; Loc 2 2; Loc 2 3; Loc 2 4; Loc 2 5; Loc 2 6;
+Loc 3 0; Loc 3 1; Loc 3 2; Loc 3 3; Loc 3 4; Loc 3 5; Loc 3 6;
+Loc 4 0; Loc 4 1; Loc 4 2; Loc 4 3; Loc 4 4; Loc 4 5; Loc 4 6;
+Loc 5 0; Loc 5 1; Loc 5 2; Loc 5 3; Loc 5 4; Loc 5 5; Loc 5 6;
+Loc 6 0; Loc 6 1; Loc 6 2; Loc 6 3; Loc 6 4; Loc 6 5; Loc 6 6].
 
 Fixpoint find_piece (pp : PiecePlacements) (c : Color) (p : Piece) 
 (locs : list SquareLocation) : list SquareLocation :=
