@@ -43,16 +43,14 @@ Definition eqSq (s1 s2 : Square) : bool :=
   end.
 
 Inductive File : Type :=
-  | Squares (s1 : Square) (s2 : Square) (s3 : Square) (s4 : Square)
-            (s5 : Square).
+  | Squares (s1 : Square) (s2 : Square) (s3 : Square) (s4 : Square).
 
 Inductive PiecePlacements : Type :=
-  | Files (a : File) (b : File) (c : File) (d : File)
-          (e : File).
+  | Files (a : File) (b : File) (c : File) (d : File).
 
-Inductive FileName : Type := fa | fb | fc | fd | fe.
+Inductive FileName : Type := fa | fb | fc | fd.
 
-Inductive RankName : Type := r1 | r2 | r3 | r4 | r5.
+Inductive RankName : Type := r1 | r2 | r3 | r4.
 
 Definition rank_index (rn : RankName) : nat :=
   match rn with
@@ -60,7 +58,6 @@ Definition rank_index (rn : RankName) : nat :=
   | r2 => 1
   | r3 => 2
   | r4 => 3
-  | r5 => 4
   end.
 
 Definition index_to_rank (i : nat) : RankName :=
@@ -69,8 +66,7 @@ Definition index_to_rank (i : nat) : RankName :=
   | 1 => r2
   | 2 => r3
   | 3 => r4
-  | 4 => r5
-  | _ => r5
+  | _ => r4
   end.
 
 Definition file_index (fn : FileName) : nat :=
@@ -79,7 +75,6 @@ Definition file_index (fn : FileName) : nat :=
   | fb => 1
   | fc => 2
   | fd => 3
-  | fe => 4
   end.
 
 Definition index_to_file (i : nat) : FileName :=
@@ -88,32 +83,29 @@ Definition index_to_file (i : nat) : FileName :=
   | 1 => fb
   | 2 => fc
   | 3 => fd
-  | 4 => fe
-  | _ => fe
+  | _ => fd
   end.
 
 Definition get_file (pp : PiecePlacements) (fn : FileName) : File :=
   match pp with
-  | Files a b c d e =>
+  | Files a b c d =>
     match fn with
     | fa => a
     | fb => b
     | fc => c
     | fd => d
-    | fe => e
     end
   end.
 
 Definition get_square (pp : PiecePlacements) (rn : RankName) (fn : FileName)
   : Square :=
   match (get_file pp fn) with
-  | Squares s1 s2 s3 s4 s5 =>
+  | Squares s1 s2 s3 s4 =>
     match rn with
     | r1 => s1
     | r2 => s2
     | r3 => s3
     | r4 => s4
-    | r5 => s5
     end
   end.
 
@@ -135,14 +127,13 @@ Definition file_of_loc (loc : SquareLocation) :=
   end.
 
 Definition location_valid (loc : SquareLocation) : Prop :=
-  match loc with Loc r f => r <= 4 /\ f <= 4 end.
+  match loc with Loc r f => r <= 3 /\ f <= 3 end.
 
 Definition valid_locations := 
-[Loc 0 0; Loc 0 1; Loc 0 2; Loc 0 3; Loc 0 4;
-Loc 1 0; Loc 1 1; Loc 1 2; Loc 1 3; Loc 1 4; 
-Loc 2 0; Loc 2 1; Loc 2 2; Loc 2 3; Loc 2 4; 
-Loc 3 0; Loc 3 1; Loc 3 2; Loc 3 3; Loc 3 4;
-Loc 4 0; Loc 4 1; Loc 4 2; Loc 4 3; Loc 4 4].
+[Loc 0 0; Loc 0 1; Loc 0 2; Loc 0 3;
+Loc 1 0; Loc 1 1; Loc 1 2; Loc 1 3;
+Loc 2 0; Loc 2 1; Loc 2 2; Loc 2 3;
+Loc 3 0; Loc 3 1; Loc 3 2; Loc 3 3].
 
 
 Fixpoint find_piece (pp : PiecePlacements) (c : Color) (p : Piece) 
