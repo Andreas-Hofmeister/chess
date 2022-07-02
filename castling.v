@@ -1,6 +1,7 @@
 Require Import List.
 Require Import Nat.
 From CHESS Require Export attacks.
+From CHESS Require Export check.
 
 (** Definitions **)
 (*

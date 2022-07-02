@@ -53,6 +53,7 @@ Inductive PawnCanMakeMove (pos : Position)
   | PawnCanCaptureEnPassant : forall pp c dstep cavl loc dstf sf sr tr,
     pos = Posn pp c (Some dstep) cavl -> loc = Loc sr sf ->
     location_valid loc ->
+    location_valid (Loc tr dstf) ->
     dstep = (DoubleStepRankFile sr dstf) ->
     (sf = dstf + 1 \/ sf = dstf - 1) ->
     tr = advance_pawn c sr ->
@@ -135,7 +136,9 @@ Definition en_passant_moves (pawn_loc : SquareLocation) (c : Color)
     if (indices_valid r f) then
       match pos with
       | Posn pp toMove (Some (DoubleStepRankFile dsr dsf)) _ =>
-        if (andb (ceq c toMove) (dsr =? r)) then
+        if (andb (ceq c toMove)
+            (andb (dsr =? r) (indices_valid (advance_pawn toMove r) dsf)))
+          then
           if (orb (dsf =? f + 1) (dsf =? f - 1)) then
             [EnPassant pawn_loc (Loc (advance_pawn toMove r) dsf)]
           else []
@@ -289,10 +292,11 @@ Proof.
   destruct pawnDoubleStep eqn:Edstep; try inversion H.
   destruct p eqn:Ep.
   repeat tac2.
-  Hb2p. destruct H1 as [Hc H1]. 
-  rewrite PeanoNat.Nat.eqb_eq in H1.
+  repeat Hb2p. destruct H1 as [Hc H1]. 
+  repeat Hb2p. destruct H1 as [Hdsr H1].
+  repeat Hb2p.
   inversion H; inversion H3.
-  rewrite Bool.orb_true_iff in H2. repeat rewrite PeanoNat.Nat.eqb_eq in H2.
+  repeat rewrite PeanoNat.Nat.eqb_eq in H2.
   rewrite <- location_valid_iff in *.
   simpl. eapply PawnCanCaptureEnPassant; simpl; eauto; simpl; try lia.
   rewrite ceq_eq in Hc. subst. auto. rewrite ceq_eq in Hc. subst. auto.
@@ -384,10 +388,10 @@ Proof.
     rewrite H6. rewrite H7. simpl. left. auto.
   - rewrite in_app_iff. right. rewrite in_app_iff. right. rewrite in_app_iff.
     right. rewrite in_app_iff. left. simpl. rewrite location_valid_iff in *. 
-    rewrite H2. rewrite PeanoNat.Nat.eqb_refl.
+    rewrite H2. rewrite H3. rewrite PeanoNat.Nat.eqb_refl. rewrite ceq_refl.
+    simpl.
     destruct ((dstf =? sf + 1) || (dstf =? sf - 1))%bool eqn:Edstf.
-    + replace (ceq c c) with true. simpl. constructor. auto.
-      symmetry. rewrite ceq_eq. auto.
+    + constructor. auto.
     + rewrite Bool.orb_false_iff in Edstf. 
       repeat rewrite PeanoNat.Nat.eqb_neq in Edstf. lia.
   - repeat rewrite in_app_iff. right. right. right. right. left.

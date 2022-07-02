@@ -441,6 +441,9 @@ Fixpoint find_piece (pos : Position) (c : Color) (p : Piece)
     else find_piece pos c p rlocs
   end.
 
+Definition find_king (pos : Position) (c : Color) := 
+  find_piece pos c King valid_locations.
+
 (******************************Proofs**********************************)
 
 Lemma ceq_eq : forall c1 c2, ceq c1 c2 = true <-> (c1 = c2).
@@ -488,6 +491,51 @@ Proof.
     + simpl. repeat DGmatch. 
       * apply in_cons. apply IHlocs. auto.
       * apply IHlocs. auto.
+Qed.
+
+Lemma valid_squares_nec : forall loc,
+  location_valid loc ->
+  In loc valid_locations.
+Proof.
+  intros loc Hv. unfold location_valid in *. unfold valid_locations.
+  destruct loc eqn:Eloc.
+  destruct Hv as [Hvr Hvf]. 
+  destruct rank eqn:?E; destruct file eqn:?E.
+  repeat (apply in_eq || apply in_cons).
+  destruct n. fIn. destruct n. fIn. destruct n. fIn. destruct n. fIn.
+  destruct n. fIn. destruct n. fIn. destruct n. fIn. lia.
+  destruct n. fIn. destruct n. fIn. destruct n. fIn. destruct n. fIn.
+  destruct n. fIn. destruct n. fIn. destruct n. fIn. lia.
+  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  lia. 
+  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  lia. 
+  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  lia. 
+  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  lia. 
+  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  lia. 
+  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  lia. 
+  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
+  lia. 
+  lia.
+Qed.
+
+Lemma valid_squares_suf : forall loc,
+  In loc valid_locations -> location_valid loc.
+Proof.
+  intros loc Hin.
+  unfold valid_locations in *. unfold location_valid. repeat HinCases; subst;
+  lia.
 Qed.
 
 Lemma locations_equal_iff : forall loc1 loc2,
@@ -541,51 +589,6 @@ Proof.
         apply IHn. auto.
   - intros. apply Hsi with (n:=n). auto.
 Qed. 
-
-Lemma valid_squares_nec : forall loc,
-  location_valid loc ->
-  In loc valid_locations.
-Proof.
-  intros loc Hv. unfold location_valid in *. unfold valid_locations.
-  destruct loc eqn:Eloc.
-  destruct Hv as [Hvr Hvf]. 
-  destruct rank eqn:?E; destruct file eqn:?E.
-  repeat (apply in_eq || apply in_cons).
-  destruct n. fIn. destruct n. fIn. destruct n. fIn. destruct n. fIn.
-  destruct n. fIn. destruct n. fIn. destruct n. fIn. lia.
-  destruct n. fIn. destruct n. fIn. destruct n. fIn. destruct n. fIn.
-  destruct n. fIn. destruct n. fIn. destruct n. fIn. lia.
-  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
-  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
-  lia. 
-  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
-  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
-  lia. 
-  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
-  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
-  lia. 
-  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
-  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
-  lia. 
-  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
-  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
-  lia. 
-  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
-  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
-  lia. 
-  destruct n. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
-  destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. destruct n0. fIn. 
-  lia. 
-  lia.
-Qed.
-
-Lemma valid_squares_suf : forall loc,
-  In loc valid_locations -> location_valid loc.
-Proof.
-  intros loc Hin.
-  unfold valid_locations in *. unfold location_valid. repeat HinCases; subst;
-  lia.
-Qed.
 
 Lemma valid_squares : forall loc,
   location_valid loc <-> In loc valid_locations.

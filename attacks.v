@@ -8,7 +8,7 @@ From CHESS Require Export knight_moves.
 From CHESS Require Export queen_moves.
 From CHESS Require Export king_moves.
 
-(* Definition of when a piece attacks a square or another piece *)
+(* Definition of when a player attacks a square or a piece *)
 
 (** Definitions **)
 
@@ -98,6 +98,16 @@ Proof.
   intros pos c move Hcan. inversion Hcan; subst; inversion H1; auto.
   - inversion H; auto.
   - inversion H; auto.
+Qed.
+
+Lemma a_piece_can_make_move_to_valid : forall pos c move,
+  APieceCanMakeMove pos c move -> location_valid (toOfMove move).
+Proof.
+  intros pos c move Hcan. inversion Hcan; subst; inversion H1; auto.
+  - simpl. subst. simpl. destruct c eqn:?E; simpl; simpl in H3; simpl in H2;
+    rewrite H2 in H3; simpl in H3; lia.
+  - inversion H; auto.
+  - inversion H; auto. 
 Qed.
 
 Lemma a_piece_can_make_move_from_occupied : forall pos c move,
