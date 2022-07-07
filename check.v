@@ -55,3 +55,12 @@ Proof.
     eapply a_piece_can_make_move_to_valid; eauto.
   - apply attacks_occupied_square_correct. auto.
 Qed.
+
+Lemma is_in_check_correct : forall pos c,
+  IsInCheck pos c <-> is_in_check pos c = true.
+Proof.
+  intros. split; intros.
+  - apply is_in_check_complete. auto.
+  - apply is_in_check_sound. auto.
+Qed.
+
