@@ -40,4 +40,29 @@ Inductive CanMakeCastlingMove (pos : Position) : Color -> Move -> Prop :=
       -> ~(AttacksEmptySquare pos (opponent_of c) l)) ->
     CanMakeCastlingMove pos c (Castle c ctype).
 
+Fixpoint forall_in {A} (l : list A) (f : A -> bool) : bool :=
+  match l with
+  | [] => true
+  | x::xs => if (negb (f x)) then false else (forall_in xs f)
+  end.
+
+Definition can_make_castling_move (pos : Position) (c : Color) 
+(ctype : CastlingType) :=
+  (andb (exists_in (castling_availabilities pos)
+    (fun cavl => (cavleq cavl (Cavl ctype c))))
+  (andb (forall_in (empty_castling_squares c ctype)
+    (fun loc => is_square_empty loc (get_piece_placements pos)))
+  (andb (eqSq (square_at_location pos (rook_castling_square c ctype))
+    (Occupied c Rook))
+  (andb (eqSq (square_at_location pos (king_castling_square c))
+    (Occupied c King))
+  (andb (negb (is_in_check pos c))
+  (forall_in (empty_castling_squares c ctype)
+    (fun loc => (negb (attacks_empty_square pos (opponent_of c) loc))))))))).
+
+(*
+Definition castling_moves (pos : Position) (c : Color) :=
+  if (andb (exists_in (castling_availabilities pos) 
+            (fun cavl => (cavleq cavl (Cavl c 
+*)
 

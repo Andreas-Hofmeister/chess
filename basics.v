@@ -280,8 +280,20 @@ Inductive CastlingType : Type :=
   | QueenSide
   | KingSide.
 
+Definition ctypeeq (ctype1 ctype2 : CastlingType) :=
+  match ctype1,ctype2 with
+  | QueenSide, QueenSide => true
+  | KingSide, KingSide => true
+  | _,_ => false
+  end.
+
 Inductive CastlingAvailability : Type :=
   | Cavl (ctype : CastlingType) (c : Color).
+
+Definition cavleq (cavl1 cavl2 : CastlingAvailability) :=
+  match cavl1,cavl2 with
+  | Cavl ctype1 c1, Cavl ctype2 c2 => (andb (ctypeeq ctype1 ctype2) (ceq c1 c2))
+  end.
 
 Inductive Position : Type :=
   | Posn (pp : PiecePlacements) (toMove : Color) 
@@ -297,6 +309,11 @@ Definition castling_availabilities (pos : Position) :=
   match pos with
   | Posn _ _ _ cavl => cavl
   end.
+
+Definition square_at_location (pos : Position) (loc : SquareLocation) 
+: Square :=
+  (get_square_by_index (get_piece_placements pos) (rank_of_loc loc) 
+    (file_of_loc loc)).
 
 Inductive IsOccupiedBy (pos : Position) 
   : SquareLocation -> Color -> Piece -> Prop :=
@@ -446,11 +463,29 @@ Definition find_king (pos : Position) (c : Color) :=
 
 (******************************Proofs**********************************)
 
+Lemma ctypeeq_iff : forall ctype1 ctype2, 
+  ctypeeq ctype1 ctype2 = true <-> ctype1 = ctype2.
+Proof.
+  intros. split.
+  - unfold ctypeeq. intros H. repeat DHmatch; auto; try discriminate.
+  - intros H. subst. unfold ctypeeq. repeat DGmatch; auto.
+Qed.
+
 Lemma ceq_eq : forall c1 c2, ceq c1 c2 = true <-> (c1 = c2).
 Proof.
   intros. split.
   - intros. destruct c1; destruct c2; auto; try simpl in H; try discriminate.
   - intros. rewrite H. destruct c2; simpl; auto.
+Qed.
+
+Lemma cavleq_iff : forall cavl1 cavl2,
+  cavleq cavl1 cavl2 = true <-> cavl1 = cavl2.
+Proof.
+  intros. split.
+  - unfold cavleq. intros H. repeat DHmatch. Hb2p. HdAnd.
+    rewrite ceq_eq in *. rewrite ctypeeq_iff in *. subst. auto.
+  - intros H. rewrite H. unfold cavleq. repeat DGmatch. Gb2p.
+    rewrite ctypeeq_iff. rewrite ceq_eq. auto.
 Qed.
 
 Lemma eqPiece_iff : forall p1 p2, eqPiece p1 p2 = true <-> p1 = p2.
