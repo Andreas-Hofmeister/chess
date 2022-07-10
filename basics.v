@@ -449,6 +449,12 @@ Fixpoint exists_in {A} (l : list A) (f : A -> bool) : bool :=
   | x::xs => if f x then true else exists_in xs f
   end.
 
+Fixpoint forall_in {A} (l : list A) (f : A -> bool) : bool :=
+  match l with
+  | [] => true
+  | x::xs => if (negb (f x)) then false else (forall_in xs f)
+  end.
+
 Fixpoint find_piece (pos : Position) (c : Color) (p : Piece) 
 (locs : list SquareLocation) : list SquareLocation :=
   match locs with
@@ -462,6 +468,22 @@ Definition find_king (pos : Position) (c : Color) :=
   find_piece pos c King valid_locations.
 
 (******************************Proofs**********************************)
+
+Lemma forall_in_iff : forall A (l : list A) (f : A -> bool),
+  forall_in l f = true <-> (forall x, In x l -> f x = true).
+Proof.
+  intros A l f. split.
+  - induction l.
+    + simpl. intros. contradiction.
+    + simpl. DGif.
+      * intros. discriminate.
+      * rewrite Bool.negb_false_iff in *. intros. HdOr; subst; auto.
+  - induction l.
+    + intros. simpl. auto.
+    + intros. simpl. replace (f a) with true.
+      * simpl. apply IHl. intros. apply H. apply in_cons. auto.
+      * symmetry. apply H. apply in_eq.
+Qed.
 
 Lemma ctypeeq_iff : forall ctype1 ctype2, 
   ctypeeq ctype1 ctype2 = true <-> ctype1 = ctype2.
