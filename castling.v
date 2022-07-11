@@ -54,11 +54,14 @@ Definition can_make_castling_move (pos : Position) (c : Color)
   (forall_in (empty_castling_squares c ctype)
     (fun loc => (negb (attacks_empty_square pos (opponent_of c) loc))))))))).
 
-(*
+
 Definition castling_moves (pos : Position) (c : Color) :=
-  if (andb (exists_in (castling_availabilities pos) 
-            (fun cavl => (cavleq cavl (Cavl c 
-*)
+  (if (can_make_castling_move pos c KingSide)
+  then [(Castle c KingSide)] else [])
+  ++
+  (if (can_make_castling_move pos c QueenSide)
+  then [(Castle c QueenSide)] else []).
+
 
 (** Proofs **)
 Lemma forall_in_iff : forall A (l : list A) (f : A -> bool),
@@ -128,6 +131,15 @@ Proof.
   - apply can_make_castling_move_sound.
 Qed.
 
-
-
-
+Lemma castling_moves_correct : forall pos c ctype,
+  CanMakeCastlingMove pos c (Castle c ctype) <-> 
+  In (Castle c ctype) (castling_moves pos c).
+Proof.
+  intros pos c ctype. split.
+  - intros H. unfold castling_moves. destruct ctype eqn:Ect; subst;
+    rewrite can_make_castling_move_correct in H; rewrite H; in_app_to_or;
+    try (right; apply in_eq); try (left; apply in_eq).
+  - unfold castling_moves. intros H. in_app_to_or. HdOr;
+    DHif; try HinNil; repeat HinCases; inversion H; subst; 
+    apply can_make_castling_move_correct; auto.
+Qed.
