@@ -13,6 +13,31 @@ Inductive Move : Type :=
       (piece : Piece)
   | Castle (c : Color) (castling_type : CastlingType).
 
+Inductive MakeFromToMove (before : PiecePlacements) (from to : SquareLocation) 
+(after : PiecePlacements) : Prop := 
+  | MakeFromToMoveIff :
+    get_square_by_location before from = get_square_by_location after to ->
+    get_square_by_location after from = Empty ->
+    (forall loc, In loc valid_locations -> loc <> from -> loc <> to ->
+      get_square_by_location before loc = get_square_by_location after loc) ->
+    MakeFromToMove before from to after.
+
+Definition make_from_to_move (before : PiecePlacements) 
+(from to : SquareLocation) : PiecePlacements :=
+  match from, to with
+  | Loc from_r from_f, Loc to_r to_f =>
+    let from_emptied := set_square_by_index before from_r from_f Empty in
+    set_square_by_index from_emptied to_r to_f 
+      (get_square_by_index before from_r to_f)
+  end.
+
+Lemma make_from_to_move_sound : forall before from to after,
+  make_from_to_move before from to = after -> 
+  MakeFromToMove before from to after.
+Proof.
+  intros before from to after. unfold make_from_to_move. intros H.
+  repeat DHmatch.
+
 Definition fromOfMove (m : Move) : SquareLocation :=
   match m with
   | FromTo from _ => from

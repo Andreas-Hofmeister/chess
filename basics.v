@@ -72,6 +72,19 @@ Inductive FileName : Type :=
   | fg
   | fh.
 
+Definition fileeq (fn1 fn2 : FileName) : bool :=
+  match fn1, fn2 with
+  | fa, fa => true
+  | fb, fb => true
+  | fc, fc => true
+  | fd, fd => true
+  | fe, fe => true
+  | ff, ff => true
+  | fg, fg => true
+  | fh, fh => true
+  | _, _ => false
+  end.
+
 Inductive RankName : Type :=
   | r1
   | r2
@@ -260,6 +273,12 @@ Definition rank_of_loc (loc : SquareLocation) :=
 Definition file_of_loc (loc : SquareLocation) :=
   match loc with
   | Loc _ file => file
+  end.
+
+Definition get_square_by_location (pp : PiecePlacements) (loc : SquareLocation)
+: Square :=
+  match loc with
+  | Loc rn fn => get_square_by_index pp rn fn
   end.
 
 Definition SquaresOnSameFile (l1 l2 : SquareLocation) : Prop :=
@@ -469,6 +488,13 @@ Definition find_king (pos : Position) (c : Color) :=
 
 (******************************Proofs**********************************)
 
+Lemma fileeq_iff : forall fn1 fn2, fileeq fn1 fn2 = true <-> fn1 = fn2.
+Proof.
+  intros. split.
+  - unfold fileeq. repeat DGmatch; intros H; auto; try discriminate.
+  - intros H. subst. unfold fileeq. repeat DGmatch; auto.
+Qed.
+
 Lemma forall_in_iff : forall A (l : list A) (f : A -> bool),
   forall_in l f = true <-> (forall x, In x l -> f x = true).
 Proof.
@@ -662,6 +688,14 @@ Proof.
   auto.
 Qed.
 
+Lemma get_set_file_correct2 : forall pp fn1 fn2 f,
+  fn1 <> fn2 ->
+  get_file (set_file pp fn1 f) fn2 = get_file pp fn2.
+Proof.
+  intros pp fn1 fn2 f Huneq. unfold set_file. repeat DGmatch; simpl;
+  repeat DGmatch; auto; contradiction.
+Qed.
+
 Lemma get_set_square_correct : forall pp fn rn s,
   get_square (set_square pp rn fn s) rn fn = s.
 Proof.
@@ -671,6 +705,21 @@ Proof.
   intros. destruct pp eqn:Epp. destruct fn eqn:Efn; destruct rn eqn:Ern;
   simpl; unfold set_square_in_file; unfold get_square; simpl; auto.
   all: destructFile; auto.
+Qed.
+
+Lemma get_set_square_correct2 : forall pp fn1 rn1 fn2 rn2 s,
+  fn1 <> fn2 \/ rn1 <> rn2 ->
+  get_square (set_square pp rn1 fn1 s) rn2 fn2 = get_square pp rn2 fn2.
+Proof.
+  intros pp fn1 rn1 fn2 rn2 s Huneq. unfold set_square.
+  destruct (fileeq fn1 fn2) eqn:Efeq.
+  - rewrite fileeq_iff in Efeq. HdOr; try contradiction. subst.
+    unfold set_square_in_file. repeat DGmatch; subst;
+    unfold get_square; rewrite get_set_file_correct; DGmatch; rewrite E;
+    try contradiction; auto.
+  - assert (Hfuneq : fn1 <> fn2). { intros C. rewrite <- fileeq_iff in C.
+      rewrite Efeq in C. discriminate. }
+    unfold get_square. rewrite get_set_file_correct2; auto.
 Qed.
 
 Lemma get_set_square_by_index_correct : forall pp fi ri s,
@@ -696,6 +745,35 @@ Proof.
   split; intros.
   - inversion H. lia.
   - constructor. all: lia.
+Qed.
+
+Lemma index_to_rank_uneq : forall ri1 ri2,
+  rank_index_valid ri1 = true -> rank_index_valid ri2 = true -> ri1 <> ri2 ->
+  index_to_rank ri1 <> index_to_rank ri2.
+Proof.
+  intros ri1 ri2 Hv1 Hv2 Huneq. unfold index_to_rank. repeat DGmatch;
+  try contradiction; try intros C; try discriminate.
+Qed.
+
+Lemma index_to_file_uneq : forall fi1 fi2,
+  file_index_valid fi1 = true -> file_index_valid fi2 = true -> fi1 <> fi2 ->
+  index_to_file fi1 <> index_to_file fi2.
+Proof.
+  intros fi1 fi2 Hv1 Hv2 Huneq. unfold index_to_file. repeat DGmatch;
+  try contradiction; try intros C; try discriminate.
+Qed.
+
+Lemma get_set_square_by_index_correct2 : forall pp fi1 ri1 fi2 ri2 s,
+  indices_valid ri1 fi1 = true -> indices_valid ri2 fi2 = true -> 
+  (ri1 <> ri2 \/ fi1 <> fi2) ->
+  get_square_by_index (set_square_by_index pp ri1 fi1 s) ri2 fi2 =
+  get_square_by_index pp ri2 fi2.
+Proof.
+  intros pp fi1 ri1 fi2 ri2 s Hv1 Hv2 Huneq. unfold get_square_by_index. 
+  unfold set_square_by_index. rewrite Hv1. apply get_set_square_correct2.
+  unfold indices_valid in *. repeat Hb2p. repeat HdAnd. HdOr.
+  - right. apply index_to_rank_uneq; auto.
+  - left. apply index_to_file_uneq; auto.
 Qed.
 
 Lemma is_location_valid_correct : forall loc,
