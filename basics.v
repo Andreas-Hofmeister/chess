@@ -747,6 +747,116 @@ Proof.
   - constructor. all: lia.
 Qed.
 
+Lemma neq_Loc : forall rank file rank0 file0,
+  Loc rank file <> Loc rank0 file0 -> rank <> rank0 \/ file <> file0.
+Proof.
+  intros. destruct (rank =? rank0) eqn:?E; destruct (file =? file0) eqn:?E;
+  repeat Hb2p; subst; try contradiction; auto.
+Qed.
+
+Lemma piece_placements_eq_if : forall a a0 b b0 c c0 d d0 e e0 f f0 g g0 h h0,
+  a = a0 -> b = b0 -> c = c0 -> d = d0 -> e = e0 -> f = f0 -> g = g0 -> h = h0
+  -> Files a b c d e f g h = Files a0 b0 c0 d0 e0 f0 g0 h0.
+Proof.
+  intros. subst. auto.
+Qed.
+
+Lemma file_eq_if : forall s1 s2 s3 s4 s5 s6 s7 s8 t1 t2 t3 t4 t5 t6 t7 t8,
+  s1 = t1 -> s2 = t2 -> s3 = t3 -> s4 = t4 -> s5 = t5 -> s6 = t6 -> s7 = t7
+  -> s8 = t8 -> 
+  Squares s1 s2 s3 s4 s5 s6 s7 s8 = Squares t1 t2 t3 t4 t5 t6 t7 t8.
+Proof.
+  intros. subst. auto.
+Qed.
+
+Lemma piece_placements_eq_iff : forall pp1 pp2,
+  (forall loc, location_valid loc -> 
+    get_square_by_location pp1 loc = get_square_by_location pp2 loc) <->
+  pp1 = pp2.
+Proof.
+  Ltac pp_eq_iff_solve_case := match goal with
+  | H : location_valid ?loc -> _ |- _ => simpl in H;
+    unfold get_square_by_index in H; simpl in H; unfold get_square in H; 
+    simpl in H; apply H; lia
+  end.
+  intros pp1 pp2. split.
+  - intros H. destruct pp1 eqn:?E. destruct pp2 eqn:?E. 
+    apply piece_placements_eq_if.
+    + destruct a eqn:?E. destruct a0 eqn:?E. apply file_eq_if.
+      * specialize (H (Loc 0 0)) as Heq. pp_eq_iff_solve_case. 
+      * specialize (H (Loc 1 0)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 2 0)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 3 0)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 4 0)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 5 0)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 6 0)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 7 0)) as Heq. pp_eq_iff_solve_case.
+    + destruct b eqn:?E. destruct b0 eqn:?E. apply file_eq_if.
+      * specialize (H (Loc 0 1)) as Heq. pp_eq_iff_solve_case. 
+      * specialize (H (Loc 1 1)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 2 1)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 3 1)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 4 1)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 5 1)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 6 1)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 7 1)) as Heq. pp_eq_iff_solve_case.
+    + destruct c eqn:?E. destruct c0 eqn:?E. apply file_eq_if.
+      * specialize (H (Loc 0 2)) as Heq. pp_eq_iff_solve_case. 
+      * specialize (H (Loc 1 2)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 2 2)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 3 2)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 4 2)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 5 2)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 6 2)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 7 2)) as Heq. pp_eq_iff_solve_case.
+    + destruct d eqn:?E. destruct d0 eqn:?E. apply file_eq_if.
+      * specialize (H (Loc 0 3)) as Heq. pp_eq_iff_solve_case. 
+      * specialize (H (Loc 1 3)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 2 3)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 3 3)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 4 3)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 5 3)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 6 3)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 7 3)) as Heq. pp_eq_iff_solve_case.
+    + destruct e eqn:?E. destruct e0 eqn:?E. apply file_eq_if.
+      * specialize (H (Loc 0 4)) as Heq. pp_eq_iff_solve_case. 
+      * specialize (H (Loc 1 4)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 2 4)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 3 4)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 4 4)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 5 4)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 6 4)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 7 4)) as Heq. pp_eq_iff_solve_case.
+    + destruct f eqn:?E. destruct f0 eqn:?E. apply file_eq_if.
+      * specialize (H (Loc 0 5)) as Heq. pp_eq_iff_solve_case. 
+      * specialize (H (Loc 1 5)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 2 5)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 3 5)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 4 5)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 5 5)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 6 5)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 7 5)) as Heq. pp_eq_iff_solve_case.
+    + destruct g eqn:?E. destruct g0 eqn:?E. apply file_eq_if.
+      * specialize (H (Loc 0 6)) as Heq. pp_eq_iff_solve_case. 
+      * specialize (H (Loc 1 6)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 2 6)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 3 6)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 4 6)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 5 6)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 6 6)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 7 6)) as Heq. pp_eq_iff_solve_case.
+    + destruct h eqn:?E. destruct h0 eqn:?E. apply file_eq_if.
+      * specialize (H (Loc 0 7)) as Heq. pp_eq_iff_solve_case. 
+      * specialize (H (Loc 1 7)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 2 7)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 3 7)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 4 7)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 5 7)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 6 7)) as Heq. pp_eq_iff_solve_case.
+      * specialize (H (Loc 7 7)) as Heq. pp_eq_iff_solve_case.
+  - intros Heq loc Hv. subst. auto.
+Qed.
+
 Lemma index_to_rank_uneq : forall ri1 ri2,
   rank_index_valid ri1 = true -> rank_index_valid ri2 = true -> ri1 <> ri2 ->
   index_to_rank ri1 <> index_to_rank ri2.
