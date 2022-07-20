@@ -46,12 +46,30 @@ Inductive MakeEnPassantMove (before : PiecePlacements)
     is_en_passant_step from to c = true ->
     get_square_by_location before from = get_square_by_location after to ->
     get_square_by_location after from = Empty ->
-    captured_loc = Loc (file_of_loc to) (en_passant_capture_rank c) ->
+    captured_loc = Loc (en_passant_capture_rank c) (file_of_loc to) ->
     get_square_by_location after captured_loc = Empty ->
     (forall loc, location_valid loc -> loc <> from -> loc <> to ->
       loc <> captured_loc ->
       get_square_by_location before loc = get_square_by_location after loc) ->
     MakeEnPassantMove before from to after.
+
+Definition remove_en_passant_capture (pp : PiecePlacements)
+(from to : SquareLocation) :=
+  match from,to with
+  | Loc from_r from_f, Loc to_r to_f =>
+    if (from_r =? (en_passant_capture_rank White)) 
+    then (set_square_by_index pp (en_passant_capture_rank White) to_f
+          Empty)
+    else if (from_r =? (en_passant_capture_rank Black))
+    then (set_square_by_index pp (en_passant_capture_rank Black) to_f
+          Empty)
+    else pp
+  end.
+    
+
+Definition make_en_passant_move (before : PiecePlacements)
+(from to : SquareLocation) : PiecePlacements :=
+  remove_en_passant_capture (make_from_to_move before from to) from to.
 
 (** Proofs **)
 
