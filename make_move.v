@@ -65,13 +65,42 @@ Definition remove_en_passant_capture (pp : PiecePlacements)
           Empty)
     else pp
   end.
-    
+
 
 Definition make_en_passant_move (before : PiecePlacements)
 (from to : SquareLocation) : PiecePlacements :=
   remove_en_passant_capture (make_from_to_move before from to) from to.
 
 (** Proofs **)
+
+Lemma remove_en_passant_capture_correct : forall c from to before after,
+  is_en_passant_step from to c = true ->
+  (remove_en_passant_capture before from to = after <->
+  (get_square_by_location after (Loc (en_passant_capture_rank c) 
+    (file_of_loc to))) = Empty /\
+  (forall loc, location_valid loc -> 
+    loc <> (Loc (en_passant_capture_rank c) (file_of_loc to)) ->
+    get_square_by_location after loc = get_square_by_location before loc)).
+Proof.
+  intros c from to before after Heps. split.
+  - unfold remove_en_passant_capture. destruct c eqn:Hc.
+    + unfold is_en_passant_step in Heps. repeat DHmatch. repeat (Hb2p; HdAnd).
+      repeat Hb2p. simpl. rewrite Heps. simpl.
+intros H. split.
+      * rewrite <- H. unfold get_square_by_location.
+  
+  
+
+Lemma make_en_passant_move_sound : forall c from to before after,
+  is_en_passant_step from to c = true ->
+  make_en_passant_move before from to = after -> 
+  MakeEnPassantMove before from to after.
+Proof.
+  intros c from to before after Heps. unfold make_en_passant_move.
+  intros Hrm. apply MakeEnPassantMoveIff with (c:=c) 
+  (captured_loc:=Loc (en_passant_capture_rank c) (file_of_loc to)); auto.
+  - 
+  
 
 Lemma make_from_to_move_sound : forall before from to after,
   location_valid from -> location_valid to -> from <> to ->

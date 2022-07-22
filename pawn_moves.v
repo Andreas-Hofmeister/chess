@@ -37,7 +37,7 @@ Inductive PawnCanMakeMove (pos : Position)
     tf tr tc p,
     pos = Posn pp pos_c dstep cavl -> loc = Loc sr sf ->
     tr = advance_pawn c sr -> tr <> final_rank_of_pawn c ->
-    (tf = sf + 1 \/ tf = sf - 1) ->
+    difference sf tf = 1 ->
     location_valid loc -> location_valid (Loc tr tf) ->
     get_square_by_index pp tr tf = Occupied tc p -> tc <> c -> 
     PawnCanMakeMove pos loc c (Capture loc (Loc tr tf))
@@ -55,7 +55,7 @@ Inductive PawnCanMakeMove (pos : Position)
     location_valid loc ->
     location_valid (Loc tr dstf) ->
     dstep = (DoubleStepRankFile sr dstf) ->
-    (sf = dstf + 1 \/ sf = dstf - 1) ->
+    difference sf dstf = 1 ->
     tr = advance_pawn c sr ->
     PawnCanMakeMove pos loc c (EnPassant loc (Loc tr dstf))
   | PawnCanPromoteForward : forall pp c pos_c dstep cavl loc sf sr tr piece,
@@ -69,7 +69,7 @@ Inductive PawnCanMakeMove (pos : Position)
     p piece,
     pos = Posn pp pos_c dstep cavl -> loc = Loc sr sf ->
     tr = advance_pawn c sr -> tr = final_rank_of_pawn c ->
-    (tf = sf + 1 \/ tf = sf - 1) ->
+    difference tf sf = 1 ->
     location_valid loc -> location_valid (Loc tr tf) ->
     get_square_by_index pp tr tf = Occupied tc p -> tc <> c -> 
     IsPromotionPiece piece ->
@@ -100,14 +100,14 @@ Definition pawn_captures (pawn_loc : SquareLocation) (c : Color)
       if (indices_valid r f) then
         let new_r := advance_pawn c r in
         let left_capture := 
-          if (occupied_by_enemy_piece new_r (f - 1) pp c) 
+          if (andb (1 <=? f) (occupied_by_enemy_piece new_r (f - 1) pp c))
           then [Capture pawn_loc (Loc new_r (f - 1))] else []
         in
         let right_capture :=
-          if (occupied_by_enemy_piece new_r (f + 1) pp c) 
+          if (andb (f <=? 6) (occupied_by_enemy_piece new_r (f + 1) pp c))
           then [Capture pawn_loc (Loc new_r (f + 1))] else []
-        in if (new_r =? final_rank_of_pawn c) then [] else
-          left_capture ++ right_capture
+        in if (orb (r =? final_rank_of_pawn c) (new_r =? final_rank_of_pawn c))
+          then [] else left_capture ++ right_capture
         else []
     end
   end.
@@ -243,25 +243,44 @@ Lemma pawn_captures_sound : forall move loc c pos,
   PawnCanMakeMove pos loc c move.
 Proof.
   intros. 
-  simpl in H. unfold pawn_captures in H.
-  destruct pos eqn:Epos. destruct loc eqn:Eloc.
-  destruct (indices_valid rank file) eqn:Hivsrc; try inversion H.
-  rewrite <- location_valid_iff in *.
-  DHif. inversion H.
-  Ltac tac1 :=
-    match goal with
-    | H: In _ (if occupied_by_enemy_piece ?r ?f ?pp ?c then _ else _) |- _
-          => destruct (occupied_by_enemy_piece r f pp c) eqn: Eoc
-    end;
-    try inversion H; try inversion H0;
-    match goal with
-    | H: (occupied_by_enemy_piece ?r ?f ?pp ?c = _) |- _ 
-          => apply occupied_by_enemy_piece_correct in H; 
-             destruct H as [c2 [piece [Hiv [Hoc Henemy]]]]
-    end;
-    subst; try rewrite <- location_valid_iff in *; 
-    eapply PawnCanCaptureDiagonallyForward; simpl; eauto.
-  apply in_app_or in H. destruct H as [H | H]; tac1; repeat Hb2p; auto.
+  simpl in H. unfold pawn_captures in H. repeat DHmatch; try HinNil; 
+  in_app_to_or; HdOr; HinCases; try HinNil.
+  - repeat Hb2p. repeat HdAnd. repeat Hb2p. 
+    unfold occupied_by_enemy_piece in E6. DHif; try discriminate. DHmatch;
+    try discriminate. DHif; try discriminate. assert (Henemy: c <> c0).
+    { intros C. subst. rewrite ceq_refl in E10. discriminate. }
+    rewrite <- location_valid_iff in E8. rewrite <- H.
+    eapply PawnCanCaptureDiagonallyForward; eauto.
+    + unfold difference. replace (file <? file - 1) with false; try Gb2p; 
+      try lia.
+    + rewrite location_valid_iff. auto.
+  - repeat Hb2p. repeat HdAnd. repeat Hb2p. 
+    unfold occupied_by_enemy_piece in E5. DHif; try discriminate. DHmatch;
+    try discriminate. DHif; try discriminate. assert (Henemy: c <> c0).
+    { intros C. subst. rewrite ceq_refl in E10. discriminate. }
+    rewrite <- location_valid_iff in E8. rewrite <- H.
+    eapply PawnCanCaptureDiagonallyForward; eauto.
+    + unfold difference. replace (file <? file + 1) with true; try Gb2p; 
+      try lia.
+    + rewrite location_valid_iff. auto.
+  - repeat Hb2p. repeat HdAnd. repeat Hb2p. 
+    unfold occupied_by_enemy_piece in E5. DHif; try discriminate. DHmatch;
+    try discriminate. DHif; try discriminate. assert (Henemy: c <> c0).
+    { intros C. subst. rewrite ceq_refl in E9. discriminate. }
+    rewrite <- location_valid_iff in E7. rewrite <- H.
+    eapply PawnCanCaptureDiagonallyForward; eauto.
+    + unfold difference. replace (file <? file - 1) with false; try Gb2p; 
+      try lia.
+    + rewrite location_valid_iff. auto.
+  - repeat Hb2p. repeat HdAnd. repeat Hb2p. 
+    unfold occupied_by_enemy_piece in E5. DHif; try discriminate. DHmatch;
+    try discriminate. DHif; try discriminate. assert (Henemy: c <> c0).
+    { intros C. subst. rewrite ceq_refl in E9. discriminate. }
+    rewrite <- location_valid_iff in E7. rewrite <- H.
+    eapply PawnCanCaptureDiagonallyForward; eauto.
+    + unfold difference. replace (file <? file + 1) with true; try Gb2p; 
+      try lia.
+    + rewrite location_valid_iff. auto.
 Qed.
 
 Lemma pawn_double_steps_sound : forall move loc c pos,
