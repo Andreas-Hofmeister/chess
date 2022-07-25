@@ -72,7 +72,7 @@ Definition make_en_passant_move (before : PiecePlacements)
   remove_en_passant_capture (make_from_to_move before from to) from to.
 
 (** Proofs **)
-
+(*
 Lemma remove_en_passant_capture_correct : forall c from to before after,
   is_en_passant_step from to c = true ->
   (remove_en_passant_capture before from to = after <->
@@ -101,7 +101,7 @@ Proof.
   (captured_loc:=Loc (en_passant_capture_rank c) (file_of_loc to)); auto.
   - 
   
-
+*)
 Lemma make_from_to_move_sound : forall before from to after,
   location_valid from -> location_valid to -> from <> to ->
   make_from_to_move before from to = after -> 

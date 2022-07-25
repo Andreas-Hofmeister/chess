@@ -139,7 +139,7 @@ Definition en_passant_moves (pawn_loc : SquareLocation) (c : Color)
         if (andb (ceq c toMove)
             (andb (dsr =? r) (indices_valid (advance_pawn toMove r) dsf)))
           then
-          if (orb (dsf =? f + 1) (dsf =? f - 1)) then
+          if (difference f dsf =? 1) then
             [EnPassant pawn_loc (Loc (advance_pawn toMove r) dsf)]
           else []
         else []
@@ -176,7 +176,7 @@ Definition pawn_promotion_captures (pawn_loc : SquareLocation) (c : Color)
       if (indices_valid r f) then
         let new_r := advance_pawn c r in
         let left_capture := 
-          if (occupied_by_enemy_piece new_r (f - 1) pp c) 
+          if (andb (1 <=? f) (occupied_by_enemy_piece new_r (f - 1) pp c))
           then [PromotionWithCapture pawn_loc (Loc new_r (f - 1)) Rook;
                 PromotionWithCapture pawn_loc (Loc new_r (f - 1)) Knight;
                 PromotionWithCapture pawn_loc (Loc new_r (f - 1)) Bishop;
@@ -339,26 +339,30 @@ Lemma pawn_promotion_captures_sound : forall move loc c pos,
 Proof.
   intros move loc c pos Hin. unfold pawn_promotion_captures in Hin.
   repeat DHmatch; try HinNil; try simpl in Hin; try contradiction.
-  - repeat HdOr; repeat Hb2p;
-    apply occupied_by_enemy_piece_correct in E3; 
+  - repeat HdOr; repeat Hb2p; repeat HdAnd;
+    apply occupied_by_enemy_piece_correct in E5; 
     apply occupied_by_enemy_piece_correct in E4;
-    destruct E3 as [c3 [ep3 [Hval3 [Hgetsq3 Hisenemy3]]]];
+    destruct E5 as [c3 [ep3 [Hval3 [Hgetsq3 Hisenemy3]]]];
     destruct E4 as [c4 [ep4 [Hval4 [Hgetsq4 Hisenemy4]]]];
-    rewrite <- location_valid_iff in *; subst; 
-    try eapply PawnCanPromoteDiagonally; eauto; unfold IsPromotionPiece; auto.
-    contradiction.
-  - repeat HdOr; repeat Hb2p;
-    apply occupied_by_enemy_piece_correct in E3; 
-    destruct E3 as [c3 [ep3 [Hval3 [Hgetsq3 Hisenemy3]]]];
-    rewrite <- location_valid_iff in *; subst; 
-    try eapply PawnCanPromoteDiagonally; eauto; unfold IsPromotionPiece; auto.
-    contradiction.
-  - repeat HdOr; repeat Hb2p;
+    rewrite <- location_valid_iff in *; subst; Hb2p;
+    try eapply PawnCanPromoteDiagonally; eauto;
+    unfold difference; replace (file - 1 <? file) with true; try Gb2p; try lia;
+    unfold IsPromotionPiece; auto;
+    replace (file + 1 <? file) with false; try Gb2p; try lia.
+  - repeat HdOr; repeat Hb2p; repeat HdAnd;
+    apply occupied_by_enemy_piece_correct in E5; 
+    destruct E5 as [c3 [ep3 [Hval3 [Hgetsq3 Hisenemy3]]]];
+    rewrite <- location_valid_iff in *; subst; Hb2p;
+    try eapply PawnCanPromoteDiagonally; eauto; unfold difference;
+    replace (file - 1 <? file) with true; try Gb2p; try lia;
+    unfold IsPromotionPiece; auto.
+  - repeat HdOr; repeat Hb2p; repeat HdAnd;
     apply occupied_by_enemy_piece_correct in E4; 
     destruct E4 as [c4 [ep4 [Hval4 [Hgetsq4 Hisenemy4]]]];
-    rewrite <- location_valid_iff in *; subst; 
-    try eapply PawnCanPromoteDiagonally; eauto; unfold IsPromotionPiece; auto.
-    contradiction.
+    rewrite <- location_valid_iff in *; subst;
+    try eapply PawnCanPromoteDiagonally; eauto;
+    unfold difference; replace (file + 1 <? file) with false; try Gb2p; 
+    try lia; unfold IsPromotionPiece; auto.
 Qed.
 
 Lemma pawn_moves_sound : forall move loc c pos,
@@ -375,6 +379,17 @@ Proof.
   - apply pawn_promotion_captures_sound. auto.
 Qed.
 
+Lemma not_final_pawn_rank : forall c r,
+  advance_pawn c r <> final_rank_of_pawn c ->
+  rank_index_valid (advance_pawn c r) = true ->
+  r <> final_rank_of_pawn c.
+Proof.
+  intros c r Hadv_not_final Hadv_valid. destruct c eqn:Ec.
+  - simpl. intros C. subst. simpl in *. unfold rank_index_valid in *.
+    Hb2p. lia.
+  - simpl. intros C. subst. simpl in *. contradiction.
+Qed.
+
 Lemma pawn_moves_complete : forall move loc c pos,
   PawnCanMakeMove pos loc c move -> In move (pawn_moves loc c pos).
 Proof.
@@ -389,17 +404,34 @@ Proof.
     rewrite <- is_square_empty_rank_file_correct in *. rewrite H6. simpl.
     left. constructor.
   - rewrite in_app_iff. right. rewrite in_app_iff. left.
-    rewrite location_valid_iff in *. 
+    rewrite location_valid_iff in *.
     simpl. rewrite <- PeanoNat.Nat.eqb_neq in *.
-    rewrite H5. rewrite H3. destruct H4 as [Hr | Hl].
-    + rewrite in_app_iff. right. subst. if_cond_destruct_in_goal.
-      * constructor. auto.
-      * rewrite <- Bool.not_true_iff_false in H0. exfalso. apply H0. 
-        apply occupied_by_enemy_piece_correct. eexists. eexists. eauto.
-    + rewrite in_app_iff. left. subst. if_cond_destruct_in_goal.
-      * constructor. auto.
-      * rewrite <- Bool.not_true_iff_false in H0. exfalso. apply H0. 
-        apply occupied_by_enemy_piece_correct. eexists. eexists. eauto.
+    rewrite H5. rewrite H3. 
+    assert (Hr_not_final: sr =? final_rank_of_pawn c = false). { Gb2p. Hb2p. 
+      unfold indices_valid in *. repeat Hb2p. repeat HdAnd. 
+      apply not_final_pawn_rank; auto.
+    }
+    rewrite Hr_not_final. replace (false || false)%bool with false; auto.
+    rewrite difference_1_iff in H4. 
+    assert (Hctc: ceq tc c = false). { rewrite <- ceq_eq in H8. 
+        destruct (ceq tc c) eqn:Ectc. try contradiction. auto.
+    }
+    destruct H4 as [[Hge1 Hdiff] | Hdiff].
+    + destruct Hdiff as [Hdiff | Hdiff]. 
+      * rewrite in_app_iff. left. destruct sf eqn:Esf; try lia.
+        rewrite <- Hdiff. unfold occupied_by_enemy_piece. rewrite H6. 
+        rewrite H7. rewrite Hctc. simpl. auto.
+      * rewrite in_app_iff. right. assert (Hsf: sf <=? 6 = true). { Gb2p.
+          unfold indices_valid in H6. repeat Hb2p. repeat HdAnd.
+          unfold file_index_valid in *. unfold rank_index_valid in *.
+          repeat Hb2p. lia.
+        }
+        rewrite Hsf. rewrite <- Hdiff. unfold occupied_by_enemy_piece.
+        rewrite H6. rewrite H7. rewrite Hctc. simpl. auto.
+    + destruct Hdiff as [Hsf Htf]. subst. rewrite in_app_iff. right.
+      replace (0 <=? 6) with true; try Gb2p; try lia.
+      replace (0 + 1) with 1; try lia. unfold occupied_by_enemy_piece.
+      rewrite H6. rewrite H7. rewrite Hctc. simpl. auto.
   - rewrite in_app_iff. right. rewrite in_app_iff. right. rewrite in_app_iff.
     left.
     simpl. rewrite location_valid_iff in *. rewrite H2.
@@ -408,32 +440,41 @@ Proof.
   - rewrite in_app_iff. right. rewrite in_app_iff. right. rewrite in_app_iff.
     right. rewrite in_app_iff. left. simpl. rewrite location_valid_iff in *. 
     rewrite H2. rewrite H3. rewrite PeanoNat.Nat.eqb_refl. rewrite ceq_refl.
-    simpl.
-    destruct ((dstf =? sf + 1) || (dstf =? sf - 1))%bool eqn:Edstf.
-    + constructor. auto.
-    + rewrite Bool.orb_false_iff in Edstf. 
-      repeat rewrite PeanoNat.Nat.eqb_neq in Edstf. lia.
+    simpl. rewrite H5. simpl. auto.
   - repeat rewrite in_app_iff. right. right. right. right. left.
     rewrite location_valid_iff in *. 
     rewrite <- is_square_empty_rank_file_correct in *. Hp2b.
     simpl. rewrite H4. rewrite H5. rewrite H6. rewrite H3. simpl.
     unfold IsPromotionPiece in H7. repeat HdOr; subst; auto.
   - repeat rewrite in_app_iff. right. right. right. right. right.
-    rewrite location_valid_iff in *. Hp2b. simpl. rewrite H5. rewrite H3.
-    assert (Hocc: occupied_by_enemy_piece (advance_pawn c sr) tf pp c = true).
-    { apply occupied_by_enemy_piece_correct. eauto. } 
-    repeat HdOr.
-    + subst. rewrite Hocc. rewrite in_app_iff. right. 
-      unfold IsPromotionPiece in *. repeat HdOr; subst.
-      * apply in_cons. apply in_cons. apply in_eq.
-      * apply in_cons. apply in_eq.
-      * apply in_eq.
-      * apply in_cons. apply in_cons. apply in_cons. apply in_eq.
-    + subst. rewrite Hocc. rewrite in_app_iff. left.
-      unfold IsPromotionPiece in *. repeat HdOr; subst.
-      * apply in_cons. apply in_cons. apply in_eq.
-      * apply in_cons. apply in_eq.
-      * apply in_eq.
-      * apply in_cons. apply in_cons. apply in_cons. apply in_eq.
+    rewrite location_valid_iff in *. simpl. rewrite H5. rewrite H3. 
+    rewrite PeanoNat.Nat.eqb_refl. assert (Hctc: ceq tc c = false). { 
+        rewrite <- ceq_eq in H8. 
+        destruct (ceq tc c) eqn:Ectc. try contradiction. auto.
+    }
+    rewrite difference_1_iff in H4. destruct H4 as [[Hge1 Hdiff] | Hdiff].
+    + destruct Hdiff as [Hdiff | Hdiff]. destruct sf eqn:Esf.
+      * rewrite in_app_iff. right. assert (Htf: tf = 1). { lia. }
+        replace (0 + 1) with 1; try lia. unfold occupied_by_enemy_piece.
+        rewrite <- H3. rewrite Htf in H6. rewrite H6. rewrite Htf in H7.
+        rewrite H7. rewrite Hctc. unfold IsPromotionPiece in *. repeat HdOr; 
+        subst; repeat (try apply in_eq; apply in_cons).
+      * assert (Hsf: sf = tf - 1). { lia. } 
+        assert (Htf: tf = sf + 1). { lia. }
+        subst. rewrite in_app_iff. right. unfold occupied_by_enemy_piece.
+        rewrite <- H3. rewrite H6. rewrite H7. rewrite Hctc.
+        unfold IsPromotionPiece in *. repeat HdOr; subst; 
+        repeat (try apply in_eq; apply in_cons).
+      * assert (Htf: tf = sf - 1). { lia. } 
+        subst. rewrite <- H3. destruct (tf + 1) eqn:Eweird; try lia. subst.
+        rewrite in_app_iff. left. unfold occupied_by_enemy_piece. rewrite H6.
+        rewrite H7. rewrite Hctc. replace (true && true)%bool with true; auto.
+        unfold IsPromotionPiece in *.
+        repeat HdOr; subst; repeat (try apply in_eq; apply in_cons).
+    + rewrite <- H3. destruct Hdiff as [Htf Hsf]. subst. rewrite in_app_iff. 
+      left. replace (1-1) with 0; try lia. unfold occupied_by_enemy_piece. 
+      rewrite H6. rewrite H7. rewrite Hctc. 
+      replace (true && true)%bool with true; auto. 
+      unfold IsPromotionPiece in *. repeat HdOr; subst; 
+      repeat (try apply in_eq; apply in_cons).
 Qed.
-

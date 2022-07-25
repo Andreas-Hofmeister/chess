@@ -488,6 +488,19 @@ Definition find_king (pos : Position) (c : Color) :=
 
 (******************************Proofs**********************************)
 
+Lemma difference_1_iff : forall a b,
+  difference a b = 1 <-> 
+  (1 <= a /\ (b = a - 1 \/ b = a + 1)) \/ (a = 0 /\ b = 1).
+Proof.
+  intros a b. split.
+  - unfold difference. intros H. destruct (1 <=? a) eqn:Eage1; Hb2p.
+    + left. split; auto. DHif; Hb2p. all: lia.
+    + right. split; try lia. DHif; Hb2p. all: lia.
+  - intros H. HdOr.
+    + unfold difference. DGif; Hb2p. all: lia.
+    + unfold difference. HdAnd. subst. simpl. auto.
+Qed.
+
 Lemma fileeq_iff : forall fn1 fn2, fileeq fn1 fn2 = true <-> fn1 = fn2.
 Proof.
   intros. split.
