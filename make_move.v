@@ -29,9 +29,9 @@ Definition make_from_to_move (before : PiecePlacements)
 Definition is_en_passant_step (from to : SquareLocation) (c : Color) :=
   match c,from,to with
   | White, Loc from_r from_f,Loc to_r to_f  => 
-    ((from_r =? 4) && (to_r =? 5) && ((to_f =? from_f - 1) || (to_f =? from_f + 1)))%bool
+    ((from_r =? 4) && (to_r =? 5) && (difference from_f to_f =? 1))%bool
   | Black, Loc from_r from_f,Loc to_r to_f =>
-    ((from_r =? 3) && (to_r =? 2) && ((to_f =? from_f - 1) || (to_f =? from_f + 1)))%bool
+    ((from_r =? 3) && (to_r =? 2) && (difference from_f to_f =? 1))%bool
   end.
 
 Definition en_passant_capture_rank (c : Color) :=
@@ -66,42 +66,12 @@ Definition remove_en_passant_capture (pp : PiecePlacements)
     else pp
   end.
 
-
 Definition make_en_passant_move (before : PiecePlacements)
 (from to : SquareLocation) : PiecePlacements :=
   remove_en_passant_capture (make_from_to_move before from to) from to.
 
 (** Proofs **)
-(*
-Lemma remove_en_passant_capture_correct : forall c from to before after,
-  is_en_passant_step from to c = true ->
-  (remove_en_passant_capture before from to = after <->
-  (get_square_by_location after (Loc (en_passant_capture_rank c) 
-    (file_of_loc to))) = Empty /\
-  (forall loc, location_valid loc -> 
-    loc <> (Loc (en_passant_capture_rank c) (file_of_loc to)) ->
-    get_square_by_location after loc = get_square_by_location before loc)).
-Proof.
-  intros c from to before after Heps. split.
-  - unfold remove_en_passant_capture. destruct c eqn:Hc.
-    + unfold is_en_passant_step in Heps. repeat DHmatch. repeat (Hb2p; HdAnd).
-      repeat Hb2p. simpl. rewrite Heps. simpl.
-intros H. split.
-      * rewrite <- H. unfold get_square_by_location.
-  
-  
 
-Lemma make_en_passant_move_sound : forall c from to before after,
-  is_en_passant_step from to c = true ->
-  make_en_passant_move before from to = after -> 
-  MakeEnPassantMove before from to after.
-Proof.
-  intros c from to before after Heps. unfold make_en_passant_move.
-  intros Hrm. apply MakeEnPassantMoveIff with (c:=c) 
-  (captured_loc:=Loc (en_passant_capture_rank c) (file_of_loc to)); auto.
-  - 
-  
-*)
 Lemma make_from_to_move_sound : forall before from to after,
   location_valid from -> location_valid to -> from <> to ->
   make_from_to_move before from to = after -> 
@@ -121,6 +91,13 @@ Proof.
     rewrite <- H. rewrite get_set_square_by_index_correct2; 
     auto. rewrite get_set_square_by_index_correct2; auto.
     all: apply neq_Loc; auto.
+Qed.
+
+Lemma make_from_to_move_sound2 : forall before from to,
+  location_valid from -> location_valid to -> from <> to ->
+  MakeFromToMove before from to (make_from_to_move before from to).
+Proof.
+  intros. apply make_from_to_move_sound; auto.
 Qed.
 
 Lemma make_from_to_move_complete : forall before from to after,
@@ -148,6 +125,156 @@ Proof.
       unfold get_square_by_location. rewrite get_set_square_by_index_correct2;
       try apply neq_Loc; auto. rewrite get_set_square_by_index_correct2;
       try apply neq_Loc; auto. 
+Qed.
+
+Lemma remove_en_passant_capture_sound : forall c from to before after,
+  location_valid to ->
+  is_en_passant_step from to c = true ->
+  (remove_en_passant_capture before from to = after ->
+  (get_square_by_location after (Loc (en_passant_capture_rank c) 
+    (file_of_loc to))) = Empty /\
+  (forall loc, location_valid loc -> 
+    loc <> (Loc (en_passant_capture_rank c) (file_of_loc to)) ->
+    get_square_by_location after loc = get_square_by_location before loc)).
+Proof.
+  intros c from to before after Hto_v Heps.
+  unfold remove_en_passant_capture. destruct c eqn:Hc.
+  - unfold is_en_passant_step in Heps. repeat DHmatch. repeat (Hb2p; HdAnd).
+    repeat Hb2p. simpl. repeat HdAnd. rewrite Heps. intros H.
+    rewrite location_valid_iff in Hto_v. unfold indices_valid in *.
+    repeat Hb2p. HdAnd. split.
+    + rewrite <- H. apply get_set_square_by_index_correct.
+      unfold indices_valid. Gb2p. split; auto.
+    + intros loc Hlocv Hlocuneq. unfold get_square_by_location.
+      repeat DGmatch. rewrite <- H. apply get_set_square_by_index_correct2.
+      * unfold indices_valid. Gb2p. split; auto.
+      * rewrite location_valid_iff in Hlocv. auto.
+      * apply neq_Loc. auto.
+  - unfold is_en_passant_step in Heps. repeat DHmatch. repeat (Hb2p; HdAnd).
+    repeat Hb2p. simpl. repeat HdAnd. replace (rank =? 4) with false; 
+    try symmetry; try Gb2p; try repeat Hb2p; try lia. rewrite Heps. intros H.
+    rewrite location_valid_iff in Hto_v. unfold indices_valid in *.
+    repeat Hb2p. HdAnd. simpl in H. split.
+    + rewrite <- H. apply get_set_square_by_index_correct.
+      unfold indices_valid. Gb2p. split; auto.
+    + intros loc Hlocv Hlocuneq. unfold get_square_by_location.
+      repeat DGmatch. rewrite <- H. apply get_set_square_by_index_correct2.
+      * unfold indices_valid. Gb2p. split; auto.
+      * rewrite location_valid_iff in Hlocv. auto.
+      * apply neq_Loc. auto.
+Qed.
+
+Lemma remove_en_passant_capture_complete : forall c from to before after,
+  location_valid to ->
+  is_en_passant_step from to c = true ->
+  (get_square_by_location after (Loc (en_passant_capture_rank c) 
+    (file_of_loc to))) = Empty /\
+  (forall loc, location_valid loc -> 
+    loc <> (Loc (en_passant_capture_rank c) (file_of_loc to)) ->
+    get_square_by_location after loc = get_square_by_location before loc) ->
+  remove_en_passant_capture before from to = after.
+Proof.
+  intros c from to before after Hto_v Heps. intros H.
+  assert (Obv: remove_en_passant_capture before from to = 
+    remove_en_passant_capture before from to). { auto. }
+  specialize (remove_en_passant_capture_sound c from to before 
+    (remove_en_passant_capture before from to) Hto_v Heps Obv) as 
+    [Hrmeps_removed Hrmeps_rest]. destruct H as [Hremoved Hrest].
+  apply piece_placements_eq_iff. intros loc Hlocv.
+  destruct (locations_equal loc (Loc (en_passant_capture_rank c) 
+    (file_of_loc to))) eqn:ELoceq.
+  - rewrite locations_equal_iff in *. subst. rewrite Hrmeps_removed.
+    rewrite Hremoved. auto.
+  - assert (Hlocneq: loc <> Loc (en_passant_capture_rank c) (file_of_loc to)).
+    { intros C. rewrite <- locations_equal_iff in *. rewrite C in *. 
+      discriminate.
+    }
+    rewrite Hrmeps_rest; auto. rewrite Hrest; auto.
+Qed.
+
+Lemma to_uneq_en_passant_capture : forall from to c,
+  is_en_passant_step from to c = true ->
+  to <> Loc (en_passant_capture_rank c) (file_of_loc to).
+Proof.
+  intros from to c. unfold is_en_passant_step. repeat DGmatch.
+  - intros H. repeat (Hb2p; try HdAnd). simpl. intros C. inversion C; subst.
+    discriminate.
+  - intros H. repeat (Hb2p; try HdAnd). simpl. intros C. inversion C; subst.
+    discriminate.
+Qed.
+
+Lemma from_uneq_en_passant_capture : forall from to c,
+  is_en_passant_step from to c = true ->
+  from <> Loc (en_passant_capture_rank c) (file_of_loc to).
+Proof.
+  intros from to c. unfold is_en_passant_step. repeat DGmatch.
+  - intros H. repeat (Hb2p; try HdAnd). simpl. intros C. inversion C; subst.
+    unfold difference in *. DHif; Hb2p; lia.
+  - intros H. repeat (Hb2p; try HdAnd). simpl. intros C. inversion C; subst.
+    unfold difference in *. DHif; Hb2p; lia.
+Qed.
+
+Lemma en_passant_step_from_uneq_to : forall from to c,
+  is_en_passant_step from to c = true ->
+  from <> to.
+Proof.
+  intros from to c. unfold is_en_passant_step. repeat DGmatch.
+  - intros H. repeat (Hb2p; try HdAnd). intros C. inversion C; subst.
+    discriminate.
+  - intros H. repeat (Hb2p; try HdAnd). intros C. inversion C; subst.
+    discriminate.
+Qed.
+
+Lemma make_en_passant_move_sound : forall c from to before after,
+  location_valid from -> location_valid to ->
+  is_en_passant_step from to c = true ->
+  make_en_passant_move before from to = after -> 
+  MakeEnPassantMove before from to after.
+Proof.
+  intros c from to before after Hfrom_v Hto_v Heps. unfold make_en_passant_move.
+  intros Hrm. 
+  specialize (remove_en_passant_capture_sound c from to _ _ Hto_v Heps Hrm)
+      as [Hremoved Hrest].
+  specialize (en_passant_step_from_uneq_to _ _ _ Heps) as Hfromuneqto.
+  assert (Obv: (make_from_to_move before from to) = 
+    (make_from_to_move before from to)). { auto. }
+  specialize (make_from_to_move_sound _ _ _ _ Hfrom_v Hto_v Hfromuneqto Obv)
+      as Hmftsound.
+  apply MakeEnPassantMoveIff with (c:=c) 
+  (captured_loc:=Loc (en_passant_capture_rank c) (file_of_loc to)); auto.
+  - specialize (to_uneq_en_passant_capture _ _ _ Heps) as Htouneq. 
+    rewrite Hrest; auto. inversion Hmftsound. auto.
+  - specialize (from_uneq_en_passant_capture _ _ _ Heps) as Hfromuneq.
+    rewrite Hrest; auto. inversion Hmftsound. auto.
+  - intros loc Hlocv Hlocuneqfrom Hlocuneqto Hlocuneqepc.
+    rewrite Hrest; auto. inversion Hmftsound; auto.
+Qed.
+
+Lemma make_en_passant_move_complete : forall c from to before after,
+  location_valid from -> location_valid to ->
+  is_en_passant_step from to c = true ->
+  MakeEnPassantMove before from to after ->
+  make_en_passant_move before from to = after.
+Proof.
+  intros c from to before after Hfrom_v Hto_v Heps. intros H.
+  inversion H. unfold make_en_passant_move. 
+  apply remove_en_passant_capture_complete with (c:=c0); auto. rewrite <- H3.
+  split; auto. intros loc Hlocvalid Hlocuneqcaploc.
+  specialize (en_passant_step_from_uneq_to _ _ _ Heps) as Hfromuneqto.
+  specialize (make_from_to_move_sound2 before from to Hfrom_v Hto_v 
+    Hfromuneqto) as Hfromtosound.
+  inversion Hfromtosound; subst.
+  destruct (locations_equal loc from) eqn:Eloceqfrom.
+  - rewrite locations_equal_iff in *. subst. rewrite H10. auto.
+  - assert (Elocneqfrom: loc <> from). { intros C. 
+      rewrite <- locations_equal_iff in C. rewrite C in *. discriminate.
+    }
+    destruct (locations_equal loc to) eqn:Eloceqto.
+    + rewrite locations_equal_iff in *. subst. rewrite <- H9. auto.
+    + assert (Elocneqto: loc <> to). { intros C. 
+        rewrite <- locations_equal_iff in C. rewrite C in *. discriminate.
+      }
+      rewrite <- H11; auto. symmetry. apply H5; auto.
 Qed.
 
 
