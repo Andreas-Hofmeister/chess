@@ -70,7 +70,70 @@ Definition make_en_passant_move (before : PiecePlacements)
 (from to : SquareLocation) : PiecePlacements :=
   remove_en_passant_capture (make_from_to_move before from to) from to.
 
+Definition promotion_rank (c : Color) :=
+  match c with
+  | White => 7
+  | Black => 0
+  end.
+
+Inductive MakePromotionMove (before : PiecePlacements) 
+(from to : SquareLocation) (piece : Piece) (after : PiecePlacements) : Prop :=
+  | MakePromotionMoveIff : forall c,
+    from <> to ->
+    rank_of_loc to = promotion_rank c ->
+    get_square_by_location after from = Empty ->
+    get_square_by_location after to = Occupied c piece ->
+    (forall loc, location_valid loc -> loc <> from -> loc <> to ->
+      get_square_by_location after loc = get_square_by_location before loc) ->
+    MakePromotionMove before from to piece after.
+
+Fixpoint pp_from_map (f : SquareLocation -> Square) 
+  (locs : list SquareLocation) (pp_acc : PiecePlacements) :=
+  match locs with
+  | [] => pp_acc
+  | (Loc rnk fl)::rest => 
+    set_square_by_index (pp_from_map f rest pp_acc) rnk fl (f (Loc rnk fl))
+  end.
+
+Definition make_promotion_move_map (before : PiecePlacements)
+(from to : SquareLocation) (c : Color) (piece : Piece) :=
+  fun loc =>
+  if (locations_equal loc from) then Empty else
+  if (locations_equal loc to) then (Occupied c piece) 
+  else (get_square_by_location before loc).
+
 (** Proofs **)
+
+Lemma pp_from_map_correct : forall locs loc f pp_acc,
+  (forall l, In l locs -> location_valid l) -> In loc locs ->
+  get_square_by_location (pp_from_map f locs pp_acc) loc = f loc.
+Proof.
+  induction locs.
+  - intros. HinNil.
+  - intros loc f pp_acc Hv Hin. inversion Hin; subst.
+    + simpl. DGmatch. unfold get_square_by_location. 
+      apply get_set_square_by_index_correct. rewrite <- location_valid_iff.
+      auto.
+    + simpl. DGmatch. destruct (locations_equal loc (Loc rank file)) eqn:Eeq.
+      * rewrite locations_equal_iff in Eeq. subst. 
+        unfold get_square_by_location. apply get_set_square_by_index_correct. 
+        rewrite <- location_valid_iff. auto.
+      * assert (Hneq: loc <> (Loc rank file)). { intros C. 
+          rewrite <- locations_equal_iff in C. rewrite C in Eeq. discriminate.
+        }
+        destruct loc eqn:Eloc. apply neq_Loc in Hneq.
+        unfold get_square_by_location. 
+        assert (Obv: In (Loc rank file) (Loc rank file :: locs)). {
+          apply in_eq.
+        }
+        rewrite get_set_square_by_index_correct2; try lia;
+        try rewrite <- location_valid_iff; auto.
+        assert (Obv2: forall l, In l locs -> location_valid l). { intros.
+          apply Hv. apply in_cons. auto.
+        }
+        specialize (IHlocs (Loc rank0 file0) f pp_acc Obv2 H) as Hind.
+        unfold get_square_by_location in *. auto.
+Qed.
 
 Lemma make_from_to_move_sound : forall before from to after,
   location_valid from -> location_valid to -> from <> to ->
