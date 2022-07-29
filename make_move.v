@@ -155,29 +155,58 @@ Inductive MakeCastlingMove (before : PiecePlacements) (c : Color)
       get_square_by_location after loc = get_square_by_location before loc) ->
     MakeCastlingMove before c ct after.
 
+Definition make_white_kingside_castling_move_map (before : PiecePlacements)
+:=
+  fun loc =>
+  if (locations_equal loc (Loc 0 4)) then Empty else
+  if (locations_equal loc (Loc 0 6)) then (Occupied White King) else
+  if (locations_equal loc (Loc 0 7)) then Empty else
+  if (locations_equal loc (Loc 0 5)) then (Occupied White Rook)
+  else (get_square_by_location before loc).
 
+Definition make_white_queenside_castling_move_map (before : PiecePlacements)
+:=
+  fun loc =>
+  if (locations_equal loc (Loc 0 4)) then Empty else
+  if (locations_equal loc (Loc 0 2)) then (Occupied White King) else
+  if (locations_equal loc (Loc 0 0)) then Empty else
+  if (locations_equal loc (Loc 0 3)) then (Occupied White Rook)
+  else (get_square_by_location before loc).
+
+Definition make_black_kingside_castling_move_map (before : PiecePlacements)
+:=
+  fun loc =>
+  if (locations_equal loc (Loc 7 4)) then Empty else
+  if (locations_equal loc (Loc 7 6)) then (Occupied White King) else
+  if (locations_equal loc (Loc 7 7)) then Empty else
+  if (locations_equal loc (Loc 7 5)) then (Occupied White Rook)
+  else (get_square_by_location before loc).
+
+Definition make_black_queenside_castling_move_map (before : PiecePlacements)
+:=
+  fun loc =>
+  if (locations_equal loc (Loc 7 4)) then Empty else
+  if (locations_equal loc (Loc 7 2)) then (Occupied White King) else
+  if (locations_equal loc (Loc 7 0)) then Empty else
+  if (locations_equal loc (Loc 7 3)) then (Occupied White Rook)
+  else (get_square_by_location before loc).
+
+Definition make_castling_move (before : PiecePlacements) (c : Color)
+(ct : CastlingType) :=
+  if (ceq c White) then
+    if (ctypeeq ct KingSide) 
+    then (pp_from_map (make_white_kingside_castling_move_map before)
+          valid_locations empty_pp)
+    else (pp_from_map (make_white_queenside_castling_move_map before)
+          valid_locations empty_pp)
+  else
+    if (ctypeeq ct KingSide) 
+    then (pp_from_map (make_black_kingside_castling_move_map before)
+          valid_locations empty_pp)
+    else (pp_from_map (make_black_queenside_castling_move_map before)
+          valid_locations empty_pp).
 
 (** Proofs **)
-
-Lemma make_promotion_move_map_correct : forall before from to c piece,
-  (make_promotion_move_map before from to c piece) from = Empty /\
-  (make_promotion_move_map before from to c piece) to = Occupied c piece /\
-  (forall loc, loc <> from -> loc <> to -> 
-    (make_promotion_move_map before from to c piece) loc = 
-    (get_square_by_location before loc)).
-Admitted.
-
-Lemma make_promotion_move_sound : forall before from to piece c after,
-  from <> to ->
-  rank_of_loc to = promotion_rank c ->
-  make_promotion_move before from to piece = after ->
-  MakePromotionMove before from to piece after.
-Admitted.
-
-Lemma make_promotion_move_complete : forall before from to piece after,
-  MakePromotionMove before from to piece after ->
-  make_promotion_move before from to piece = after.
-Admitted.
 
 Lemma pp_from_map_correct : forall locs loc f pp_acc,
   (forall l, In l locs -> location_valid l) -> In loc locs ->
@@ -414,5 +443,33 @@ Proof.
       }
       rewrite <- H11; auto. symmetry. apply H5; auto.
 Qed.
+
+Lemma make_promotion_move_map_correct : forall before from to c piece,
+  (make_promotion_move_map before from to c piece) from = Empty /\
+  (make_promotion_move_map before from to c piece) to = Occupied c piece /\
+  (forall loc, loc <> from -> loc <> to -> 
+    (make_promotion_move_map before from to c piece) loc = 
+    (get_square_by_location before loc)).
+Admitted.
+
+Lemma make_promotion_move_sound : forall before from to piece c after,
+  from <> to ->
+  rank_of_loc to = promotion_rank c ->
+  make_promotion_move before from to piece = after ->
+  MakePromotionMove before from to piece after.
+Admitted.
+
+Lemma make_promotion_move_complete : forall before from to piece after,
+  MakePromotionMove before from to piece after ->
+  make_promotion_move before from to piece = after.
+Admitted.
+
+Lemma make_castling_move_sound : forall before c ct after,
+  make_castling_move before c ct = after -> MakeCastlingMove before c ct after.
+Admitted.
+
+Lemma make_castling_move_complete : forall before c ct after,
+  MakeCastlingMove before c ct after -> make_castling_move before c ct = after.
+Admitted.
 
 
