@@ -58,9 +58,16 @@ Inductive File : Type :=
   | Squares (s1 : Square) (s2 : Square) (s3 : Square) (s4 : Square)
             (s5 : Square) (s6 : Square) (s7 : Square) (s8 : Square).
 
+Definition empty_file := 
+  Squares Empty Empty Empty Empty Empty Empty Empty Empty.
+
 Inductive PiecePlacements : Type :=
   | Files (a : File) (b : File) (c : File) (d : File)
           (e : File) (f : File) (g : File) (h : File).
+
+Definition empty_pp 
+  := Files empty_file empty_file empty_file empty_file empty_file empty_file
+empty_file empty_file.
 
 Inductive FileName : Type :=
   | fa

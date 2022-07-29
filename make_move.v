@@ -102,7 +102,82 @@ Definition make_promotion_move_map (before : PiecePlacements)
   if (locations_equal loc to) then (Occupied c piece) 
   else (get_square_by_location before loc).
 
+Definition make_promotion_move (before : PiecePlacements) 
+(from to : SquareLocation) (piece : Piece) :=
+  if (rank_of_loc to =? promotion_rank White)
+  then (pp_from_map (make_promotion_move_map before from to White piece)
+          valid_locations empty_pp)
+  else if (rank_of_loc to =? promotion_rank Black)
+  then (pp_from_map (make_promotion_move_map before from to Black piece)
+          valid_locations empty_pp)
+  else before.
+
+Inductive MakeCastlingMove (before : PiecePlacements) (c : Color) 
+(ct : CastlingType) (after : PiecePlacements) : Prop  :=
+  | MakeWhiteKingsideCastlingMove : 
+    c = White -> ct = KingSide ->
+    get_square_by_location after (Loc 0 4) = Empty ->
+    get_square_by_location after (Loc 0 6) = Occupied White King ->
+    get_square_by_location after (Loc 0 7) = Empty ->
+    get_square_by_location after (Loc 0 5) = Occupied White Rook ->
+    (forall loc, loc <> (Loc 0 4) -> loc <> (Loc 0 5) -> loc <> (Loc 0 6) ->
+      loc <> (Loc 0 7) -> 
+      get_square_by_location after loc = get_square_by_location before loc) ->
+    MakeCastlingMove before c ct after
+  | MakeWhiteQueensideCastlingMove : 
+    c = White -> ct = QueenSide ->
+    get_square_by_location after (Loc 0 4) = Empty ->
+    get_square_by_location after (Loc 0 2) = Occupied White King ->
+    get_square_by_location after (Loc 0 0) = Empty ->
+    get_square_by_location after (Loc 0 3) = Occupied White Rook ->
+    (forall loc, loc <> (Loc 0 4) -> loc <> (Loc 0 2) -> loc <> (Loc 0 0) ->
+      loc <> (Loc 0 3) -> 
+      get_square_by_location after loc = get_square_by_location before loc) ->
+    MakeCastlingMove before c ct after
+  | MakeBlackKingsideCastlingMove : 
+    c = Black -> ct = KingSide ->
+    get_square_by_location after (Loc 7 4) = Empty ->
+    get_square_by_location after (Loc 7 6) = Occupied White King ->
+    get_square_by_location after (Loc 7 7) = Empty ->
+    get_square_by_location after (Loc 7 5) = Occupied White Rook ->
+    (forall loc, loc <> (Loc 7 4) -> loc <> (Loc 7 5) -> loc <> (Loc 7 6) ->
+      loc <> (Loc 7 7) -> 
+      get_square_by_location after loc = get_square_by_location before loc) ->
+    MakeCastlingMove before c ct after
+  | MakeBlackQueensideCastlingMove : 
+    c = Black -> ct = QueenSide ->
+    get_square_by_location after (Loc 7 4) = Empty ->
+    get_square_by_location after (Loc 7 2) = Occupied White King ->
+    get_square_by_location after (Loc 7 0) = Empty ->
+    get_square_by_location after (Loc 7 3) = Occupied White Rook ->
+    (forall loc, loc <> (Loc 7 4) -> loc <> (Loc 7 2) -> loc <> (Loc 7 0) ->
+      loc <> (Loc 7 3) -> 
+      get_square_by_location after loc = get_square_by_location before loc) ->
+    MakeCastlingMove before c ct after.
+
+
+
 (** Proofs **)
+
+Lemma make_promotion_move_map_correct : forall before from to c piece,
+  (make_promotion_move_map before from to c piece) from = Empty /\
+  (make_promotion_move_map before from to c piece) to = Occupied c piece /\
+  (forall loc, loc <> from -> loc <> to -> 
+    (make_promotion_move_map before from to c piece) loc = 
+    (get_square_by_location before loc)).
+Admitted.
+
+Lemma make_promotion_move_sound : forall before from to piece c after,
+  from <> to ->
+  rank_of_loc to = promotion_rank c ->
+  make_promotion_move before from to piece = after ->
+  MakePromotionMove before from to piece after.
+Admitted.
+
+Lemma make_promotion_move_complete : forall before from to piece after,
+  MakePromotionMove before from to piece after ->
+  make_promotion_move before from to piece = after.
+Admitted.
 
 Lemma pp_from_map_correct : forall locs loc f pp_acc,
   (forall l, In l locs -> location_valid l) -> In loc locs ->
