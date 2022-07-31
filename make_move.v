@@ -206,6 +206,54 @@ Definition make_castling_move (before : PiecePlacements) (c : Color)
     else (pp_from_map (make_black_queenside_castling_move_map before)
           valid_locations empty_pp).
 
+Definition is_from_to_or_capture (move : Move) : bool :=
+  match move with
+  | FromTo _ _ => true
+  | Capture _ _ => true
+  | _ => false
+  end.
+
+Definition is_pawn_bishop_knight_queen (piece : Piece) : bool :=
+  match piece with
+  | Queen => true
+  | Knight => true
+  | Pawn => true
+  | Bishop => true
+  | _ => false
+  end.
+
+Definition initial_queenside_rook_location (c : Color) :=
+  match c with
+  | White => Loc 0 0
+  | Black => Loc 7 0
+  end.
+
+Definition initial_kingside_rook_location (c : Color) :=
+  match c with
+  | White => Loc 0 7
+  | Black => Loc 7 7
+  end.
+Check remove.
+Lemma cavl_dec : (forall x y : CastlingAvailability, {x = y} + {x <> y}).
+Proof.
+  intros x y. destruct x eqn:Ex; destruct y eqn:Ey.
+
+Inductive MakeMove (before : Position) (move : Move) : Position -> Prop
+:=
+  | MakeSimpleFromToOrCaptureMove : forall pp c pds cavl piece pp_after,
+    before = Posn pp c pds cavl ->
+    is_from_to_or_capture move = true ->
+    get_square_by_location pp (fromOfMove move) = Occupied c piece ->
+    is_pawn_bishop_knight_queen piece = true ->
+    MakeFromToMove pp (fromOfMove move) (toOfMove move) pp_after ->
+    MakeMove before move (Posn pp_after (opponent_of c) None cavl)
+  | MakeRookMove : forall,
+    before = Posn pp c pds cavl ->
+    get_square_by_location pp (fromOfMove move) = Occupied c Rook ->
+    (initial_queenside_rook_location c = fromOfMove move /\
+     In (Cavl QueenSide c) cavl -> after_cavl = 
+    
+
 (** Proofs **)
 
 Lemma pp_from_map_correct : forall locs loc f pp_acc,
