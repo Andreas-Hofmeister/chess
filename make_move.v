@@ -1,5 +1,6 @@
 Require Import List.
 Require Import Nat.
+Require Import Bool.
 From Coq Require Export Lia.
 From CHESS Require Export proof_tactics.
 From CHESS Require Export basics.
@@ -233,10 +234,38 @@ Definition initial_kingside_rook_location (c : Color) :=
   | White => Loc 0 7
   | Black => Loc 7 7
   end.
-Check remove.
-Lemma cavl_dec : (forall x y : CastlingAvailability, {x = y} + {x <> y}).
+
+Lemma cavleq_reflect : forall c1 c2, reflect (c1 = c2) (cavleq c1 c2).
 Proof.
-  intros x y. destruct x eqn:Ex; destruct y eqn:Ey.
+  intros. apply iff_reflect. symmetry. apply cavleq_iff.
+Qed.
+
+Definition remove_cavl (cavl : CastlingAvailability) 
+(l : list CastlingAvailability) :=
+  filter (fun c => negb (cavleq c cavl)) l.
+
+Definition remove_cavls (c : Color) (l : list CastlingAvailability) :=
+  filter 
+  (fun cavl => 
+    match cavl with Cavl _ cavl_c => negb (ceq c cavl_c) end)
+  l.
+
+Definition IsInitialQueensideRookMove (pp : PiecePlacements) 
+(cavl : list CastlingAvailability) (move : Move) (c : Color) :=
+  get_square_by_location pp (fromOfMove move) = Occupied c Rook /\
+  initial_queenside_rook_location c = fromOfMove move /\
+  In (Cavl QueenSide c) cavl.
+
+Definition IsInitialKingsideRookMove (pp : PiecePlacements) 
+(cavl : list CastlingAvailability) (move : Move) (c : Color) :=
+  get_square_by_location pp (fromOfMove move) = Occupied c Rook /\
+  initial_kingside_rook_location c = fromOfMove move /\
+  In (Cavl KingSide c) cavl.
+
+Definition IsInitialRookMove (pp : PiecePlacements) 
+(cavl : list CastlingAvailability) (move : Move) (c : Color) :=
+  IsInitialQueensideRookMove pp cavl move c \/
+  IsInitialKingsideRookMove pp cavl move c.
 
 Inductive MakeMove (before : Position) (move : Move) : Position -> Prop
 :=
@@ -247,12 +276,52 @@ Inductive MakeMove (before : Position) (move : Move) : Position -> Prop
     is_pawn_bishop_knight_queen piece = true ->
     MakeFromToMove pp (fromOfMove move) (toOfMove move) pp_after ->
     MakeMove before move (Posn pp_after (opponent_of c) None cavl)
-  | MakeRookMove : forall,
+  | MakeFirstQueensideRookMove : forall pp c pds cavl after_cavl pp_after,
+    before = Posn pp c pds cavl ->
+    IsInitialQueensideRookMove pp cavl move c ->
+    after_cavl = remove_cavl (Cavl QueenSide c) cavl ->
+    MakeFromToMove pp (fromOfMove move) (toOfMove move) pp_after ->
+    MakeMove before move (Posn pp_after (opponent_of c) None after_cavl)
+  | MakeFirstKingsideRookMove : forall pp c pds cavl after_cavl pp_after,
+    before = Posn pp c pds cavl ->
+    IsInitialKingsideRookMove pp cavl move c ->
+    after_cavl = remove_cavl (Cavl KingSide c) cavl ->
+    MakeFromToMove pp (fromOfMove move) (toOfMove move) pp_after ->
+    MakeMove before move (Posn pp_after (opponent_of c) None after_cavl)
+  | MakeOtherRookMove : forall pp c pds cavl pp_after,
     before = Posn pp c pds cavl ->
     get_square_by_location pp (fromOfMove move) = Occupied c Rook ->
-    (initial_queenside_rook_location c = fromOfMove move /\
-     In (Cavl QueenSide c) cavl -> after_cavl = 
-    
+    ~ IsInitialRookMove pp cavl move c ->
+    MakeFromToMove pp (fromOfMove move) (toOfMove move) pp_after ->
+    MakeMove before move (Posn pp_after (opponent_of c) None cavl)
+  | MakeKingMove : forall pp c pds cavl pp_after,
+    before = Posn pp c pds cavl ->
+    get_square_by_location pp (fromOfMove move) = Occupied c King ->
+    MakeFromToMove pp (fromOfMove move) (toOfMove move) pp_after ->
+    MakeMove before move (Posn pp_after (opponent_of c) None [])
+  | MakeDoubleStep : forall pp c pds cavl pp_after from to,
+    before = Posn pp c pds cavl ->
+    move = DoubleStep from to ->
+    MakeFromToMove pp from to pp_after ->
+    MakeMove before move (Posn pp_after (opponent_of c) 
+      (Some (DoubleStepRankFile (rank_of_loc to) (file_of_loc to))) cavl)
+  | MakeEnPassant : forall pp c pds cavl pp_after from to,
+    before = Posn pp c pds cavl ->
+    move = EnPassant from to ->
+    MakeEnPassantMove pp from to pp_after ->
+    MakeMove before move (Posn pp_after (opponent_of c) None cavl)
+  | MakePromotion : forall pp c pds cavl pp_after from to piece,
+    before = Posn pp c pds cavl ->
+    move = Promotion from to piece \/ 
+      move = PromotionWithCapture from to piece ->
+    MakePromotionMove pp from to piece pp_after ->
+    MakeMove before move (Posn pp_after (opponent_of c) None cavl)
+  | MakeCastling : forall pp c pds cavl pp_after ctype cavl_after,
+    before = Posn pp c pds cavl ->
+    move = Castle c ctype ->
+    cavl_after = remove_cavls c cavl ->
+    MakeCastlingMove pp c ctype pp_after ->
+    MakeMove before move (Posn pp_after (opponent_of c) None cavl_after).
 
 (** Proofs **)
 
