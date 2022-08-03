@@ -235,6 +235,12 @@ Definition initial_kingside_rook_location (c : Color) :=
   | Black => Loc 7 7
   end.
 
+Definition initial_rook_location (ctype : CastlingType) (c : Color) :=
+  match ctype with
+  | QueenSide => initial_queenside_rook_location c
+  | KingSide => initial_kingside_rook_location c
+  end.
+
 Lemma cavleq_reflect : forall c1 c2, reflect (c1 = c2) (cavleq c1 c2).
 Proof.
   intros. apply iff_reflect. symmetry. apply cavleq_iff.
@@ -266,6 +272,25 @@ Definition IsInitialRookMove (pp : PiecePlacements)
 (cavl : list CastlingAvailability) (move : Move) (c : Color) :=
   IsInitialQueensideRookMove pp cavl move c \/
   IsInitialKingsideRookMove pp cavl move c.
+
+Definition is_initial_rook_move (ctype : CastlingType) (pp : PiecePlacements)
+(cavl : list CastlingAvailability) (move : Move) (c : Color) :=
+  match get_square_by_location pp (fromOfMove move) with
+  | Occupied square_c piece =>
+    (andb (andb (andb (eqPiece piece Rook) 
+      (locations_equal (initial_rook_location ctype c) (fromOfMove move))) 
+        (ceq square_c c)) 
+          (exists_in cavl (fun cav => (cavleq cav (Cavl ctype c)))))
+  | _ => false
+  end.
+
+Definition is_initial_queenside_rook_move (pp : PiecePlacements)
+(cavl : list CastlingAvailability) (move : Move) (c : Color) :=
+  is_initial_rook_move QueenSide pp cavl move c.
+
+Definition is_initial_kingside_rook_move (pp : PiecePlacements)
+(cavl : list CastlingAvailability) (move : Move) (c : Color) :=
+  is_initial_rook_move KingSide pp cavl move c.
 
 Inductive MakeMove (before : Position) (move : Move) : Position -> Prop
 :=
@@ -322,6 +347,32 @@ Inductive MakeMove (before : Position) (move : Move) : Position -> Prop
     cavl_after = remove_cavls c cavl ->
     MakeCastlingMove pp c ctype pp_after ->
     MakeMove before move (Posn pp_after (opponent_of c) None cavl_after).
+
+Definition make_move (before : Position) (move : Move) : Position :=
+  match before with Posn pp c pds cavl =>
+  match move with
+  | FromTo from to =>
+    match get_square_by_location pp from with
+    | Occupied square_c piece => 
+      match piece with
+      | Rook =>
+        if is_initial_queenside_rook_move pp cavl move c then
+          Posn (make_from_to_move pp from to) (opponent_of c) None 
+          (remove_cavl (Cavl QueenSide c) cavl)
+        else if is_initial_kingside_rook_move pp cavl move c then
+          Posn (make_from_to_move pp from to) (opponent_of c) None 
+          (remove_cavl (Cavl KingSide c) cavl)
+        else
+          Posn (make_from_to_move pp from to) (opponent_of c) None cavl
+      | King =>
+        Posn (make_from_to_move pp from to) (opponent_of c) None []
+      | _ => Posn (make_from_to_move pp from to) (opponent_of c) None cavl
+      end
+    | Empty => before
+    end
+  | _ => before
+  end
+  end.
 
 (** Proofs **)
 
