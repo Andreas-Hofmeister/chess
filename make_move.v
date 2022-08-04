@@ -18,7 +18,7 @@ Inductive MakeFromToMove (before : PiecePlacements) (from to : SquareLocation)
       get_square_by_location before loc = get_square_by_location after loc) ->
     MakeFromToMove before from to after.
 
-Definition make_from_to_move (before : PiecePlacements) 
+Definition make_from_to_move_pp (before : PiecePlacements) 
 (from to : SquareLocation) : PiecePlacements :=
   match from, to with
   | Loc from_r from_f, Loc to_r to_f =>
@@ -67,9 +67,9 @@ Definition remove_en_passant_capture (pp : PiecePlacements)
     else pp
   end.
 
-Definition make_en_passant_move (before : PiecePlacements)
+Definition make_en_passant_move_pp (before : PiecePlacements)
 (from to : SquareLocation) : PiecePlacements :=
-  remove_en_passant_capture (make_from_to_move before from to) from to.
+  remove_en_passant_capture (make_from_to_move_pp before from to) from to.
 
 Definition promotion_rank (c : Color) :=
   match c with
@@ -103,7 +103,7 @@ Definition make_promotion_move_map (before : PiecePlacements)
   if (locations_equal loc to) then (Occupied c piece) 
   else (get_square_by_location before loc).
 
-Definition make_promotion_move (before : PiecePlacements) 
+Definition make_promotion_move_pp (before : PiecePlacements) 
 (from to : SquareLocation) (piece : Piece) :=
   if (rank_of_loc to =? promotion_rank White)
   then (pp_from_map (make_promotion_move_map before from to White piece)
@@ -192,7 +192,7 @@ Definition make_black_queenside_castling_move_map (before : PiecePlacements)
   if (locations_equal loc (Loc 7 3)) then (Occupied White Rook)
   else (get_square_by_location before loc).
 
-Definition make_castling_move (before : PiecePlacements) (c : Color)
+Definition make_castling_move_pp (before : PiecePlacements) (c : Color)
 (ct : CastlingType) :=
   if (ceq c White) then
     if (ctypeeq ct KingSide) 
@@ -348,29 +348,48 @@ Inductive MakeMove (before : Position) (move : Move) : Position -> Prop
     MakeCastlingMove pp c ctype pp_after ->
     MakeMove before move (Posn pp_after (opponent_of c) None cavl_after).
 
+Definition make_from_to_move (before : Position) (move : Move)
+(pp : PiecePlacements) (c : Color) (pds : option PawnDoubleStep) 
+(cavl : list CastlingAvailability) (from to : SquareLocation) : Position :=
+  match get_square_by_location pp from with
+  | Occupied square_c piece => 
+    match piece with
+    | Rook =>
+      if is_initial_queenside_rook_move pp cavl move c then
+        Posn (make_from_to_move_pp pp from to) (opponent_of c) None 
+        (remove_cavl (Cavl QueenSide c) cavl)
+      else if is_initial_kingside_rook_move pp cavl move c then
+        Posn (make_from_to_move_pp pp from to) (opponent_of c) None 
+        (remove_cavl (Cavl KingSide c) cavl)
+      else
+        Posn (make_from_to_move_pp pp from to) (opponent_of c) None cavl
+    | King =>
+      Posn (make_from_to_move_pp pp from to) (opponent_of c) None []
+    | _ => Posn (make_from_to_move_pp pp from to) (opponent_of c) None cavl
+    end
+  | Empty => before
+  end.
+
 Definition make_move (before : Position) (move : Move) : Position :=
   match before with Posn pp c pds cavl =>
   match move with
-  | FromTo from to =>
-    match get_square_by_location pp from with
-    | Occupied square_c piece => 
-      match piece with
-      | Rook =>
-        if is_initial_queenside_rook_move pp cavl move c then
-          Posn (make_from_to_move pp from to) (opponent_of c) None 
-          (remove_cavl (Cavl QueenSide c) cavl)
-        else if is_initial_kingside_rook_move pp cavl move c then
-          Posn (make_from_to_move pp from to) (opponent_of c) None 
-          (remove_cavl (Cavl KingSide c) cavl)
-        else
-          Posn (make_from_to_move pp from to) (opponent_of c) None cavl
-      | King =>
-        Posn (make_from_to_move pp from to) (opponent_of c) None []
-      | _ => Posn (make_from_to_move pp from to) (opponent_of c) None cavl
-      end
-    | Empty => before
-    end
-  | _ => before
+  | FromTo from to => make_from_to_move before move pp c pds cavl from to
+  | Capture from to => make_from_to_move before move pp c pds cavl from to
+  | DoubleStep from to =>
+    Posn (make_from_to_move_pp pp from to) (opponent_of c)
+      (Some (DoubleStepRankFile (rank_of_loc to) (file_of_loc to))) cavl
+  | EnPassant from to =>
+    Posn (make_en_passant_move_pp pp from to) (opponent_of c) None cavl
+  | Promotion from to piece =>
+    Posn (make_promotion_move_pp pp from to piece) (opponent_of c) None cavl
+  | PromotionWithCapture from to piece =>
+    Posn (make_promotion_move_pp pp from to piece) (opponent_of c) None cavl
+  | Castle castle_c ctype =>
+    if (ceq castle_c c) then
+      Posn (make_castling_move_pp pp c ctype) (opponent_of c) None 
+      (remove_cavls c cavl)
+    else
+      before
   end
   end.
 
@@ -407,12 +426,12 @@ Proof.
         unfold get_square_by_location in *. auto.
 Qed.
 
-Lemma make_from_to_move_sound : forall before from to after,
+Lemma make_from_to_move_pp_sound : forall before from to after,
   location_valid from -> location_valid to -> from <> to ->
-  make_from_to_move before from to = after -> 
+  make_from_to_move_pp before from to = after -> 
   MakeFromToMove before from to after.
 Proof.
-  intros before from to after Hvfrom Hvto Huneq. unfold make_from_to_move. 
+  intros before from to after Hvfrom Hvto Huneq. unfold make_from_to_move_pp. 
   intros H. repeat DHmatch. apply location_valid_iff in Hvfrom as Hvfrom2.
   apply location_valid_iff in Hvto as Hvto2. apply MakeFromToMoveIff; auto.
   - unfold get_square_by_location. rewrite <- H. 
@@ -428,34 +447,34 @@ Proof.
     all: apply neq_Loc; auto.
 Qed.
 
-Lemma make_from_to_move_sound2 : forall before from to,
+Lemma make_from_to_move_pp_sound2 : forall before from to,
   location_valid from -> location_valid to -> from <> to ->
-  MakeFromToMove before from to (make_from_to_move before from to).
+  MakeFromToMove before from to (make_from_to_move_pp before from to).
 Proof.
-  intros. apply make_from_to_move_sound; auto.
+  intros. apply make_from_to_move_pp_sound; auto.
 Qed.
 
-Lemma make_from_to_move_complete : forall before from to after,
+Lemma make_from_to_move_pp_complete : forall before from to after,
   MakeFromToMove before from to after ->
-  make_from_to_move before from to = after.
+  make_from_to_move_pp before from to = after.
 Proof.
   intros before from to after H. inversion H; subst. 
   apply piece_placements_eq_iff. intros. destruct from eqn:?E.
   destruct to eqn:?E. apply location_valid_iff in H0 as Hvfrom.
   apply location_valid_iff in H1 as Hvto. destruct (eqSL loc from) eqn:?E.
-  - rewrite eqSL_iff in *. subst. rewrite H4. unfold make_from_to_move.
+  - rewrite eqSL_iff in *. subst. rewrite H4. unfold make_from_to_move_pp.
     repeat DGmatch. unfold get_square_by_location.
     rewrite get_set_square_by_index_correct2; try apply neq_Loc; auto.
     rewrite get_set_square_by_index_correct; auto.
   - destruct (eqSL loc to) eqn:?E.
-    + rewrite eqSL_iff in *. subst. rewrite <- H3. unfold make_from_to_move.
+    + rewrite eqSL_iff in *. subst. rewrite <- H3. unfold make_from_to_move_pp.
       unfold get_square_by_location. rewrite get_set_square_by_index_correct; 
       auto.
     + assert (loc <> from). { intros C. rewrite <- eqSL_iff in *. 
         rewrite C in *. discriminate. }
       assert (loc <> to). { intros C. rewrite <- eqSL_iff in *. 
         rewrite C in *. discriminate. }
-      rewrite <- H5; subst; auto. unfold make_from_to_move. 
+      rewrite <- H5; subst; auto. unfold make_from_to_move_pp. 
       destruct loc eqn:?E. apply location_valid_iff in H6 as Hvloc. 
       unfold get_square_by_location. rewrite get_set_square_by_index_correct2;
       try apply neq_Loc; auto. rewrite get_set_square_by_index_correct2;
@@ -563,17 +582,17 @@ Qed.
 Lemma make_en_passant_move_sound : forall c from to before after,
   location_valid from -> location_valid to ->
   is_en_passant_step from to c = true ->
-  make_en_passant_move before from to = after -> 
+  make_en_passant_move_pp before from to = after -> 
   MakeEnPassantMove before from to after.
 Proof.
-  intros c from to before after Hfrom_v Hto_v Heps. unfold make_en_passant_move.
-  intros Hrm. 
+  intros c from to before after Hfrom_v Hto_v Heps. 
+  unfold make_en_passant_move_pp. intros Hrm. 
   specialize (remove_en_passant_capture_sound c from to _ _ Hto_v Heps Hrm)
       as [Hremoved Hrest].
   specialize (en_passant_step_from_uneq_to _ _ _ Heps) as Hfromuneqto.
-  assert (Obv: (make_from_to_move before from to) = 
-    (make_from_to_move before from to)). { auto. }
-  specialize (make_from_to_move_sound _ _ _ _ Hfrom_v Hto_v Hfromuneqto Obv)
+  assert (Obv: (make_from_to_move_pp before from to) = 
+    (make_from_to_move_pp before from to)). { auto. }
+  specialize (make_from_to_move_pp_sound _ _ _ _ Hfrom_v Hto_v Hfromuneqto Obv)
       as Hmftsound.
   apply MakeEnPassantMoveIff with (c:=c) 
   (captured_loc:=Loc (en_passant_capture_rank c) (file_of_loc to)); auto.
@@ -589,14 +608,14 @@ Lemma make_en_passant_move_complete : forall c from to before after,
   location_valid from -> location_valid to ->
   is_en_passant_step from to c = true ->
   MakeEnPassantMove before from to after ->
-  make_en_passant_move before from to = after.
+  make_en_passant_move_pp before from to = after.
 Proof.
   intros c from to before after Hfrom_v Hto_v Heps. intros H.
-  inversion H. unfold make_en_passant_move. 
+  inversion H. unfold make_en_passant_move_pp. 
   apply remove_en_passant_capture_complete with (c:=c0); auto. rewrite <- H3.
   split; auto. intros loc Hlocvalid Hlocuneqcaploc.
   specialize (en_passant_step_from_uneq_to _ _ _ Heps) as Hfromuneqto.
-  specialize (make_from_to_move_sound2 before from to Hfrom_v Hto_v 
+  specialize (make_from_to_move_pp_sound2 before from to Hfrom_v Hto_v 
     Hfromuneqto) as Hfromtosound.
   inversion Hfromtosound; subst.
   destruct (locations_equal loc from) eqn:Eloceqfrom.
@@ -620,24 +639,24 @@ Lemma make_promotion_move_map_correct : forall before from to c piece,
     (get_square_by_location before loc)).
 Admitted.
 
-Lemma make_promotion_move_sound : forall before from to piece c after,
+Lemma make_promotion_move_pp_sound : forall before from to piece c after,
   from <> to ->
   rank_of_loc to = promotion_rank c ->
-  make_promotion_move before from to piece = after ->
+  make_promotion_move_pp before from to piece = after ->
   MakePromotionMove before from to piece after.
 Admitted.
 
-Lemma make_promotion_move_complete : forall before from to piece after,
+Lemma make_promotion_move_pp_complete : forall before from to piece after,
   MakePromotionMove before from to piece after ->
-  make_promotion_move before from to piece = after.
+  make_promotion_move_pp before from to piece = after.
 Admitted.
 
-Lemma make_castling_move_sound : forall before c ct after,
-  make_castling_move before c ct = after -> MakeCastlingMove before c ct after.
+Lemma make_castling_move_pp_sound : forall before c ct after,
+  make_castling_move_pp before c ct = after -> MakeCastlingMove before c ct after.
 Admitted.
 
-Lemma make_castling_move_complete : forall before c ct after,
-  MakeCastlingMove before c ct after -> make_castling_move before c ct = after.
+Lemma make_castling_move_pp_complete : forall before c ct after,
+  MakeCastlingMove before c ct after -> make_castling_move_pp before c ct = after.
 Admitted.
 
 
