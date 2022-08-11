@@ -1,5 +1,6 @@
 all: basics.vo movement_basics.vo proof_tactics.v pawn_moves.vo \
-rook_moves.vo bishop_moves.vo queen_moves.vo knight_moves.vo
+rook_moves.vo bishop_moves.vo queen_moves.vo knight_moves.vo king_moves.vo \
+attacks.vo check.vo castling.vo make_move.vo legal_moves.vo
 
 basics.vo: basics.v proof_tactics.vo
 	coqc -Q . CHESS basics.v
@@ -29,6 +30,26 @@ proof_tactics.vo bishop_moves.vo rook_moves.vo
 knight_moves.vo: knight_moves.v basics.vo movement_basics.vo \
 proof_tactics.vo
 	coqc -Q . CHESS knight_moves.v
+
+king_moves.vo: king_moves.v basics.vo movement_basics.vo \
+proof_tactics.vo
+	coqc -Q . CHESS king_moves.v
+
+attacks.vo: movement_basics.vo pawn_moves.vo rook_moves.vo \
+bishop_moves.vo knight_moves.vo queen_moves.vo king_moves.vo attacks.v
+	coqc -Q . CHESS attacks.v
+
+check.vo: attacks.vo check.v
+	coqc -Q . CHESS check.v
+
+castling.vo: check.vo attacks.vo castling.v
+	coqc -Q . CHESS castling.v
+
+make_move.vo: basics.vo movement_basics.vo make_move.v
+	coqc -Q . CHESS make_move.v
+
+legal_moves.vo: make_move.vo attacks.vo legal_moves.v
+	coqc -Q . CHESS legal_moves.v
 
 clean:
 	rm *.vo
