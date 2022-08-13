@@ -69,6 +69,29 @@ Definition empty_pp
   := Files empty_file empty_file empty_file empty_file empty_file empty_file
 empty_file empty_file.
 
+Definition initial_file_with_piece (p : Piece) := Squares
+(Occupied White p)
+(Occupied White Pawn)
+Empty
+Empty
+Empty
+Empty
+(Occupied Black Pawn)
+(Occupied Black p).
+
+Definition initial_file_a := initial_file_with_piece Rook.
+Definition initial_file_b := initial_file_with_piece Knight.
+Definition initial_file_c := initial_file_with_piece Bishop.
+Definition initial_file_d := initial_file_with_piece Queen.
+Definition initial_file_e := initial_file_with_piece King.
+Definition initial_file_f := initial_file_with_piece Bishop.
+Definition initial_file_g := initial_file_with_piece Knight.
+Definition initial_file_h := initial_file_with_piece Rook.
+
+Definition initial_pp :=
+  Files initial_file_a initial_file_b initial_file_c initial_file_d
+  initial_file_e initial_file_f initial_file_g initial_file_h.
+
 Inductive FileName : Type :=
   | fa
   | fb
