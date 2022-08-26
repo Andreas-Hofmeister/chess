@@ -11,5 +11,3 @@ Definition puts_king_in_check (pos : Position) (move : Move) :=
 Definition legal_moves (pos : Position) : list Move :=
   filter (fun move => negb (puts_king_in_check pos move))
   (moves_by_player pos (get_to_move pos)).
-
-

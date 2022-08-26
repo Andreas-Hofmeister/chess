@@ -344,10 +344,16 @@ Definition cavleq (cavl1 cavl2 : CastlingAvailability) :=
   | Cavl ctype1 c1, Cavl ctype2 c2 => (andb (ctypeeq ctype1 ctype2) (ceq c1 c2))
   end.
 
+Definition initial_cavls := [Cavl QueenSide White; Cavl KingSide White;
+  Cavl QueenSide Black; Cavl KingSide White].
+
 Inductive Position : Type :=
   | Posn (pp : PiecePlacements) (toMove : Color) 
     (pawnDoubleStep : option PawnDoubleStep) 
     (castlingAvailabilities : list CastlingAvailability).
+
+Definition initial_position : Position :=
+  Posn initial_pp White None initial_cavls.
 
 Definition get_piece_placements (pos : Position) :=
   match pos with
