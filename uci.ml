@@ -132,10 +132,12 @@ let from_to_or_capture_move pp fromLoc toLoc =
     | Engine.Occupied (_,_) -> Engine.Capture (fromLoc, toLoc)
     | _ -> Engine.FromTo (fromLoc, toLoc);;
     
-let is_en_passant_move fromLoc toLoc =
+let is_en_passant_move toSq fromLoc toLoc =
     let Engine.Loc (_, fromFile) = fromLoc in
     let Engine.Loc (_, toFile) = toLoc in
-    fromFile <> toFile;;
+    match toSq with
+    | Engine.Occupied (_,_) -> false
+    | _ -> fromFile <> toFile;;
 
 let is_double_step fromLoc toLoc =
     let Engine.Loc (fromRank, _) = fromLoc in
@@ -155,14 +157,14 @@ let move_of_movestring pos mstr =
             match toSq with
             | Engine.Occupied (_,_) -> Engine.PromotionWithCapture (fromLoc, toLoc, p)
             | _ -> Engine.Promotion (fromLoc, toLoc, p)
-        end else if is_en_passant_move fromLoc toLoc then Engine.EnPassant (fromLoc, toLoc)
+        end else if is_en_passant_move toSq fromLoc toLoc then Engine.EnPassant (fromLoc, toLoc)
         else if is_double_step fromLoc toLoc then Engine.DoubleStep (fromLoc, toLoc)
         else from_to_or_capture_move pp fromLoc toLoc
     | Occupied (c, Engine.King) -> begin
         match mstr with
         | "e1c1" -> Engine.Castle (White, QueenSide)
         | "e1g1" -> Engine.Castle (White, KingSide)
-        | "e8c1" -> Engine.Castle (Black, QueenSide)
+        | "e8c8" -> Engine.Castle (Black, QueenSide)
         | "e8g8" -> Engine.Castle (Black, KingSide)
         | _ -> from_to_or_capture_move pp fromLoc toLoc
         end
@@ -205,11 +207,12 @@ let handle_position str =
         let words = List.filter (fun x -> String.length x > 0) (List.map String.trim (String.split_on_char ' ' str)) in
         if (List.nth words 0) <> "position" then false else
         if (List.nth words 1) <> "startpos" then false else
-        if (List.nth words 2) <> "moves" then false else
-        let movestrings = (List.tl (List.tl (List.tl words))) in
-        current_position := apply_movestrings Engine.initial_position movestrings;
-        log ("DEBUG, new position:\n"^(string_of_pos !current_position));
-        true
+        if (List.nth words 2) <> "moves" then false else begin
+            let movestrings = (List.tl (List.tl (List.tl words))) in
+            current_position := apply_movestrings Engine.initial_position movestrings;
+            log ("DEBUG, new position:\n"^(string_of_pos !current_position));
+            true
+        end
     )
     with
         | _ -> false;;
@@ -250,18 +253,19 @@ List.iter (fun m -> Printf.printf "%s\n" (string_of_move m)) (Engine.legal_moves
 
 print_endline (string_of_pos !current_position);;
 *)
-let movestring = "e2e4 d7d5 e4d5 h7h5 d1h5 c7c5 h5h8 d8c7 h8g8 e8d8 g8f8 d8d7 f8f7 c7e5 e1d1 b7b5 f7e7 d7e7 d2d3 e5f4 c1f4 c8e6 f4b8 e7d8 d3d4 e6g8 f1b5 g7g6 g1f3 a8b8 b1c3 g6g5 f3g5 g8h7 g5h7 d8c7 d5d6 c7d8 b5d7 a7a5 c3d5 b8c8 d5f6 c5d4 h7f8 c8c4 b2b3 c4c5 b3b4 c5b5 c2c4 a5b4 c4b5 d4d3 b5b6 d3d2 b6b7";;
 
-let movestrings = List.filter (fun x -> String.length x > 0) (List.map String.trim (String.split_on_char ' ' movestring));;
+(*
+let movestring = "g2g4 g7g6 b2b3 b8c6 a2a4 f8g7 c2c3 g7e5 d1c2 c6d4 c2d1 e5d6 c3d4 f7f6 h2h3 e7e5 a4a5 a7a6 h3h4 d8e7 d4e5 e8f8 e5d6 f8g7 d6e7 d7d5 g1h3 c8g4 h4h5 g8e7 b1a3 e7f5 h3f4 b7b6 a3c2 g7h6 h5g6 h6g7 c1a3 f5h4 a3c5 c7c6 c5a3 b6a5 h1h4 a8d8 f4d3 d8b8 h4h2 g4c8 a1b1 b8a8 c2e3 c8g4 b1c1 c6c5 h2h7 h8h7 d3f4 g4h5 g6h7 a8f8 e3d5 h5g6 d2d3 f8e8 c1c5 g6h7 d3d4 h7c2 d1c2 e8e3 f2e3";;
 
-current_position := apply_movestrings Engine.initial_position movestrings;;
+let movestrings = ref (List.filter (fun x -> String.length x > 0) (List.map String.trim (String.split_on_char ' ' movestring)));;
 
-print_endline (string_of_pos !current_position);;
-
-let moves = (Engine.legal_moves !current_position);;
-
-List.iter (fun m -> Printf.printf "%s\n" (string_of_move m)) (moves);;
-
+while List.length !movestrings > 0 do
+    print_endline ("applying " ^ (List.hd !movestrings));
+    current_position := apply_movestring !current_position (List.hd !movestrings);
+    print_endline (string_of_pos !current_position);
+    movestrings := List.tl !movestrings
+done;;
+*)
 input_output_loop ();;
 
 close_out log_oc;;

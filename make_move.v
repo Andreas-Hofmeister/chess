@@ -138,9 +138,9 @@ Inductive MakeCastlingMove (before : PiecePlacements) (c : Color)
   | MakeBlackKingsideCastlingMove : 
     c = Black -> ct = KingSide ->
     get_square_by_location after (Loc 7 4) = Empty ->
-    get_square_by_location after (Loc 7 6) = Occupied White King ->
+    get_square_by_location after (Loc 7 6) = Occupied Black King ->
     get_square_by_location after (Loc 7 7) = Empty ->
-    get_square_by_location after (Loc 7 5) = Occupied White Rook ->
+    get_square_by_location after (Loc 7 5) = Occupied Black Rook ->
     (forall loc, loc <> (Loc 7 4) -> loc <> (Loc 7 5) -> loc <> (Loc 7 6) ->
       loc <> (Loc 7 7) -> 
       get_square_by_location after loc = get_square_by_location before loc) ->
@@ -148,9 +148,9 @@ Inductive MakeCastlingMove (before : PiecePlacements) (c : Color)
   | MakeBlackQueensideCastlingMove : 
     c = Black -> ct = QueenSide ->
     get_square_by_location after (Loc 7 4) = Empty ->
-    get_square_by_location after (Loc 7 2) = Occupied White King ->
+    get_square_by_location after (Loc 7 2) = Occupied Black King ->
     get_square_by_location after (Loc 7 0) = Empty ->
-    get_square_by_location after (Loc 7 3) = Occupied White Rook ->
+    get_square_by_location after (Loc 7 3) = Occupied Black Rook ->
     (forall loc, loc <> (Loc 7 4) -> loc <> (Loc 7 2) -> loc <> (Loc 7 0) ->
       loc <> (Loc 7 3) -> 
       get_square_by_location after loc = get_square_by_location before loc) ->
@@ -178,18 +178,18 @@ Definition make_black_kingside_castling_move_map (before : PiecePlacements)
 :=
   fun loc =>
   if (locations_equal loc (Loc 7 4)) then Empty else
-  if (locations_equal loc (Loc 7 6)) then (Occupied White King) else
+  if (locations_equal loc (Loc 7 6)) then (Occupied Black King) else
   if (locations_equal loc (Loc 7 7)) then Empty else
-  if (locations_equal loc (Loc 7 5)) then (Occupied White Rook)
+  if (locations_equal loc (Loc 7 5)) then (Occupied Black Rook)
   else (get_square_by_location before loc).
 
 Definition make_black_queenside_castling_move_map (before : PiecePlacements)
 :=
   fun loc =>
   if (locations_equal loc (Loc 7 4)) then Empty else
-  if (locations_equal loc (Loc 7 2)) then (Occupied White King) else
+  if (locations_equal loc (Loc 7 2)) then (Occupied Black King) else
   if (locations_equal loc (Loc 7 0)) then Empty else
-  if (locations_equal loc (Loc 7 3)) then (Occupied White Rook)
+  if (locations_equal loc (Loc 7 3)) then (Occupied Black Rook)
   else (get_square_by_location before loc).
 
 Definition make_castling_move_pp (before : PiecePlacements) (c : Color)
