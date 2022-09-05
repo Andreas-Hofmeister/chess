@@ -1,6 +1,7 @@
 all: basics.vo movement_basics.vo proof_tactics.v pawn_moves.vo \
 rook_moves.vo bishop_moves.vo queen_moves.vo knight_moves.vo king_moves.vo \
-attacks.vo check.vo castling.vo make_move.vo legal_moves.vo engine.ml uci
+attacks.vo check.vo castling.vo make_move.vo legal_moves.vo move_search.vo \
+engine.ml uci
 
 basics.vo: basics.v proof_tactics.vo
 	coqc -Q . CHESS basics.v
@@ -50,6 +51,9 @@ make_move.vo: basics.vo movement_basics.vo make_move.v
 
 legal_moves.vo: make_move.vo attacks.vo legal_moves.v
 	coqc -Q . CHESS legal_moves.v
+
+move_search.vo: legal_moves.vo move_search.v
+	coqc -Q . CHESS move_search.v
 
 engine.ml: basics.vo legal_moves.vo extract.v
 	coqc -Q . CHESS extract.v > engine.ml
