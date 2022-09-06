@@ -187,6 +187,58 @@ let empty_pp =
   Files (empty_file, empty_file, empty_file, empty_file, empty_file,
     empty_file, empty_file, empty_file)
 
+(** val initial_file_with_piece : piece -> file **)
+
+let initial_file_with_piece p =
+  Squares ((Occupied (White, p)), (Occupied (White, Pawn)), Empty, Empty,
+    Empty, Empty, (Occupied (Black, Pawn)), (Occupied (Black, p)))
+
+(** val initial_file_a : file **)
+
+let initial_file_a =
+  initial_file_with_piece Rook
+
+(** val initial_file_b : file **)
+
+let initial_file_b =
+  initial_file_with_piece Knight
+
+(** val initial_file_c : file **)
+
+let initial_file_c =
+  initial_file_with_piece Bishop
+
+(** val initial_file_d : file **)
+
+let initial_file_d =
+  initial_file_with_piece Queen
+
+(** val initial_file_e : file **)
+
+let initial_file_e =
+  initial_file_with_piece King
+
+(** val initial_file_f : file **)
+
+let initial_file_f =
+  initial_file_with_piece Bishop
+
+(** val initial_file_g : file **)
+
+let initial_file_g =
+  initial_file_with_piece Knight
+
+(** val initial_file_h : file **)
+
+let initial_file_h =
+  initial_file_with_piece Rook
+
+(** val initial_pp : piecePlacements **)
+
+let initial_pp =
+  Files (initial_file_a, initial_file_b, initial_file_c, initial_file_d,
+    initial_file_e, initial_file_f, initial_file_g, initial_file_h)
+
 type fileName =
 | Fa
 | Fb
@@ -403,9 +455,20 @@ let cavleq cavl1 cavl2 =
    | True -> ceq c1 c2
    | False -> False)
 
+(** val initial_cavls : castlingAvailability list **)
+
+let initial_cavls =
+  (Cavl (QueenSide, White))::((Cavl (KingSide, White))::((Cavl (QueenSide,
+    Black))::((Cavl (KingSide, White))::[])))
+
 type position =
 | Posn of piecePlacements * color * pawnDoubleStep option
    * castlingAvailability list
+
+(** val initial_position : position **)
+
+let initial_position =
+  Posn (initial_pp, White, None, initial_cavls)
 
 (** val get_piece_placements : position -> piecePlacements **)
 
@@ -1357,7 +1420,7 @@ let make_black_kingside_castling_move_map before loc =
   | False ->
     (match locations_equal loc (Loc ((S (S (S (S (S (S (S O))))))), (S (S (S
              (S (S (S O)))))))) with
-     | True -> Occupied (White, King)
+     | True -> Occupied (Black, King)
      | False ->
        (match locations_equal loc (Loc ((S (S (S (S (S (S (S O))))))), (S (S
                 (S (S (S (S (S O))))))))) with
@@ -1365,7 +1428,7 @@ let make_black_kingside_castling_move_map before loc =
         | False ->
           (match locations_equal loc (Loc ((S (S (S (S (S (S (S O))))))), (S
                    (S (S (S (S O))))))) with
-           | True -> Occupied (White, Rook)
+           | True -> Occupied (Black, Rook)
            | False -> get_square_by_location before loc)))
 
 (** val make_black_queenside_castling_move_map :
@@ -1378,14 +1441,14 @@ let make_black_queenside_castling_move_map before loc =
   | False ->
     (match locations_equal loc (Loc ((S (S (S (S (S (S (S O))))))), (S (S
              O)))) with
-     | True -> Occupied (White, King)
+     | True -> Occupied (Black, King)
      | False ->
        (match locations_equal loc (Loc ((S (S (S (S (S (S (S O))))))), O)) with
         | True -> Empty
         | False ->
           (match locations_equal loc (Loc ((S (S (S (S (S (S (S O))))))), (S
                    (S (S O))))) with
-           | True -> Occupied (White, Rook)
+           | True -> Occupied (Black, Rook)
            | False -> get_square_by_location before loc)))
 
 (** val make_castling_move_pp :

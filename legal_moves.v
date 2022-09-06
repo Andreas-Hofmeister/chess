@@ -11,3 +11,8 @@ Definition puts_king_in_check (pos : Position) (move : Move) :=
 Definition legal_moves (pos : Position) : list Move :=
   filter (fun move => negb (puts_king_in_check pos move))
   (moves_by_player pos (get_to_move pos)).
+
+Definition is_checkmate (pos : Position) :=
+  (andb (is_in_check pos (get_to_move pos))
+    (eqb 0 (length (legal_moves pos)))).
+
