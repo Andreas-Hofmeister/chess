@@ -216,12 +216,48 @@ let handle_position str =
     )
     with
         | _ -> false;;
-        
+
+let int_of_eint engine_int =
+    match engine_int with
+    | (Engine.PosInt v) -> (int_of_nat v)
+    | NegInt v -> -(int_of_nat v);;
+
+let cmp_of_player c =
+    match c with
+    | Engine.White -> (fun ev1 ev2 -> 
+        (int_of_eint (Engine.value_of_evaluation ev2)) - 
+        (int_of_eint (Engine.value_of_evaluation ev1)))
+    | Engine.Black -> (fun ev1 ev2 -> 
+        (int_of_eint (Engine.value_of_evaluation ev1)) - 
+        (int_of_eint (Engine.value_of_evaluation ev2)))
+
+let rec moves_of_evaluations evs =
+    match evs with
+    | [] -> []
+    | ev::tl -> match ev with
+                | Engine.Eva (m,_) -> m::(moves_of_evaluations tl)
+                | _ -> moves_of_evaluations tl;;
+
+let string_of_evaluation ev =
+    match ev with
+    | Engine.Eva (m,v) -> (string_of_move m)^": "^(string_of_int (int_of_eint v))
+    | Engine.NoMoveEva v -> "No move?: "^(string_of_int (int_of_eint v));;
+
+let best_moves pos =
+    let evaluations = Engine.evaluate_moves (nat_of_int 3) !current_position in
+    let cmp = cmp_of_player (Engine.get_to_move pos) in
+    let sorted_evaluations = List.sort cmp evaluations in
+    let best_value = int_of_eint (Engine.value_of_evaluation (List.hd sorted_evaluations)) in
+    let best_evaluations = List.filter (fun ev -> (int_of_eint (Engine.value_of_evaluation ev)) = best_value) sorted_evaluations in
+    log "Sorted evaluations:";
+    List.iter (fun ev -> log (string_of_evaluation ev)) sorted_evaluations;
+    moves_of_evaluations best_evaluations;;
+
 let handle_go str =
     let f wtime winc btime binc = () in
     try (
         Scanf.sscanf str "go wtime %d winc %d btime %d binc %d" f;
-        let moves = (Engine.legal_moves !current_position) in
+        let moves = best_moves !current_position in
         let move = select_random_element moves in
         print_and_log ("bestmove " ^ (string_of_move move));
         true

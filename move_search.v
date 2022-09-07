@@ -145,5 +145,10 @@ Fixpoint evaluate_moves (depth : nat) (pos : Position)
               (min_or_max (evaluate_moves d (make_move pos move))))) in
     (map evaluate_move (moves_worth_considering pos))
   end.
-
-Compute (evaluate_position initial_position).
+(*
+Definition testpos1 := (make_move initial_position (DoubleStep (Loc 1 4) (Loc 3 4))).
+Compute (evaluate_moves 2 testpos1).
+Definition testpos2 := (make_move testpos1 (DoubleStep (Loc 6 5) (Loc 4 5))).
+Compute (evaluate_moves 1 testpos2).
+Compute (evaluate_moves 0 initial_position).
+*)

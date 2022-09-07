@@ -20,6 +20,12 @@ type 'a option =
 type ('a, 'b) prod =
 | Pair of 'a * 'b
 
+(** val length : 'a1 list -> nat **)
+
+let rec length = function
+| [] -> O
+| _::l' -> S (length l')
+
 (** val app : 'a1 list -> 'a1 list -> 'a1 list **)
 
 let rec app l m =
@@ -1610,4 +1616,211 @@ let puts_king_in_check pos move0 =
 let legal_moves pos =
   filter (fun move0 -> negb (puts_king_in_check pos move0))
     (moves_by_player pos (get_to_move pos))
+
+(** val is_checkmate : position -> bool **)
+
+let is_checkmate pos =
+  match is_in_check pos (get_to_move pos) with
+  | True -> eqb O (length (legal_moves pos))
+  | False -> False
+
+type integer =
+| PosInt of nat
+| NegInt of nat
+
+(** val intleq : integer -> integer -> bool **)
+
+let intleq a b =
+  match a with
+  | PosInt p -> (match b with
+                 | PosInt q -> leb p q
+                 | NegInt _ -> False)
+  | NegInt p -> (match b with
+                 | PosInt _ -> True
+                 | NegInt q -> leb q p)
+
+(** val intadd : integer -> integer -> integer **)
+
+let intadd a b =
+  match a with
+  | PosInt p ->
+    (match b with
+     | PosInt q -> PosInt (add p q)
+     | NegInt q ->
+       (match leb p q with
+        | True -> NegInt (sub q p)
+        | False -> PosInt (sub p q)))
+  | NegInt p ->
+    (match b with
+     | PosInt q ->
+       (match leb p q with
+        | True -> PosInt (sub q p)
+        | False -> NegInt (sub p q))
+     | NegInt q -> NegInt (add p q))
+
+(** val value_of_piece : piece -> nat **)
+
+let value_of_piece = function
+| Pawn -> S (S (S (S (S (S (S (S (S (S O)))))))))
+| Rook ->
+  S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+    (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+    (S O)))))))))))))))))))))))))))))))))))))))))))))))))
+| Queen ->
+  S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+    (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+    (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+    (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+    O)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+| King -> O
+| _ ->
+  S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+    (S (S (S (S (S O)))))))))))))))))))))))))))))
+
+(** val value_of_square : square -> color -> nat **)
+
+let value_of_square sq c =
+  match sq with
+  | Empty -> O
+  | Occupied (sc, p) ->
+    (match ceq sc c with
+     | True -> value_of_piece p
+     | False -> O)
+
+(** val value_of_material : piecePlacements -> color -> nat **)
+
+let value_of_material pp c =
+  let f = fun acc loc ->
+    add acc (value_of_square (get_square_by_location pp loc) c)
+  in
+  fold_left f valid_locations O
+
+(** val material_balance_of_position : piecePlacements -> integer **)
+
+let material_balance_of_position pp =
+  intadd (PosInt (value_of_material pp White)) (NegInt
+    (value_of_material pp Black))
+
+(** val value_for_player : nat -> color -> integer **)
+
+let value_for_player v = function
+| White -> PosInt v
+| Black -> NegInt v
+
+(** val evaluate_position : position -> integer **)
+
+let evaluate_position pos =
+  match is_checkmate pos with
+  | True ->
+    value_for_player (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S
+      O)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+      (opponent_of (get_to_move pos))
+  | False -> material_balance_of_position (get_piece_placements pos)
+
+(** val find_optimal_element :
+    'a1 list -> ('a1 -> 'a2) -> ('a2 -> 'a2 -> bool) -> 'a1 -> 'a2 -> 'a1 **)
+
+let rec find_optimal_element l eval better best_element_so_far best_value_so_far =
+  match l with
+  | [] -> best_element_so_far
+  | a::rest ->
+    let new_value = eval a in
+    (match better new_value best_value_so_far with
+     | True -> find_optimal_element rest eval better a new_value
+     | False ->
+       find_optimal_element rest eval better best_element_so_far
+         best_value_so_far)
+
+type moveEvaluation =
+| Eva of move * integer
+| NoMoveEva of integer
+
+(** val value_of_evaluation : moveEvaluation -> integer **)
+
+let value_of_evaluation = function
+| Eva (_, v) -> v
+| NoMoveEva v -> v
+
+(** val moves_worth_considering : position -> move list **)
+
+let moves_worth_considering =
+  legal_moves
+
+(** val minimal_evaluation : moveEvaluation list -> moveEvaluation **)
+
+let minimal_evaluation l = match l with
+| [] -> NoMoveEva (PosInt O)
+| h::_ ->
+  find_optimal_element l value_of_evaluation intleq h (value_of_evaluation h)
+
+(** val maximal_evaluation : moveEvaluation list -> moveEvaluation **)
+
+let maximal_evaluation l = match l with
+| [] -> NoMoveEva (PosInt O)
+| h::_ ->
+  find_optimal_element l value_of_evaluation (fun v1 v2 -> intleq v2 v1) h
+    (value_of_evaluation h)
+
+(** val evaluation_function_for_player :
+    color -> moveEvaluation list -> moveEvaluation **)
+
+let evaluation_function_for_player = function
+| White -> maximal_evaluation
+| Black -> minimal_evaluation
+
+(** val evaluate_moves : nat -> position -> moveEvaluation list **)
+
+let rec evaluate_moves depth pos =
+  match depth with
+  | O -> (NoMoveEva (evaluate_position pos))::[]
+  | S d ->
+    let player = get_to_move pos in
+    let opponent = opponent_of player in
+    let min_or_max = evaluation_function_for_player opponent in
+    let evaluate_move = fun move0 -> Eva (move0,
+      (value_of_evaluation
+        (min_or_max (evaluate_moves d (make_move pos move0)))))
+    in
+    map evaluate_move (moves_worth_considering pos)
 
