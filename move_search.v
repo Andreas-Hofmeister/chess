@@ -107,7 +107,7 @@ Definition evaluate_position (pos : Position) : PositionEvaluation :=
   let number_of_legal_moves := length (legal_moves pos) in
   if (eqb 0 number_of_legal_moves) then
     if (is_in_check pos (get_to_move pos)) 
-    then (Checkmate (get_to_move pos)) else Stalemate
+    then (Checkmate (opponent_of (get_to_move pos))) else Stalemate
   else 
     NormalEvaluation (material_balance_of_position (get_piece_placements pos)).
 
