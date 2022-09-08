@@ -222,35 +222,71 @@ let int_of_eint engine_int =
     | (Engine.PosInt v) -> (int_of_nat v)
     | NegInt v -> -(int_of_nat v);;
 
+let int_of_position_evaluation pev =
+    match pev with
+    | Engine.NormalEvaluation v -> int_of_eint v
+    | Checkmate c -> begin 
+        match c with
+        | Black -> -1000
+        | White -> 1000
+        end
+    | Stalemate -> 0;;
+
+let int_of_move_evaluation mev =
+    match mev with
+    | Engine.NormalMoveEva (_, v) -> int_of_eint v
+    | Engine.CheckmateMoveEva (move, n_moves, c) -> begin
+        match c with
+        | Black -> -1000 + (int_of_nat n_moves)
+        | White -> 1000 - (int_of_nat n_moves)
+        end
+    | Engine.NoMoveEva pev -> int_of_position_evaluation pev;;
+
 let cmp_of_player c =
     match c with
     | Engine.White -> (fun ev1 ev2 -> 
-        (int_of_eint (Engine.value_of_evaluation ev2)) - 
-        (int_of_eint (Engine.value_of_evaluation ev1)))
+        (int_of_move_evaluation ev2) - 
+        (int_of_move_evaluation ev1))
     | Engine.Black -> (fun ev1 ev2 -> 
-        (int_of_eint (Engine.value_of_evaluation ev1)) - 
-        (int_of_eint (Engine.value_of_evaluation ev2)))
+        (int_of_move_evaluation ev1) - 
+        (int_of_move_evaluation ev2));;
 
 let rec moves_of_evaluations evs =
     match evs with
     | [] -> []
     | ev::tl -> match ev with
-                | Engine.Eva (m,_) -> m::(moves_of_evaluations tl)
+                | Engine.NormalMoveEva (m, _) -> m::(moves_of_evaluations tl)
+                | Engine.CheckmateMoveEva (m, _, _) -> m::(moves_of_evaluations tl)
                 | _ -> moves_of_evaluations tl;;
 
-let string_of_evaluation ev =
+let string_of_position_evaluation pev =
+    match pev with
+    | Engine.NormalEvaluation v -> string_of_int (int_of_eint v)
+    | Checkmate c -> begin
+        match c with
+        | Black -> "Black checkmates"
+        | White -> "White checkmates"
+        end
+    | Stalemate -> "Stalemate";;
+
+let string_of_move_evaluation ev =
     match ev with
-    | Engine.Eva (m,v) -> (string_of_move m)^": "^(string_of_int (int_of_eint v))
-    | Engine.NoMoveEva v -> "No move?: "^(string_of_int (int_of_eint v));;
+    | Engine.NormalMoveEva (m, v) -> (string_of_move m)^": "^(string_of_int (int_of_eint v))
+    | Engine.CheckmateMoveEva (move, n_moves, c) -> begin
+        match c with
+        | Black -> (string_of_move move)^": Black checkmates in "^(string_of_int (int_of_nat n_moves))
+        | White -> (string_of_move move)^": White checkmates in "^(string_of_int (int_of_nat n_moves))
+        end
+    | Engine.NoMoveEva pev -> "No move?: "^(string_of_position_evaluation pev);;
 
 let best_moves pos =
     let evaluations = Engine.evaluate_moves (nat_of_int 3) !current_position in
     let cmp = cmp_of_player (Engine.get_to_move pos) in
     let sorted_evaluations = List.sort cmp evaluations in
-    let best_value = int_of_eint (Engine.value_of_evaluation (List.hd sorted_evaluations)) in
-    let best_evaluations = List.filter (fun ev -> (int_of_eint (Engine.value_of_evaluation ev)) = best_value) sorted_evaluations in
+    let best_value = int_of_move_evaluation (List.hd sorted_evaluations) in
+    let best_evaluations = List.filter (fun ev -> (int_of_move_evaluation ev) = best_value) sorted_evaluations in
     log "Sorted evaluations:";
-    List.iter (fun ev -> log (string_of_evaluation ev)) sorted_evaluations;
+    List.iter (fun ev -> log (string_of_move_evaluation ev)) sorted_evaluations;
     moves_of_evaluations best_evaluations;;
 
 let handle_go str =
