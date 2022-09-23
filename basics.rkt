@@ -1,6 +1,8 @@
 #lang typed/racket
 (require racket/match)
 
+(provide (all-defined-out))
+
 (struct (a) Some ([v : a]))
 (define-type (Option a) (U 'none (Some a)))
 
