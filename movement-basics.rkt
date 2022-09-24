@@ -18,6 +18,9 @@
   #:transparent)
 (struct Castle ([color : Color] (castling-type : Castling-type)) #:transparent)
 
+(: promotion-pieces (Listof Piece))
+(define promotion-pieces '(rook knight bishop queen))
+
 (: from-of-move (-> Move Square-location))
 (define (from-of-move move)
   (match move
@@ -71,6 +74,11 @@
        [(Square-location rank-b file-b)
         (Movement-vector (- file-b file-a) (- rank-b rank-a))])]))
 
+(: movement-vector-length (-> Movement-vector Integer))
+(define (movement-vector-length v)
+  (+ (abs (Movement-vector-horizontal-step v))
+     (abs (Movement-vector-vertical-step v))))
+
 (: add-to-absolute-value (-> Integer Integer Integer))
 (define (add-to-absolute-value i to-be-added)
   (let ([sign (if (< i 0) -1 1)])
@@ -102,4 +110,18 @@
 
 (: squares-along-vector-empty?
    (-> Piece-placements Square-location Movement-vector Boolean))
-(define (squares-along-vector-empty? 
+(define (squares-along-vector-empty? pp start-loc v)
+  (if (= 0 (movement-vector-length v)) #t
+      (let* ([one-step (one-step-along-vector start-loc v)]
+             [v2 (cdr one-step)]
+             [loc2 (car one-step)])
+        (if (square-empty? pp start-loc)
+            (squares-along-vector-empty? pp loc2 v2)
+            #f))))
+
+(: apply-vector (-> Movement-vector Square-location Square-location))
+(define (apply-vector v loc)
+  (Square-location (+ (Square-location-rank loc)
+                      (Movement-vector-vertical-step v))
+                   (+ (Square-location-file loc)
+                      (Movement-vector-horizontal-step v))))

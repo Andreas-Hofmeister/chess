@@ -55,6 +55,9 @@
 (define file-indices (list 0 1 2 3 4 5 6 7))
 (: rank-indices (Listof Integer))
 (define rank-indices (list 0 1 2 3 4 5 6 7))
+(: indices-valid (-> Integer Integer Boolean))
+(define (indices-valid rank file)
+  (and (< 0 rank) (<= rank 7) (< 0 file) (<= file 7)))
 
 (define pp-vector-ref (inst vector-ref File))
 
