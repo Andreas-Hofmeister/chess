@@ -5,12 +5,6 @@
 (require "movement-basics.rkt")
 (provide (all-defined-out))
 
-(: to-move-or-capture (-> Piece-placements Color Square-location Square-location Move))
-(define (to-move-or-capture pp c from-loc to-loc)
-  (if (square-empty? pp to-loc)
-      (From-to-move from-loc to-loc)
-      (Capture from-loc to-loc)))
-
 (: knight-moves (-> Square-location Color Position (Listof Move)))
 (define (knight-moves from-loc c pos)
   (let* ([pp (Position-pp pos)]
@@ -31,5 +25,5 @@
                          (not (location-occupied-by-friendly-piece? pp loc c))))
                   all-to-locs)])
     (map (lambda ([loc : Square-location])
-           (to-move-or-capture pp c from-loc loc))
+           (from-to-move-or-capture pp c from-loc loc))
          valid-to-locs)))

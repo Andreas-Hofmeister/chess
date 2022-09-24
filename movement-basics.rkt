@@ -125,3 +125,27 @@
                       (Movement-vector-vertical-step v))
                    (+ (Square-location-file loc)
                       (Movement-vector-horizontal-step v))))
+
+(: moves-along-direction (-> Piece-placements Color Square-location
+                          Integer Integer (Listof Move)))
+(define (moves-along-direction pp c from-loc hstep vstep)
+  (: loop (-> Square-location (Listof Move) (Listof Move)))
+  (define (loop current-loc accumulator)
+    (let* ([from-rank (Square-location-rank current-loc)]
+           [from-file (Square-location-file current-loc)]
+           [next-target-loc
+            (Square-location (+ from-rank vstep) (+ from-file hstep))])
+    (if (or (not (location-valid? next-target-loc))
+            (location-occupied-by-friendly-piece? pp next-target-loc c))
+        accumulator
+        (if (square-empty? pp next-target-loc)
+            (loop next-target-loc
+                  (cons (From-to-move from-loc next-target-loc) accumulator))
+            (cons (Capture from-loc next-target-loc) accumulator)))))
+  (loop from-loc '()))
+
+(: from-to-move-or-capture (-> Piece-placements Color Square-location Square-location Move))
+(define (from-to-move-or-capture pp c from-loc to-loc)
+  (if (square-empty? pp to-loc)
+      (From-to-move from-loc to-loc)
+      (Capture from-loc to-loc)))
