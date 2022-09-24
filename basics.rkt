@@ -184,6 +184,16 @@
 (define (location-occupied-by-enemy-piece? pp loc c)
   (occupied-by-enemy-piece? pp (Square-location-rank loc) (Square-location-file loc) c))
 
+(: occupied-by-friendly-piece? (-> Piece-placements Integer Integer Color Boolean))
+(define (occupied-by-friendly-piece? pp rank file c)
+  (match (get-square pp rank file)
+    ['empty-square #f]
+    [(Occupied-square occupied-color _) (if (equal? occupied-color c) #t #f)]))
+
+(: location-occupied-by-friendly-piece? (-> Piece-placements Square-location Color Boolean))
+(define (location-occupied-by-friendly-piece? pp loc c)
+  (occupied-by-friendly-piece? pp (Square-location-rank loc) (Square-location-file loc) c))
+
 (struct Pawn-double-step ([to-rank : Integer] [on-file : Integer]) #:transparent)
 
 (define-type Castling-type (U 'queen-side 'king-side))
