@@ -25,6 +25,12 @@
 
 (define-type File (Vectorof Square))
 
+(: copy-file (-> File File))
+(define (copy-file file)
+  (match file
+    [(vector s1 s2 s3 s4 s5 s6 s7 s8)
+     (square-vector s1 s2 s3 s4 s5 s6 s7 s8)]))
+
 (: make-file (-> (Listof Square) File))
 (define (make-file squares)
   (apply square-vector squares))
@@ -50,6 +56,19 @@
   (apply square-vector squares))
 
 (define-type Piece-placements (Vectorof File))
+
+(: copy-pp (-> Piece-placements Piece-placements))
+(define (copy-pp pp)
+  (match pp
+    [(vector f1 f2 f3 f4 f5 f6 f7 f8)
+     (file-vector (copy-file f1)
+                  (copy-file f2)
+                  (copy-file f3)
+                  (copy-file f4)
+                  (copy-file f5)
+                  (copy-file f6)
+                  (copy-file f7)
+                  (copy-file f8))]))
 
 (: file-indices (Listof Integer))
 (define file-indices (list 0 1 2 3 4 5 6 7))
@@ -146,8 +165,8 @@
                  (square-to-str (get-square-of-rank rank i)))])
     (string-join square-strings "")))
 
-(: pp-to-str (-> Piece-placements String))
-(define (pp-to-str pp)
+(: pp->string (-> Piece-placements String))
+(define (pp->string pp)
   (string-join
    (cons "  abcdefgh"
          (ann (for/list ([i (reverse rank-indices)])
@@ -203,7 +222,7 @@
 
 (define-type Castling-type (U 'queen-side 'king-side))
 
-(struct Castling-availability ([castling-type : Castling-type] [c : Color]) #:transparent)
+(struct Castling-availability ([castling-type : Castling-type] [color : Color]) #:transparent)
 
 (define initial-castling-availabilities
   (list (Castling-availability 'queen-side 'white)
