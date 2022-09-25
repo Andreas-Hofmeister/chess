@@ -47,8 +47,8 @@
     [(Castle 'black 'queen-side) (Square-location 7 2)]
     [(Castle 'black 'king-side) (Square-location 7 6)]))
 
-(: is-move-to-empty-square (-> Move Boolean))
-(define (is-move-to-empty-square move)
+(: move-to-empty-square? (-> Move Boolean))
+(define (move-to-empty-square? move)
   (match move
     [(From-to-move _ _) #t]
     [(En-passant _ _) #t]
@@ -56,8 +56,8 @@
     [(Promotion _ _ _) #t]
     [_ #f]))
 
-(: is-capturing-move (-> Move Boolean))
-(define (is-capturing-move move)
+(: capturing-move? (-> Move Boolean))
+(define (capturing-move? move)
   (match move
     [(Capture _ _) #t]
     [(Promotion-with-capture _ _ _) #t]

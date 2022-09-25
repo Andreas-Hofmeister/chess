@@ -3,6 +3,7 @@
 
 (require "basics.rkt")
 (require "movement-basics.rkt")
+(provide (all-defined-out))
 
 (: king-moves (-> Square-location Color Position (Listof Move)))
 (define (king-moves from-loc c pos)

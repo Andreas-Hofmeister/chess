@@ -163,6 +163,11 @@
   (match loc
     [(Square-location rank file) (get-square pp rank file)]))
 
+(: set-square-by-location! (-> Piece-placements Square-location Square Piece-placements))
+(define (set-square-by-location! pp loc sq)
+  (match loc
+    [(Square-location rank file) (set-square! pp rank file sq)]))
+
 (: square-empty-rank-file? (-> Piece-placements Integer Integer Boolean))
 (define (square-empty-rank-file? pp rank file)
   (match (get-square pp rank file)
