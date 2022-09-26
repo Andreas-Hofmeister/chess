@@ -146,4 +146,30 @@
                            (remove-castling-availabilities c cavls))]
        [_ before])]))
 
-         
+(: make-move (-> Position Move Position))
+(define (make-move before move)
+  (match before
+    [(Position pp c pds cavls)
+     (match move
+       [(From-to-move from to) (make-from-to-move before move pp c pds cavls from to)]
+       [(Capture from to) (make-from-to-move before move pp c pds cavls from to)]
+       [(Double-step from to)
+        (Position
+         (make-from-to-move-pp pp from to) (opponent-of c)
+         (Some (Pawn-double-step (Square-location-rank to)
+                                 (Square-location-file to)))
+         cavls)]
+       [(En-passant from to)
+        (Position (make-en-passant-move-pp pp from to) (opponent-of c) 'none cavls)]
+       [(Promotion from to piece)
+        (Position (make-promotion-move-pp pp from to piece)
+                  (opponent-of c) 'none cavls)]
+       [(Promotion-with-capture from to piece)
+        (Position (make-promotion-move-pp pp from to piece)
+                  (opponent-of c) 'none cavls)]
+       [(Castle castle-c ctype)
+        (if (equal? castle-c c)
+            (Position (make-castling-move-pp pp c ctype) (opponent-of c) 'none
+                      (remove-castling-availabilities c cavls))
+            before)])]))
+

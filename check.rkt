@@ -7,10 +7,6 @@
 
 (provide (all-defined-out))
 
-(: find-king (-> Position Color (Listof Square-location)))
-(define (find-king pos c)
-  (find-piece pos c 'king valid-locations))
-
 (: in-check? (-> Position Color Boolean))
 (define (in-check? pos c)
   (exists-in (find-king pos c)
