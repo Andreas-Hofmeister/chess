@@ -65,6 +65,64 @@
   (let ([empty-board (make-empty-board)])
     (loop 7 0 s empty-board)))
 
+(: to-move-from-fen (-> String Color))
+(define (to-move-from-fen s)
+  (match s
+    ["w" 'white]
+    ["b" 'black]))
+
+(: double-step-from-fen (-> String (Option Pawn-double-step)))
+(define (double-step-from-fen s)
+  (match s
+    ["-" 'none]
+    ["a3" (Some (Pawn-double-step 3 0))]
+    ["b3" (Some (Pawn-double-step 3 1))]
+    ["c3" (Some (Pawn-double-step 3 2))]
+    ["d3" (Some (Pawn-double-step 3 3))]
+    ["e3" (Some (Pawn-double-step 3 4))]
+    ["f3" (Some (Pawn-double-step 3 5))]
+    ["g3" (Some (Pawn-double-step 3 6))]
+    ["h3" (Some (Pawn-double-step 3 7))]
+    ["a6" (Some (Pawn-double-step 4 0))]
+    ["b6" (Some (Pawn-double-step 4 1))]
+    ["c6" (Some (Pawn-double-step 4 2))]
+    ["d6" (Some (Pawn-double-step 4 3))]
+    ["e6" (Some (Pawn-double-step 4 4))]
+    ["f6" (Some (Pawn-double-step 4 5))]
+    ["g6" (Some (Pawn-double-step 4 6))]
+    ["h6" (Some (Pawn-double-step 4 7))]))
+
+(: castling-availabilities-from-fen (-> String (Listof Castling-availability)))
+(define (castling-availabilities-from-fen s)
+  (: loop (-> (Listof Char) (Listof Castling-availability) (Listof Castling-availability)))
+  (define (loop chars cavls-acc)
+    (match chars
+      ['() cavls-acc]
+      [(cons #\K rest)
+       (loop rest (cons (Castling-availability 'king-side 'white) cavls-acc))]
+      [(cons #\Q rest)
+       (loop rest (cons (Castling-availability 'queen-side 'white) cavls-acc))]
+      [(cons #\k rest)
+       (loop rest (cons (Castling-availability 'king-side 'black) cavls-acc))]
+      [(cons #\q rest)
+       (loop rest (cons (Castling-availability 'queen-side 'black) cavls-acc))]
+      [(cons _ rest) (loop rest cavls-acc)]))
+  (loop (string->list s) '()))
+
+(: pos-from-fen (-> String Position))
+(define (pos-from-fen s)
+  (let* ([parts (string-split s)]
+         [pp-s (list-ref parts 0)]
+         [to-move-s (list-ref parts 1)]
+         [castling-s (list-ref parts 2)]
+         [double-step-s (list-ref parts 3)])
+    (Position
+     (pp-from-fen pp-s)
+     (to-move-from-fen to-move-s)
+     (double-step-from-fen double-step-s)
+     (castling-availabilities-from-fen castling-s))))
+
 (: fen1 String)
-(define fen1 "rnbqkbnr/pppppppp/8/8/8/8/pppppppp/RNBQKBNR")
-(display (pp->string (pp-from-fen fen1)))
+(define fen1 "rnbqkbnr/pppppppp/8/8/8/8/pppppppp/RNBQKBNR w Kq e3 0 1")
+(display (pos->string (pos-from-fen fen1)))
+

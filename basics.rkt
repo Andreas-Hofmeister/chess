@@ -240,6 +240,61 @@
 (define (make-initial-position)
   (Position (make-initial-pp) 'white 'none initial-castling-availabilities))
 
+(: to-move->string (-> Color String))
+(define (to-move->string c)
+  (match c
+    ['white "white to move"]
+    ['black "black to move"]))
+
+(: rank->string (-> Integer String))
+(define (rank->string i)
+  (format "~a" (+ i 1)))
+
+(: file->string (-> Integer String))
+(define (file->string i)
+  (match i
+    [0 "a"]
+    [1 "b"]
+    [2 "c"]
+    [3 "d"]
+    [4 "e"]
+    [5 "f"]
+    [6 "g"]
+    [7 "h"]))
+
+(: rank-file->string (-> Integer Integer String))
+(define (rank-file->string rank file)
+  (format "~a~a" (file->string file) (rank->string rank)))
+
+(: pds->string (-> (Option Pawn-double-step) String))
+(define (pds->string pds)
+  (match pds
+    ['none "the last move was not a pawn double step"]
+    [(Some (Pawn-double-step on-file to-rank))
+     (format "the last move was a pawn double step to ~a"
+             (rank-file->string on-file to-rank))]))
+
+(: castling-availability->string (-> Castling-availability String))
+(define (castling-availability->string cavl)
+  (match cavl
+    [(Castling-availability type color)
+     (format "~a->~a" color type)]))
+
+(: castling-availabilities->string (-> (Listof Castling-availability) String))
+(define (castling-availabilities->string cavls)
+  (if (empty? cavls) "None"
+      (string-join (map castling-availability->string cavls) ", ")))
+
+(: pos->string (-> Position String))
+(define (pos->string pos)
+  (match pos
+    [(Position pp to-move pds cavls) 
+     (format "~a\n~a\ncastling availabilities: ~a\n~a"
+             (to-move->string to-move)
+             (pds->string pds)
+             (castling-availabilities->string cavls)
+             (pp->string pp))]))
+
 (: difference (-> Integer Integer Integer))
 (define (difference i j)
   (abs (- i j)))
