@@ -162,9 +162,58 @@
                     (reverse rank-indices))
                "/"))
 
+(: fen-from-color (-> Color String))
+(define (fen-from-color c)
+  (match c
+    ['white "w"]
+    ['black "b"]))
+
+(: fen-from-castling-availability (-> Castling-availability String))
+(define (fen-from-castling-availability cavl)
+  (match cavl
+    [(Castling-availability 'king-side 'white) "K"]
+    [(Castling-availability 'queen-side 'white) "Q"]
+    [(Castling-availability 'king-side 'black) "k"]
+    [(Castling-availability 'queen-side 'black) "q"]))
+
+(: fen-from-castling-availabilities (-> (Listof Castling-availability) String))
+(define (fen-from-castling-availabilities cavls)
+  (string-join (map fen-from-castling-availability cavls) ""))
+
+(: fen-from-double-step (-> (Option Pawn-double-step) String))
+(define (fen-from-double-step ds)
+  (match ds
+    ['none "-"]
+    [(Some (Pawn-double-step 3 0)) "a3"]
+    [(Some (Pawn-double-step 3 1)) "b3"]
+    [(Some (Pawn-double-step 3 2)) "c3"]
+    [(Some (Pawn-double-step 3 3)) "d3"]
+    [(Some (Pawn-double-step 3 4)) "e3"]
+    [(Some (Pawn-double-step 3 5)) "f3"]
+    [(Some (Pawn-double-step 3 6)) "g3"]
+    [(Some (Pawn-double-step 3 7)) "h3"]
+    [(Some (Pawn-double-step 4 0)) "a6"]
+    [(Some (Pawn-double-step 4 1)) "b6"]
+    [(Some (Pawn-double-step 4 2)) "c6"]
+    [(Some (Pawn-double-step 4 3)) "d6"]
+    [(Some (Pawn-double-step 4 4)) "e6"]
+    [(Some (Pawn-double-step 4 5)) "f6"]
+    [(Some (Pawn-double-step 4 6)) "g6"]
+    [(Some (Pawn-double-step 4 7)) "h6"]))
+
+(: fen-from-position (-> Position String))
+(define (fen-from-position pos)
+  (string-join
+   (list (fen-from-pp (Position-pp pos))
+         (fen-from-color (Position-to-move pos))
+         (fen-from-castling-availabilities (Position-castling-availabilities pos))
+         (fen-from-double-step (Position-pawn-double-step pos))
+         "0 1")
+   " "))
+
 (: fen1 String)
 (define fen1 "rnbqkbnr/pppppppp/8/8/8/8/pppppppp/RNBQKBNR w Kq e3 0 1")
 (display (pos->string (pos-from-fen fen1)))
 
-(display (fen-from-pp (Position-pp (make-initial-position))))
+(display (fen-from-position (make-initial-position)))
 (display "\n")
