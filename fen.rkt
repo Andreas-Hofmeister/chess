@@ -122,7 +122,49 @@
      (double-step-from-fen double-step-s)
      (castling-availabilities-from-fen castling-s))))
 
+(: piece-to-fen (-> Piece String))
+(define (piece-to-fen p)
+  (match p
+    ['king "k"]
+    ['queen "q"]
+    ['rook "r"]
+    ['bishop "b"]
+    ['knight "n"]
+    ['pawn "p"]))
+
+(: square-to-fen (-> Square String))
+(define (square-to-fen sq)
+  (match sq
+    [(Occupied-square 'white p) (string-upcase (piece-to-fen p))]
+    [(Occupied-square 'black p) (piece-to-fen p)]
+    ['empty-square "1"]))
+
+(: fen-from-pp (-> Piece-placements String))
+(define (fen-from-pp pp)
+  (: fen-from-rank (-> Integer Integer Integer String String))
+  (define (fen-from-rank rank-index file-index gap-acc fen-acc)
+    (let ([sq (get-square pp rank-index file-index)])
+      (cond
+        [(and (equal? sq 'empty-square)
+              (= file-index 7))
+         (format "~a~a" fen-acc (+ gap-acc 1))]
+        [(equal? sq 'empty-square)
+         (fen-from-rank rank-index (+ file-index 1) (+ gap-acc 1) fen-acc)]
+        [else
+         (let* ([sq-fen (square-to-fen sq)]
+                [gap-str (if (> gap-acc 0) (format "~a" gap-acc) "")]
+                [new-fen (format "~a~a~a" fen-acc gap-str sq-fen)])
+           (if (= file-index 7)
+               (format "~a~a~a" fen-acc gap-str sq-fen)
+               (fen-from-rank rank-index (+ file-index 1) 0 new-fen)))])))
+  (string-join (map (lambda ([rank-index : Integer])
+                      (fen-from-rank rank-index 0 0 ""))
+                    (reverse rank-indices))
+               "/"))
+
 (: fen1 String)
 (define fen1 "rnbqkbnr/pppppppp/8/8/8/8/pppppppp/RNBQKBNR w Kq e3 0 1")
 (display (pos->string (pos-from-fen fen1)))
 
+(display (fen-from-pp (Position-pp (make-initial-position))))
+(display "\n")
