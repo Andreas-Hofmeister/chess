@@ -141,8 +141,8 @@
   (square-vector-set! (get-file pp file-index) rank-index square)
   pp)
 
-(: piece-to-str (-> Piece String))
-(define (piece-to-str p)
+(: piece->string (-> Piece String))
+(define (piece->string p)
   (match p
     ['rook "r"]
     ['queen "q"]
@@ -151,27 +151,27 @@
     ['king "k"]
     ['bishop "b"]))
 
-(: square-to-str (-> Square String))
-(define (square-to-str square)
+(: square->output-string (-> Square String))
+(define (square->output-string square)
   (match square
     ['empty-square "_"]
-    [(Occupied-square 'black p) (piece-to-str p)]
-    [(Occupied-square 'white p) (string-upcase (piece-to-str p))]))
+    [(Occupied-square 'black p) (piece->string p)]
+    [(Occupied-square 'white p) (string-upcase (piece->string p))]))
 
-(: rank-to-str (-> Rank String))
-(define (rank-to-str rank)
+(: rank->output-string (-> Rank String))
+(define (rank->output-string rank)
   (let ([square-strings : (Listof String)
          (for/list ([i : Integer file-indices])
-                 (square-to-str (get-square-of-rank rank i)))])
+                 (square->output-string (get-square-of-rank rank i)))])
     (string-join square-strings "")))
 
-(: pp->string (-> Piece-placements String))
-(define (pp->string pp)
+(: pp->output-string (-> Piece-placements String))
+(define (pp->output-string pp)
   (string-join
    (cons "  abcdefgh"
          (ann (for/list ([i (reverse rank-indices)])
                 (string-append (number->string (+ 1 i)) " "
-                               (rank-to-str (get-rank pp i))))
+                               (rank->output-string (get-rank pp i))))
               (Listof String)))
    "\n" #:after-last "\n"))
 
@@ -266,6 +266,40 @@
 (define (rank-file->string rank file)
   (format "~a~a" (file->string file) (rank->string rank)))
 
+(: square-location->string (-> Square-location String))
+(define (square-location->string loc)
+  (match loc
+    [(Square-location rank file) (rank-file->string rank file)]))
+
+(: string->file-index (-> String Integer))
+(define (string->file-index s)
+  (match s
+    ["a" 0]
+    ["b" 1]
+    ["c" 2]
+    ["d" 3]
+    ["e" 4]
+    ["f" 5]
+    ["g" 6]
+    ["h" 7]))
+
+(: string->rank-index (-> String Integer))
+(define (string->rank-index s)
+  (match s
+    ["1" 0]
+    ["2" 1]
+    ["3" 2]
+    ["4" 3]
+    ["5" 4]
+    ["6" 5]
+    ["7" 6]
+    ["8" 7]))
+
+(: string->square-location (-> String Square-location))
+(define (string->square-location s)
+  (Square-location (string->rank-index (substring s 0 1))
+                   (string->file-index (substring s 1 2))))
+
 (: pds->string (-> (Option Pawn-double-step) String))
 (define (pds->string pds)
   (match pds
@@ -293,7 +327,7 @@
              (to-move->string to-move)
              (pds->string pds)
              (castling-availabilities->string cavls)
-             (pp->string pp))]))
+             (pp->output-string pp))]))
 
 (: difference (-> Integer Integer Integer))
 (define (difference i j)

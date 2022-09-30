@@ -211,9 +211,9 @@
          "0 1")
    " "))
 
-(: fen1 String)
-(define fen1 "rnbqkbnr/pppppppp/8/8/8/8/pppppppp/RNBQKBNR w Kq e3 0 1")
-(display (pos->string (pos-from-fen fen1)))
-
-(display (fen-from-position (make-initial-position)))
-(display "\n")
+;(: fen1 String)
+;(define fen1 "rnbqkbnr/pppppppp/8/8/8/8/pppppppp/RNBQKBNR w Kq e3 0 1")
+;(display (pos->string (pos-from-fen fen1)))
+;
+;(display (fen-from-position (make-initial-position)))
+;(display "\n")
