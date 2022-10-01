@@ -76,5 +76,34 @@
 (: string->movestring-list (-> String (Listof String)))
 (define (string->movestring-list s)
   (filter (lambda ([candidate : String])
-            (> (length candidate) 0))
-          (map (string-split s))))
+            (> (string-length candidate) 0))
+          (string-split s)))
+
+(: on-final-rank? (-> Square-location Color Boolean))
+(define (on-final-rank? loc c)
+  (let ([rank (Square-location-rank loc)])
+    (match c
+      ['white (= rank 7)]
+      ['black (= rank 0)])))
+
+(: from-to-or-capture-move (-> Piece-placements Square-location Square-location Move))
+(define (from-to-or-capture-move pp from-loc to-loc)
+  (let ([to-square (get-square-by-location pp to-loc)])
+    (match to-square
+      [(Occupied-square _ _) (Capture from-loc to-loc)]
+      [_ (From-to-move from-loc to-loc)])))
+
+(: en-passant-move? (-> Square Square-location Square-location Boolean))
+(define (en-passant-move? to-square from-loc to-loc)
+  (let ([from-file (Square-location-file from-loc)]
+        [to-file (Square-location-file to-loc)])
+    (match to-square
+      [(Occupied-square _ _) #f]
+      [_ (not (= from-file to-file))])))
+
+(: double-step? (-> Square-location Square-location Boolean))
+(define (double-step? from-loc to-loc)
+  (let ([from-rank (Square-location-rank from-loc)]
+        [to-rank (Square-location-rank to-loc)])
+    (= (abs (- from-rank to-rank)) 2)))
+
