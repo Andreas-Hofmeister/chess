@@ -48,8 +48,8 @@
                     '())]
                [right-capture
                 (if (and (<= file 6)
-                         (occupied-by-enemy-piece? pp new-rank (- file 1) c))
-                    (list (Capture pawn-loc (Square-location new-rank (- file 1))))
+                         (occupied-by-enemy-piece? pp new-rank (+ file 1) c))
+                    (list (Capture pawn-loc (Square-location new-rank (+ file 1))))
                     '())])
           (append left-capture right-capture)))))
 
@@ -79,7 +79,8 @@
                 (indices-valid to-rank ds-on-file)
                 (= (difference ds-on-file file) 1))
            (list (En-passant pawn-loc (Square-location to-rank ds-on-file)))
-           '())])))
+           '())]
+      [_ '()])))
 
 (: pawn-forward-promotions (-> Square-location Color Position (Listof Move)))
 (define (pawn-forward-promotions pawn-loc c pos)

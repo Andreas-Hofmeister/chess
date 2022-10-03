@@ -144,7 +144,7 @@
        ['king
         (Position (make-from-to-move-pp pp from to) (opponent-of c) 'none
                            (remove-castling-availabilities c cavls))]
-       [_ before])]))
+       [_ (Position (make-from-to-move-pp pp from to) (opponent-of c) 'none cavls)])]))
 
 (: make-move (-> Position Move Position))
 (define (make-move before move)

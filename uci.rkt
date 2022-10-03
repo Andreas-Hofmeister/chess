@@ -6,8 +6,9 @@
 (require "legal-moves.rkt")
 (require "make-move.rkt")
 (require "move-search.rkt")
+(require "fen.rkt")
 
-(provide (all-defined-out))
+(provide movestring->move)
 
 (: log-file-path String)
 (define log-file-path "/home/andreas/chess/krr/log.txt")
@@ -28,6 +29,7 @@
 (: print-and-log (-> String Void))
 (define (print-and-log s)
   (display (format "~a\n" s))
+  (flush-output)
   (log s))
 
 (: select-random-element (All (A) (-> (Listof A) A)))
@@ -177,7 +179,9 @@
        (let ([movestrings (cdddr words)])
          (set! current-position
                (apply-movestrings (make-initial-position) movestrings))
-         (log (format "DEBUG, new position:\n~a" (pos->string current-position)))
+         (log (format "DEBUG, new position:\n~a\n~a"
+                      (fen-from-position current-position)
+                      (pos->string current-position)))
          #t)])))
 
 (: position-evaluation->integer (-> Position-evaluation Integer))
@@ -203,8 +207,8 @@
 (: cmp-of-player (-> Color (-> Move-evaluation Move-evaluation Boolean)))
 (define (cmp-of-player c)
   (match c
-    ['white move-evaluation<=]
-    ['black
+    ['black move-evaluation<=]
+    ['white
      (lambda ([ev1 : Move-evaluation] [ev2 : Move-evaluation])
        (move-evaluation<= ev2 ev1))]))
 
@@ -287,12 +291,22 @@
 (define (input-output-loop)
   (: input String)
   (define input (read-line-as-string))
-  (log-gui-command input)
+  (when (not (equal? "" input))
+    (log-gui-command input))
   (cond
     [(equal? input "quit") #t]
     [else
      (handle-input input)
      (input-output-loop)]))
 
+(log (format "uci started on ~a" (seconds->date (current-seconds))))
 (: unused Boolean)
 (define unused (input-output-loop))
+
+
+;(handle-position "position startpos moves e2e4 b8c6 f1c4 g8h6 g1f3 d7d5 e4d5")
+;(display (pos->string current-position))
+;(define pos2 (apply-movestrings current-position (list "e2e4" "b8c6")))
+;(display (pos->string pos2))
+;(define pos3 (apply-movestrings pos2 (list "b8c6")))
+;(display (pos->string pos3))
