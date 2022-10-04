@@ -175,4 +175,40 @@
              (map evaluate-move moves-to-consider))]
           [else '()]))))
 
+(: central-squares (Listof Square-location))
+(define central-squares
+  (list (Square-location 3 3)
+        (Square-location 3 4)
+        (Square-location 4 3)
+        (Square-location 4 4)))
+                      
+(: expanded-central-squares (Listof Square-location))
+(define expanded-central-squares
+  (for*/list : (Listof Square-location)
+    ([rank : Integer '(2 3 4 5)]
+     [file : Integer '(2 3 4 5)])
+    (Square-location rank file)))
+
+(: central-square? (-> Square-location Boolean))
+(define (central-square? sq)
+  (let ([rank (Square-location-rank sq)]
+        [file (Square-location-file sq)])
+    (and (>= rank 3) (<= rank 4) (>= file 3) (<= file 4))))
+
+(: expanded-central-square? (-> Square-location Boolean))
+(define (expanded-central-square? sq)
+  (let ([rank (Square-location-rank sq)]
+        [file (Square-location-file sq)])
+    (and (>= rank 2) (<= rank 5) (>= file 2) (<= file 5))))
+
+(: expanded-central-squares-without-central-squares (Listof Square-location))
+(define expanded-central-squares-without-central-squares
+  (filter (lambda ([sq : Square-location]) (not (central-square? sq)))
+          expanded-central-squares))
+
+(: expanded-central-square-but-no-central-square? (-> Square-location Boolean))
+(define (expanded-central-square-but-no-central-square? sq)
+  (and (expanded-central-square? sq)
+       (not (central-square? sq))))
+
 

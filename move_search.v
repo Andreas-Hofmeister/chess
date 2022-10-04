@@ -220,7 +220,7 @@ Compute (evaluate_moves 1 testpos2).
 Compute (evaluate_moves 0 initial_position).
 *)
 
-
+(*
 Definition test2filea := Squares
 Empty
 Empty
@@ -309,6 +309,6 @@ Compute (legal_moves test2pos2).
 Compute (is_checkmate test2pos2).
 
 Compute (evaluate_moves 3 test2pos).
-
+*)
 
 

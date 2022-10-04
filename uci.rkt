@@ -113,12 +113,12 @@
 (: string->piece (-> String Piece))
 (define (string->piece s)
   (match s
-    ['q 'queen]
-    ['r 'rook]
-    ['n 'knight]
-    ['b 'bishop]
-    ['p 'pawn]
-    ['k 'king]))
+    ["q" 'queen]
+    ["r" 'rook]
+    ["n" 'knight]
+    ["b" 'bishop]
+    ["p" 'pawn]
+    ["k" 'king]))
 
 (: movestring->move (-> Position String Move))
 (define (movestring->move pos mstr)
@@ -304,7 +304,7 @@
 (define unused (input-output-loop))
 
 
-;(handle-position "position startpos moves e2e4 b8c6 f1c4 g8h6 g1f3 d7d5 e4d5")
+;(handle-position "position startpos moves e2e4 d7d5 b1c3 d5e4 c3e4 d8d5 d2d3 d5e5 g1f3 e5d5 c1e3 a7a5 c2c4 d5c6 f3d4 c6d7 f1e2 b8a6 e1g1 g7g6 d4b5 d7c6 e3d4 e7e5 d4e5 f7f6 e5f4 h7h5 e2f3 a6b8 e4d6 c6d6 f4d6 f8d6 b5d6 c7d6 d1e2 e8f7 f1e1 h5h4 e2e8 f7g7 e8c8 g7f7 c8b7 g8e7 b7a8 e7c6 a8b7 f7f8 f3c6 b8c6 b7c6 h4h3 c6e8 f8g7 e8e7 g7g8 e7d6 h3g2 d6d5 g8g7 d5g2 g7h7 g2h3 h7g7 h3h8 g7h8 a1c1 h8g8 c4c5 g8g7 c5c6 g7f7 c6c7 f6f5 c7c8q")
 ;(display (pos->string current-position))
 ;(define pos2 (apply-movestrings current-position (list "e2e4" "b8c6")))
 ;(display (pos->string pos2))

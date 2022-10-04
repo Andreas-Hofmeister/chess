@@ -55,7 +55,7 @@ legal_moves.vo: make_move.vo attacks.vo legal_moves.v
 move_search.vo: legal_moves.vo move_search.v
 	coqc -Q . CHESS move_search.v
 
-engine.ml: basics.vo legal_moves.vo extract.v
+engine.ml: basics.vo legal_moves.vo move_search.vo extract.v
 	coqc -Q . CHESS extract.v > engine.ml
 	
 uci: uci.ml engine.ml
