@@ -7,10 +7,11 @@
 (require "make-move.rkt")
 (require "move-search.rkt")
 (require "fen.rkt")
-(require "uci.rkt")
+
 
 (: pos1 Position)
-(define pos1 (pos-from-fen "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b QKqk e3 0 1"))
+(define pos1 (pos-from-fen "r1bqk2r/pppp1pp1/2n1pn2/7p/1bBPP3/P1N2P2/1PP3PP/R1BQK1NR b QKqk - 0 1"))
 
-(movestring->move
-
+(define pp1 (Position-pp pos1))
+(define c1 (count-pieces-in-the-center pp1 'white))
+(define c2 (count-pieces-in-the-expanded-center pp1 'white))

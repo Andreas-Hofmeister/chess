@@ -211,4 +211,52 @@
   (and (expanded-central-square? sq)
        (not (central-square? sq))))
 
+(struct Piece-counts ([queens : Integer]
+                      [rooks : Integer]
+                      [bishops : Integer]
+                      [knights : Integer]
+                      [pawns : Integer]) #:transparent #:mutable)
+
+(: set-piece-count! (-> Piece-counts Piece Integer Void))
+(define (set-piece-count! pc p n)
+  (match p
+    ['queen (set-Piece-counts-queens! pc n)]
+    ['rook (set-Piece-counts-rooks! pc n)]
+    ['bishop (set-Piece-counts-bishops! pc n)]
+    ['knight (set-Piece-counts-knights! pc n)]
+    ['pawn (set-Piece-counts-pawns! pc n)]))
+
+(: get-piece-count (-> Piece-counts Piece Integer))
+(define (get-piece-count pc p)
+  (match p
+    ['queen (Piece-counts-queens pc)]
+    ['rook (Piece-counts-rooks pc)]
+    ['bishop (Piece-counts-bishops pc)]
+    ['knight (Piece-counts-knights pc)]
+    ['pawn (Piece-counts-pawns pc)]))
+
+(: add-piece-count! (-> Piece-counts Piece Integer Void))
+(define (add-piece-count! pc p n)
+  (set-piece-count! pc p (+ (get-piece-count pc p) n)))
+
+(: count-pieces (-> Piece-placements Color (Listof Square-location) Piece-counts))
+(define (count-pieces pp c sqs)
+  (: result Piece-counts)
+  (define result (Piece-counts 0 0 0 0 0))
+  (for ([sq : Square-location sqs])
+    (match (get-square-by-location pp sq)
+      [(Occupied-square sq-c sq-p)
+       #:when (and (equal? sq-c c)
+                   (not (equal? sq-p 'king)))
+       (add-piece-count! result sq-p 1)]
+      [_ 'do-nothing]))
+  result)
+
+(: count-pieces-in-center (-> Piece-placements Color Piece-counts))
+(define (count-pieces-in-center pp c)
+  (count-pieces pp c central-squares))
+
+(: count-pieces-in-expanded-center (-> Piece-placements Color Piece-counts))
+(define (count-pieces-in-expanded-center pp c)
+  (count-pieces pp c expanded-central-squares-without-central-squares))
 

@@ -126,6 +126,23 @@
                    (+ (Square-location-file loc)
                       (Movement-vector-horizontal-step v))))
 
+(: squares-along-direction-until-first-occupied
+   (-> Piece-placements Square-location Integer Integer
+       (Listof Square-location)))
+(define (squares-along-direction-until-first-occupied pp from-loc hstep vstep)
+  (: loop (-> Square-location (Listof Square-location) (Listof Square-location)))
+  (define (loop current-loc acc)
+    (let* ([from-rank (Square-location-rank current-loc)]
+           [from-file (Square-location-file current-loc)]
+           [next-target-loc
+            (Square-location (+ from-rank vstep) (+ from-file hstep))])
+      (cond
+        [(not (location-valid? next-target-loc)) acc]
+        [(not (square-empty? pp next-target-loc))
+         (cons next-target-loc acc)]
+        [else (loop next-target-loc (cons next-target-loc acc))])))
+  (loop from-loc '()))
+
 (: moves-along-direction (-> Piece-placements Color Square-location
                           Integer Integer (Listof Move)))
 (define (moves-along-direction pp c from-loc hstep vstep)
