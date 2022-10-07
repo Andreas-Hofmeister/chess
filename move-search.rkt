@@ -6,6 +6,7 @@
 (require "make-move.rkt")
 (require "check.rkt")
 (require "legal-moves.rkt")
+(require "knight-moves.rkt")
 
 (provide (all-defined-out))
 
@@ -260,3 +261,65 @@
 (define (count-pieces-in-expanded-center pp c)
   (count-pieces pp c expanded-central-squares-without-central-squares))
 
+(: squares-controlled-by-pawn (-> Square-location Color (Listof Square-location)))
+(define (squares-controlled-by-pawn loc c)
+  (let* ([rank-delta (if (equal? c 'white) 1 -1)]
+         [rank (Square-location-rank loc)]
+         [file (Square-location-file loc)]
+         [new-rank (+ rank rank-delta)])
+    (filter location-valid? (list (Square-location new-rank (+ file 1))
+                                  (Square-location new-rank (- file 1))))))
+
+(: squares-controlled-by-knight (-> Square-location (Listof Square-location)))
+(define (squares-controlled-by-knight loc)
+  (knight-target-squares loc))
+
+(: squares-controlled-by-rook (-> Square-location Piece-placements
+                                  (Listof Square-location)))
+(define (squares-controlled-by-rook loc pp)
+  (append (squares-along-direction-until-first-occupied pp loc 1 0)
+          (squares-along-direction-until-first-occupied pp loc -1 0)
+          (squares-along-direction-until-first-occupied pp loc 0 1)
+          (squares-along-direction-until-first-occupied pp loc 0 -1)))
+
+(: squares-controlled-by-bishop (-> Square-location Piece-placements
+                                    (Listof Square-location)))
+(define (squares-controlled-by-bishop loc pp)
+  (append (squares-along-direction-until-first-occupied pp loc 1 1)
+          (squares-along-direction-until-first-occupied pp loc 1 -1)
+          (squares-along-direction-until-first-occupied pp loc -1 1)
+          (squares-along-direction-until-first-occupied pp loc -1 -1)))
+
+(: squares-controlled-by-queen (-> Square-location Piece-placements
+                                   (Listof Square-location)))
+(define (squares-controlled-by-queen loc pp)
+  (append (squares-controlled-by-bishop loc pp)
+          (squares-controlled-by-rook loc pp)))
+
+(: squares-controlled-by-king (-> Square-location (Listof Square-location)))
+(define (squares-controlled-by-king loc)
+  (adjacent-squares loc))
+
+(: squares-controlled-by-piece (-> Piece-placements Color Square-location
+                                   (Listof Square-location)))
+(define (squares-controlled-by-piece pp c loc)
+  (let* ([square (get-square-by-location pp loc)])
+    (match square
+      ['empty-square '()]
+      [(Occupied-square sq-c p)
+       #:when (not (equal? sq-c c))
+       '()]
+      [(Occupied-square _ 'pawn) (squares-controlled-by-pawn loc c)]
+      [(Occupied-square _ 'rook) (squares-controlled-by-rook loc pp)]
+      [(Occupied-square _ 'knight) (squares-controlled-by-knight loc)]
+      [(Occupied-square _ 'bishop) (squares-controlled-by-bishop loc pp)]
+      [(Occupied-square _ 'queen) (squares-controlled-by-queen loc pp)]
+      [(Occupied-square _ 'king) (squares-controlled-by-king loc)])))
+
+(define-type Control-counts (Vectorof (Vectorof Integer)))
+
+(: make-empty-control-counts (-> (Vectorof (Vectorof Integer))))
+(define (make-empty-control-counts)
+  (vector (vector 0 0 0 0 0 0 0 0)))
+
+         
