@@ -320,6 +320,60 @@
 
 (: make-empty-control-counts (-> (Vectorof (Vectorof Integer))))
 (define (make-empty-control-counts)
-  (vector (vector 0 0 0 0 0 0 0 0)))
+  (vector (vector 0 0 0 0 0 0 0 0)
+          (vector 0 0 0 0 0 0 0 0)
+          (vector 0 0 0 0 0 0 0 0)
+          (vector 0 0 0 0 0 0 0 0)
+          (vector 0 0 0 0 0 0 0 0)
+          (vector 0 0 0 0 0 0 0 0)
+          (vector 0 0 0 0 0 0 0 0)
+          (vector 0 0 0 0 0 0 0 0)))
 
-         
+(: get-control-count (-> Control-counts Integer Integer Integer))
+(define (get-control-count ccs rank file)
+  (vector-ref (vector-ref ccs file) rank))
+
+(: get-control-count-by-location (-> Control-counts Square-location Integer))
+(define (get-control-count-by-location ccs loc)
+  (get-control-count ccs (Square-location-rank loc) (Square-location-file loc)))
+
+(: set-control-count! (-> Control-counts Integer Integer Integer Void))
+(define (set-control-count! ccs rank file new-count)
+  (vector-set! (vector-ref ccs file) rank new-count))
+
+(: add-control-count! (-> Control-counts Integer Integer Integer Void))
+(define (add-control-count! ccs rank file delta)
+  (set-control-count! ccs rank file (+ delta (get-control-count ccs rank file))))
+
+(: count-control (-> Piece-placements Color Control-counts))
+(define (count-control pp c)
+  (let ([ccs (make-empty-control-counts)])
+    (for* ([rank : Integer rank-indices]
+           [file : Integer file-indices])
+      (for ([loc : Square-location
+                 (squares-controlled-by-piece pp c (Square-location rank file))])
+        (add-control-count! ccs
+                            (Square-location-rank loc)
+                            (Square-location-file loc)
+                            1)))
+    ccs))
+
+(struct Development ([queens : Integer]
+                     [rooks : Integer]
+                     [knights : Integer]
+                     [bishops : Integer])
+  #:transparent #:mutable)
+
+(: queen-development (-> Piece-placements Color Integer))
+(define (queen-development pp c)
+  (let ([rank (if (equal? c 'white) 0 7)])
+    (match (get-square pp rank 3)
+      [(Occupied-square sq-c sq-p)
+       #:when (and (equal? sq-c c) (equal? sq-p 'queen))
+       0]
+      [_ 1])))
+
+
+
+
+
