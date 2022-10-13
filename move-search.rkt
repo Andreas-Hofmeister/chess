@@ -364,16 +364,47 @@
                      [bishops : Integer])
   #:transparent #:mutable)
 
+(: count-piece-at-location (-> Piece-placements Color Piece Integer Integer
+                               Integer))
+(define (count-piece-at-location pp c p rank file)
+  (match (get-square pp rank file)
+    [(Occupied-square sq-c sq-p)
+     #:when (and (equal? sq-c c) (equal? sq-p p))
+     1]
+    [_ 0]))
+
 (: queen-development (-> Piece-placements Color Integer))
 (define (queen-development pp c)
   (let ([rank (if (equal? c 'white) 0 7)])
-    (match (get-square pp rank 3)
-      [(Occupied-square sq-c sq-p)
-       #:when (and (equal? sq-c c) (equal? sq-p 'queen))
-       0]
-      [_ 1])))
+    (- 1 (count-piece-at-location pp c 'queen rank 3))))
 
+(: rooks-development (-> Piece-placements Color Integer))
+(define (rooks-development pp c)
+  (let* ([rank (if (equal? c 'white) 0 7)]
+         [a-rook (count-piece-at-location pp c 'rook rank 0)]
+         [h-rook (count-piece-at-location pp c 'rook rank 7)])
+    (- 2 (+ a-rook h-rook))))
 
+(: knights-development (-> Piece-placements Color Integer))
+(define (knights-development pp c)
+  (let* ([rank (if (equal? c 'white) 0 7)]
+         [b-knight (count-piece-at-location pp c 'knight rank 1)]
+         [g-knight (count-piece-at-location pp c 'knight rank 6)])
+    (- 2 (+ b-knight g-knight))))
+
+(: bishops-development (-> Piece-placements Color Integer))
+(define (bishops-development pp c)
+  (let* ([rank (if (equal? c 'white) 0 7)]
+         [c-bishop (count-piece-at-location pp c 'bishop rank 2)]
+         [f-bishop (count-piece-at-location pp c 'bishop rank 5)])
+    (- 2 (+ c-bishop f-bishop))))
+
+(: count-development (-> Piece-placements Color Development))
+(define (count-development pp c)
+  (Development (queen-development pp c)
+               (rooks-development pp c)
+               (knights-development pp c)
+               (bishops-development pp c)))
 
 
 
