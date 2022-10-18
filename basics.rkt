@@ -74,9 +74,9 @@
 (define file-indices (list 0 1 2 3 4 5 6 7))
 (: rank-indices (Listof Integer))
 (define rank-indices (list 0 1 2 3 4 5 6 7))
-(: indices-valid (-> Integer Integer Boolean))
-(define (indices-valid rank file)
-  (and (< 0 rank) (<= rank 7) (< 0 file) (<= file 7)))
+(: indices-valid? (-> Integer Integer Boolean))
+(define (indices-valid? rank file)
+  (and (<= 0 rank) (<= rank 7) (<= 0 file) (<= file 7)))
 
 (define pp-vector-ref (inst vector-ref File))
 
@@ -383,16 +383,16 @@
     ['() #t]
     [(cons hd tl) (if (not (cond-f hd)) #f (forall-in tl cond-f))]))
 
-(: find-piece (-> Position Color Piece (Listof Square-location) (Listof Square-location)))
-(define (find-piece pos c p locs)
+(: find-piece (-> Piece-placements Color Piece (Listof Square-location) (Listof Square-location)))
+(define (find-piece pp c p locs)
   (match locs
     ['() '()]
     [(cons (Square-location rank file) tl-locs)
-     (if (equal? (get-square (Position-pp pos) rank file)
+     (if (equal? (get-square pp rank file)
                  (Occupied-square c p))
-         (cons (Square-location rank file) (find-piece pos c p tl-locs))
-         (find-piece pos c p tl-locs))]))
+         (cons (Square-location rank file) (find-piece pp c p tl-locs))
+         (find-piece pp c p tl-locs))]))
 
-(: find-king (-> Position Color (Listof Square-location)))
-(define (find-king pos c) (find-piece pos c 'king valid-locations))
+(: find-king (-> Piece-placements Color (Listof Square-location)))
+(define (find-king pp c) (find-piece pp c 'king valid-locations))
 

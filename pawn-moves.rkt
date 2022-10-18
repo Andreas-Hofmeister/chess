@@ -26,7 +26,7 @@
      (match pawn-loc
        [(Square-location rank file)
         (let ([new-rank (advance-pawn c rank)])
-          (if (and (indices-valid new-rank file)
+          (if (and (indices-valid? new-rank file)
                    (square-empty-rank-file? pp new-rank file)
                    (not (= new-rank (final-rank-of-pawn c))))
               (list (From-to-move pawn-loc (Square-location new-rank file)))
@@ -76,7 +76,7 @@
       [(Position pp to-move (Some (Pawn-double-step ds-to-rank ds-on-file)) _)
        (if (and (equal? c to-move)
                 (= ds-to-rank rank)
-                (indices-valid to-rank ds-on-file)
+                (indices-valid? to-rank ds-on-file)
                 (= (difference ds-on-file file) 1))
            (list (En-passant pawn-loc (Square-location to-rank ds-on-file)))
            '())]
@@ -88,7 +88,7 @@
          [file (Square-location-file pawn-loc)]
          [pp (Position-pp pos)]
          [new-rank (advance-pawn c rank)])
-    (if (and (indices-valid new-rank file)
+    (if (and (indices-valid? new-rank file)
              (square-empty-rank-file? pp new-rank file)
              (= new-rank (final-rank-of-pawn c)))
         (for/list: : (Listof Move) ([p : Piece promotion-pieces])

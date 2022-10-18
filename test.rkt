@@ -17,3 +17,5 @@
 (define c2 (count-pieces-in-expanded-center pp1 'white))
 
 (define devc (count-development pp1 'black))
+(define pos2 (pos-from-fen "rnbqkbnr/pppppppp/8/8/2B2BN1/3Q4/PPPPPPPP/1N1R1RK1 w kq - 0 1"))
+(define rgc (count-rook-guards (Position-pp pos2) 'white 0 6 -1))

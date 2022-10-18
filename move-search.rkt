@@ -406,5 +406,62 @@
                (knights-development pp c)
                (bishops-development pp c)))
 
+(define-type Castling-status (U 'not-castled Castling-info))
+(struct Castling-info ([side : Castling-type]
+                       [pawn-guards : Integer]
+                       [rook-guards : Integer])
+  #:transparent #:mutable)
 
+(: count-squares (-> Piece-placements
+                     Integer Integer
+                     (-> Square (U 'count 'ignore 'abort))
+                     (-> Integer Integer Square-location)
+                     (-> Integer Integer Boolean)
+                     Integer
+                     Integer))
+(define (count-squares pp rank file cond-f next-f end-f start-v)
+  (if (end-f rank file) 0
+      (let* ([sq (get-square pp rank file)]
+             [next-loc (next-f rank file)]
+             [next-rank (Square-location-rank next-loc)]
+             [next-file (Square-location-file next-loc)])
+        (match (cond-f sq)
+          ['count (count-squares pp next-rank next-file cond-f next-f end-f
+                                 (+ 1 start-v))]
+          ['ignore (count-squares pp next-rank next-file cond-f next-f end-f start-v)]
+          ['abort start-v]))))
 
+(: count-rook-guards (-> Piece-placements Color Integer Integer Integer Integer))
+(define (count-rook-guards pp c king-rank king-file search-direction)
+  (: cond-f (-> Square (U 'count 'ignore 'abort)))
+  (define (cond-f sq)
+    (match sq
+      [(Occupied-square sq-c 'rook)
+       #:when (equal? sq-c c)
+       'count]
+      ['empty-square 'ignore]
+      [_ 'abort]))
+  (: next-f (-> Integer Integer Square-location))
+  (define (next-f rank file)
+    (Square-location rank (+ file search-direction)))
+  (: end-f (-> Integer Integer Boolean))
+  (define (end-f rank file)
+    (not (indices-valid? rank file)))
+  (let ([first-loc (next-f king-rank king-file)])
+    (count-squares pp
+                   (Square-location-rank first-loc)
+                   (Square-location-file first-loc)
+                   cond-f next-f end-f 0)))
+
+;(: determine-castling-status (-> Piece-placements Color Castling-status))
+;(define (determine-castling-status pp c)
+;  (let* ([king-castling-rank (if (equal? c 'white) 0 7)]
+;         [pawn-rank (if (equal? c 'white) 1 6)]
+;         [king-location (car (find-king pp c))]
+;         [king-rank (Square-location-rank king-location)]
+;         [king-file (Square-location-file king-location)]
+;         [queen-side-files (list 0 1 2)]
+;         [king-side-files (list 5 6 7)])
+;    (cond
+;      [(not (= king-castling-rank king-rank)) 'not-castled]
+;      [(not (or (set-member? 
