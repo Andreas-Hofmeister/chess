@@ -453,15 +453,51 @@
                    (Square-location-file first-loc)
                    cond-f next-f end-f 0)))
 
-;(: determine-castling-status (-> Piece-placements Color Castling-status))
-;(define (determine-castling-status pp c)
-;  (let* ([king-castling-rank (if (equal? c 'white) 0 7)]
-;         [pawn-rank (if (equal? c 'white) 1 6)]
-;         [king-location (car (find-king pp c))]
-;         [king-rank (Square-location-rank king-location)]
-;         [king-file (Square-location-file king-location)]
-;         [queen-side-files (list 0 1 2)]
-;         [king-side-files (list 5 6 7)])
-;    (cond
-;      [(not (= king-castling-rank king-rank)) 'not-castled]
-;      [(not (or (set-member? 
+(: queen-side-files (Listof Integer))
+(define queen-side-files (list 0 1 2))
+
+(: king-side-files (Listof Integer))
+(define king-side-files (list 5 6 7))
+
+(: count-pawn-guards (-> Piece-placements Color Castling-type Integer))
+(define (count-pawn-guards pp c ct)
+  (let ([rank (if (equal? c 'white) 1 6)]
+        [files (if (equal? ct 'queen-side) queen-side-files king-side-files)])
+    (for/sum ([file : Integer files])
+      (match (get-square pp rank file)
+        [(Occupied-square sq-c 'pawn)
+         #:when
+         (equal? sq-c c)
+         1]
+        [_ 0]))))
+
+(: determine-king-location (-> Integer (U 'queen-side 'king-side 'middle)))
+(define (determine-king-location king-file)
+    (cond
+      [(set-member? queen-side-files king-file) 'queen-side]
+      [(set-member? king-side-files king-file) 'king-side]
+      [else 'middle]))
+
+(: determine-castling-status (-> Piece-placements Color Castling-status))
+(define (determine-castling-status pp c)
+  (let* ([king-castling-rank (if (equal? c 'white) 0 7)]
+         [pawn-rank (if (equal? c 'white) 1 6)]
+         [king-location (car (find-king pp c))]
+         [king-rank (Square-location-rank king-location)]
+         [king-file (Square-location-file king-location)]
+         [king-location (determine-king-location king-file)])
+    (cond
+      [(not (= king-castling-rank king-rank)) 'not-castled]
+      [(equal? king-location 'middle) 'not-castled]
+      [else
+       (let* ([castling-type
+               (if (equal? king-location 'queen-side) 'queen-side 'king-side)]
+              [rook-guard-search-direction
+               (if (equal? castling-type 'queen-side) 1 -1)]
+              [rook-guards
+               (count-rook-guards pp c king-rank king-file rook-guard-search-direction)]
+              [pawn-guards (count-pawn-guards pp c castling-type)])
+         (cond
+           [(= rook-guards 0) 'not-castled]
+           [(= pawn-guards 0) 'not-castled]
+           [else (Castling-info castling-type pawn-guards rook-guards)]))])))
