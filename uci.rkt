@@ -245,7 +245,7 @@
 
 (: best-moves (-> Position (Listof Move)))
 (define (best-moves pos)
-  (let* ([evaluations (evaluate-moves 3 pos)]
+  (let* ([evaluations (evaluate-moves evaluate-opening-position 2 pos)]
          [cmp (cmp-of-player (Position-to-move pos))]
          [sorted-evaluations (sort evaluations cmp)]
          [best-value (move-evaluation->integer (car sorted-evaluations))]

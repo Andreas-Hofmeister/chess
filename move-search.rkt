@@ -58,7 +58,7 @@
     [('stalemate 'stalemate) #t]))
 
 ; Bigger numbers mean white has a greater advantage
-; The result is in "tenth of a pawn" (centipawns)
+; The result is in "hundreth of a pawn" (centipawns)
 (: evaluate-position (-> Position Position-evaluation))
 (define (evaluate-position pos)
   (let ([number-of-legal-moves (length (legal-moves pos))])
@@ -156,8 +156,8 @@
     ['white maximal-evaluation]
     ['black minimal-evaluation]))
 
-(: evaluate-moves (-> Integer Position (Listof Move-evaluation)))
-(define (evaluate-moves depth pos)
+(: evaluate-moves (-> (-> Position Position-evaluation) Integer Position (Listof Move-evaluation)))
+(define (evaluate-moves evaluate-position depth pos)
   (let ([moves-to-consider (moves-worth-considering pos)])
     (if (empty? moves-to-consider)
         (list (No-move-evaluation (evaluate-position pos)))
@@ -172,7 +172,9 @@
                      (discounted-evaluation
                       move
                       (min-or-max
-                       (evaluate-moves (- depth 1) (make-move pos move)))))])
+                       (evaluate-moves evaluate-position
+                                       (- depth 1)
+                                       (make-move pos move)))))])
              (map evaluate-move moves-to-consider))]
           [else '()]))))
 
@@ -501,3 +503,69 @@
            [(= rook-guards 0) 'not-castled]
            [(= pawn-guards 0) 'not-castled]
            [else (Castling-info castling-type pawn-guards rook-guards)]))])))
+
+; Having pawns in the center is good.
+; Having minor pieces in the center is ok.
+; Not having anything in the center is not good.
+(: evaluate-central-squares (-> Piece-placements Color Integer))
+(define (evaluate-central-squares pp c)
+  (let* ([counts (count-pieces-in-center pp c)]
+         [pawns (Piece-counts-pawns counts)]
+         [bishops (Piece-counts-bishops counts)]
+         [knights (Piece-counts-knights counts)])
+    (+ (* 2 pawns) bishops knights)))
+
+; Having more control over the central squares is good
+(: evaluate-central-control (-> Piece-placements Color Integer))
+(define (evaluate-central-control pp c)
+  (let ([cc (count-control pp c)])
+    (for/sum : Integer ([loc central-squares])
+      (get-control-count-by-location cc loc))))
+
+; Developing the pieces is good. Developing the knights and bishops is
+; more important than developing the queen and the rooks.
+(: evaluate-development (-> Piece-placements Color Integer))
+(define (evaluate-development pp c)
+  (let* ([dev (count-development pp c)]
+         [bishops (Development-bishops dev)]
+         [knights (Development-knights dev)]
+         [rooks (Development-rooks dev)]
+         [queen (Development-queens dev)])
+    (+ (* 2 bishops) (* 2 knights) queen rooks)))
+
+; Being castled is better than not being castled. 
+(: evaluate-castling (-> Piece-placements Color Integer))
+(define (evaluate-castling pp c)
+  (match (determine-castling-status pp c)
+    ['not-castled 0]
+    [_ 1]))
+
+(: balance (-> (-> Color Integer) Integer))
+(define (balance f)
+  (- (f 'white) (f 'black)))
+
+; Bigger numbers mean white has a greater advantage
+; The result is in "hundreth of a pawn" (centipawns)
+(: evaluate-opening-position (-> Position Position-evaluation))
+(define (evaluate-opening-position pos)
+  (let ([number-of-legal-moves (length (legal-moves pos))])
+    (if (= 0 number-of-legal-moves)
+        (if (in-check? pos (Position-to-move pos))
+            (Checkmate (opponent-of (Position-to-move pos)))
+            'stalemate)
+        (let* ([pp (Position-pp pos)]
+               [material-balance (material-balance-of-position pp)]
+               [center
+                (balance (lambda ([c : Color]) (evaluate-central-squares pp c)))]
+               [central-control
+                (balance (lambda ([c : Color]) (evaluate-central-control pp c)))]
+               [development
+                (balance (lambda ([c : Color]) (evaluate-development pp c)))]
+               [castling
+                (balance (lambda ([c : Color]) (evaluate-castling pp c)))])
+               
+        (Normal-evaluation (+ (* 100 material-balance)
+                              (* 1 center)
+                              (* 1 central-control)
+                              (* 1 development)
+                              (* 5 castling)))))))
