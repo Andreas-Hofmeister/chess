@@ -5,6 +5,7 @@
 (require "movement-basics.rkt")
 (require "attacks.rkt")
 (require "check.rkt")
+(require "castling.rkt")
 (require "make-move.rkt")
 
 (provide (all-defined-out))
@@ -17,7 +18,8 @@
 (define (legal-moves pos)
   (filter (lambda ([move : Move])
             (not (puts-king-in-check? pos move)))
-          (moves-by-player pos (Position-to-move pos))))
+          (append (moves-by-player pos (Position-to-move pos))
+                  (castling-moves pos (Position-to-move pos)))))
 
 (: is-checkmate (-> Position Boolean))
 (define (is-checkmate pos)

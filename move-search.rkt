@@ -555,15 +555,10 @@
             'stalemate)
         (let* ([pp (Position-pp pos)]
                [material-balance (material-balance-of-position pp)]
-               [center
-                (balance (lambda ([c : Color]) (evaluate-central-squares pp c)))]
-               [central-control
-                (balance (lambda ([c : Color]) (evaluate-central-control pp c)))]
-               [development
-                (balance (lambda ([c : Color]) (evaluate-development pp c)))]
-               [castling
-                (balance (lambda ([c : Color]) (evaluate-castling pp c)))])
-               
+               [center (balance (curry evaluate-central-squares pp))]
+               [central-control (balance (curry evaluate-central-control pp))]
+               [development (balance (curry evaluate-development pp))]
+               [castling (balance (curry evaluate-castling pp))])
         (Normal-evaluation (+ (* 100 material-balance)
                               (* 1 center)
                               (* 1 central-control)

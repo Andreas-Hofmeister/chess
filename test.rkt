@@ -22,3 +22,8 @@
 (define pgc (count-pawn-guards (Position-pp pos2) 'white 'king-side))
 (define wcs (determine-castling-status (Position-pp pos2) 'white))
 (define bcs (determine-castling-status (Position-pp pos2) 'black))
+
+(define castle-pos (pos-from-fen "r3kb1r/p2qp1pp/2p1b3/1p1pPp2/8/1BP1B3/P1P2PPP/R2Q1RK1 b qk - 0 1"))
+
+(define cp-moves (legal-moves castle-pos))
+(define evs (evaluate-moves evaluate-opening-position 2 castle-pos))
