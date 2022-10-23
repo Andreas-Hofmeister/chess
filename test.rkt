@@ -27,3 +27,14 @@
 
 (define cp-moves (legal-moves castle-pos))
 (define evs (evaluate-moves evaluate-opening-position 2 castle-pos))
+
+(define pos3 (make-initial-position))
+(define evs2 (evaluate-moves evaluate-opening-position 1 pos3))
+(define ev (evaluate-opening-position pos3))
+(define e2e4 (Double-step (Square-location 1 4) (Square-location 3 4)))
+(define d2d4 (Double-step (Square-location 1 3) (Square-location 3 3)))
+(define pos4 (make-move pos3 e2e4))
+(define pos5 (make-move pos3 d2d4))
+(define ev5 (evaluate-opening-position pos5))
+(define pp4 (Position-pp pos4))
+(define pp5 (Position-pp pos5))

@@ -42,7 +42,7 @@
     (value-of-square (get-square pp rank file))))
 
 (define-type Position-evaluation (U Normal-evaluation Checkmate 'stalemate))
-(struct Normal-evaluation ([value : Integer]))
+(struct Normal-evaluation ([value : Integer]) #:transparent)
 (struct Checkmate ([color : Color]) #:transparent)
 
 (: position-evaluation<= (-> Position-evaluation Position-evaluation Boolean))
@@ -513,7 +513,7 @@
          [pawns (Piece-counts-pawns counts)]
          [bishops (Piece-counts-bishops counts)]
          [knights (Piece-counts-knights counts)])
-    (+ (* 2 pawns) bishops knights)))
+    (+ (* 4 pawns) bishops knights)))
 
 ; Having more control over the central squares is good
 (: evaluate-central-control (-> Piece-placements Color Integer))
