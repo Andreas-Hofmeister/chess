@@ -133,10 +133,6 @@
        [(Checkmate c) (Checkmate-move-evaluation move 1 c)]
        ['stalemate (Normal-move-evaluation move 0)])]))
 
-(: moves-worth-considering (-> Position (Listof Move)))
-(define (moves-worth-considering pos)
-  (legal-moves pos))
-
 (: minimal-evaluation (-> (Listof Move-evaluation) Move-evaluation))
 (define (minimal-evaluation l)
   (match l
@@ -156,9 +152,11 @@
     ['white maximal-evaluation]
     ['black minimal-evaluation]))
 
-(: evaluate-moves (-> (-> Position Position-evaluation) Integer Position (Listof Move-evaluation)))
-(define (evaluate-moves evaluate-position depth pos)
-  (let ([moves-to-consider (moves-worth-considering pos)])
+(: evaluate-moves (-> (-> Position Position-evaluation)
+                      (-> Position (Listof Move))
+                      Integer Position (Listof Move-evaluation)))
+(define (evaluate-moves evaluate-position determine-candidate-moves depth pos)
+  (let ([moves-to-consider (determine-candidate-moves pos)])
     (if (empty? moves-to-consider)
         (list (No-move-evaluation (evaluate-position pos)))
         (cond
@@ -173,6 +171,7 @@
                       move
                       (min-or-max
                        (evaluate-moves evaluate-position
+                                       determine-candidate-moves
                                        (- depth 1)
                                        (make-move pos move)))))])
              (map evaluate-move moves-to-consider))]
@@ -564,3 +563,26 @@
                               (* 1 central-control)
                               (* 1 development)
                               (* 5 castling)))))))
+
+(: capturing-moves (-> (Listof Move) (Listof Move)))
+(define (capturing-moves moves)
+   (filter capturing-move? moves))
+
+(: puts-opponent-in-check? (-> Position Move Boolean))
+(define (puts-opponent-in-check? pos move)
+  (in-check? (make-move pos move) (opponent-of (Position-to-move pos))))
+
+(: checking-moves (-> Position (Listof Move) (Listof Move)))
+(define (checking-moves pos moves)
+  (filter (curry puts-opponent-in-check? pos) moves))
+
+(: forced-mate-search-moves (-> Position (Listof Move)))
+(define (forced-mate-search-moves pos)
+  (if (in-check? pos (Position-to-move pos))
+      (legal-moves pos)
+      (checking-moves pos (legal-moves pos))))
+
+(: forced-mate-search (-> Integer Position (Listof Move-evaluation)))
+(define (forced-mate-search depth pos)
+  (evaluate-moves evaluate-opening-position forced-mate-search-moves depth pos))
+

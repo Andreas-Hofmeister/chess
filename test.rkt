@@ -6,6 +6,7 @@
 (require "legal-moves.rkt")
 (require "make-move.rkt")
 (require "move-search.rkt")
+(require "check.rkt")
 (require "fen.rkt")
 
 
@@ -26,10 +27,10 @@
 (define castle-pos (pos-from-fen "r3kb1r/p2qp1pp/2p1b3/1p1pPp2/8/1BP1B3/P1P2PPP/R2Q1RK1 b qk - 0 1"))
 
 (define cp-moves (legal-moves castle-pos))
-(define evs (evaluate-moves evaluate-opening-position 2 castle-pos))
+(define evs (evaluate-moves evaluate-opening-position legal-moves 2 castle-pos))
 
 (define pos3 (make-initial-position))
-(define evs2 (evaluate-moves evaluate-opening-position 1 pos3))
+(define evs2 (evaluate-moves evaluate-opening-position legal-moves 1 pos3))
 (define ev (evaluate-opening-position pos3))
 (define e2e4 (Double-step (Square-location 1 4) (Square-location 3 4)))
 (define d2d4 (Double-step (Square-location 1 3) (Square-location 3 3)))
