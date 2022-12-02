@@ -564,6 +564,15 @@
                               (* 1 development)
                               (* 5 castling)))))))
 
+(: checkmate-position-evaluation (-> Position Position-evaluation))
+(define (checkmate-position-evaluation pos)
+  (let ([number-of-legal-moves (length (legal-moves pos))])
+    (if (= 0 number-of-legal-moves)
+        (if (in-check? pos (Position-to-move pos))
+            (Checkmate (opponent-of (Position-to-move pos)))
+            'stalemate)
+        (Normal-evaluation 0))))
+
 (: capturing-moves (-> (Listof Move) (Listof Move)))
 (define (capturing-moves moves)
    (filter capturing-move? moves))
@@ -584,5 +593,16 @@
 
 (: forced-mate-search (-> Integer Position (Listof Move-evaluation)))
 (define (forced-mate-search depth pos)
-  (evaluate-moves evaluate-opening-position forced-mate-search-moves depth pos))
+  (evaluate-moves checkmate-position-evaluation forced-mate-search-moves depth pos))
 
+(: threatens-forced-checkmate? (-> Position Move Boolean))
+(define (threatens-forced-checkmate? pos move)
+  (let ([evs (forced-mate-search 7 (switch-to-move (make-move pos move)))])
+    (exists-in evs (lambda ([ev : Move-evaluation])
+                     (match ev
+                       [(Checkmate-move-evaluation _ _ _) #t]
+                       [_ #f])))))
+
+(: forced-checkmate-threats (-> Position (Listof Move) (Listof Move)))
+(define (forced-checkmate-threats pos moves)
+  (filter (curry threatens-forced-checkmate? pos) moves))

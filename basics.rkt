@@ -236,6 +236,11 @@
                   [castling-availabilities : (Listof Castling-availability)])
   #:transparent)
 
+(: switch-to-move (-> Position Position))
+(define (switch-to-move pos)
+  (Position (Position-pp pos) (opponent-of (Position-to-move pos))
+            'none (Position-castling-availabilities pos)))
+
 (: make-initial-position (-> Position))
 (define (make-initial-position)
   (Position (make-initial-pp) 'white 'none initial-castling-availabilities))
