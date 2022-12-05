@@ -25,4 +25,9 @@
 (define fcm3evs (forced-mate-search 3 fcm3))
 (define fcm4evs (forced-mate-search 3 fcm4))
 (define fcm5evs (forced-mate-search 9 fcm5))
-(define fcm6evs (forced-mate-search 11 fcm6))
+;takes a long time:
+;(define fcm6evs (forced-mate-search 11 fcm6))
+
+; Forced checkmate threats
+(define fcmt1pos (pos-from-fen "q4r1k/5p1p/p2pp2Q/1p2b3/8/2P2R2/P1P3RP/7K w - - 0 1"))
+(define fcmt1 (forced-checkmate-threats fcmt1pos (legal-moves fcmt1pos)))
