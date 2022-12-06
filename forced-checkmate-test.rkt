@@ -24,10 +24,14 @@
 (define fcm2evs (forced-mate-search 3 fcm2))
 (define fcm3evs (forced-mate-search 3 fcm3))
 (define fcm4evs (forced-mate-search 3 fcm4))
-(define fcm5evs (forced-mate-search 9 fcm5))
+;(define fcm5evs (forced-mate-search 9 fcm5))
 ;takes a long time:
 ;(define fcm6evs (forced-mate-search 11 fcm6))
 
+
+;(define fcmt1pos (pos-from-fen "q4r1k/5p1p/p2pp2Q/1p2b3/8/2P2R2/P1P3RP/7K w - - 0 1"))
+;(define fcmt1 (forced-checkmate-threats fcmt1pos (legal-moves fcmt1pos)))
+
 ; Forced checkmate threats
-(define fcmt1pos (pos-from-fen "q4r1k/5p1p/p2pp2Q/1p2b3/8/2P2R2/P1P3RP/7K w - - 0 1"))
-(define fcmt1 (forced-checkmate-threats fcmt1pos (legal-moves fcmt1pos)))
+(define fcmt2pos (pos-from-fen "r2r2k1/pb3ppp/1p6/2p3q1/P2p2B1/3P2PP/1PP2P2/R2QR1K1 b - - 0 1"))
+(define fcmt2 (forced-checkmate-threats fcmt2pos (legal-moves fcmt2pos)))
