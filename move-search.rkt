@@ -606,3 +606,42 @@
 (: forced-checkmate-threats (-> Position (Listof Move) (Listof Move)))
 (define (forced-checkmate-threats pos moves)
   (filter (curry threatens-forced-checkmate? pos) moves))
+
+
+(: tactical-search (-> (-> Position Position-evaluation)
+                       (-> Position (Listof Move))
+                       (-> Position (Listof Move))
+                      Integer Position (Listof Move-evaluation)))
+(define (tactical-search evaluate-position
+                        determine-candidate-offensive-moves
+                        determine-candidate-defensive-moves
+                        depth pos)
+  (let ([offensive-moves (determine-candidate-offensive-moves pos)]
+        [defensive-moves (determine-candidate-defensive-moves pos)]
+        [do-nothing (No-move-evaluation (evaluate-position pos))])
+    (cond
+      [(= depth 0) (list do-nothing)]
+      [(> depth 0)
+       (let* ([player (Position-to-move pos)]
+              [opponent (opponent-of player)]
+              [min-or-max-opponent (evaluation-function-for-player opponent)]
+              [min-or-max-self (evaluation-function-for-player player)]
+              [better? (if (equal? player 'white) move-evaluation> move-evaluation<=)]
+              [evaluate-move
+               (lambda ([move : Move])
+                 (discounted-evaluation
+                  move
+                  (min-or-max-opponent
+                   (tactical-search evaluate-position
+                                    determine-candidate-offensive-moves
+                                    determine-candidate-defensive-moves
+                                    (- depth 1)
+                                    (make-move pos move)))))]
+              [offensive-evaluations (map evaluate-move offensive-moves)]
+              [defensive-evaluations (map evaluate-move defensive-moves)]
+              [optimal-offense (min-or-max-self offensive-evaluations)]
+              [optimal-defense (min-or-max-self defensive-evaluations)])
+         (if (better? do-nothing optimal-offense)
+             defensive-evaluations
+             (append offensive-evaluations defensive-evaluations)))]
+         [else '()])))

@@ -35,3 +35,4 @@
 ; Forced checkmate threats
 (define fcmt2pos (pos-from-fen "r2r2k1/pb3ppp/1p6/2p3q1/P2p2B1/3P2PP/1PP2P2/R2QR1K1 b - - 0 1"))
 (define fcmt2 (forced-checkmate-threats fcmt2pos (legal-moves fcmt2pos)))
+
