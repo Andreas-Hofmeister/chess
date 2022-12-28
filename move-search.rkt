@@ -609,16 +609,17 @@
 
 
 (: tactical-search (-> (-> Position Position-evaluation)
-                       (-> Position (Listof Move))
-                       (-> Position (Listof Move))
+                       (-> Position (Listof Move) (Listof Move))
+                       (-> Position (Listof Move) (Listof Move))
                       Integer Position (Listof Move-evaluation)))
 (define (tactical-search evaluate-position
                         determine-candidate-offensive-moves
                         determine-candidate-defensive-moves
                         depth pos)
-  (let ([offensive-moves (determine-candidate-offensive-moves pos)]
-        [defensive-moves (determine-candidate-defensive-moves pos)]
-        [do-nothing (No-move-evaluation (evaluate-position pos))])
+  (let* ([all-moves (legal-moves pos)]
+         [offensive-moves (determine-candidate-offensive-moves pos all-moves)]
+         [defensive-moves (determine-candidate-defensive-moves pos all-moves)]
+         [do-nothing (No-move-evaluation (evaluate-position pos))])
     (cond
       [(= depth 0) (list do-nothing)]
       [(> depth 0)
@@ -645,3 +646,11 @@
              defensive-evaluations
              (append offensive-evaluations defensive-evaluations)))]
          [else '()])))
+
+(: offensive-moves (-> Position (Listof Move) (Listof Move)))
+(define (offensive-moves pos moves)
+  (filter (lambda ([move : Move])
+            (or (capturing-move? move)
+                (puts-opponent-in-check? pos move)
+                (threatens-forced-checkmate? pos move)))
+          moves))
