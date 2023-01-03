@@ -654,3 +654,9 @@
                 (puts-opponent-in-check? pos move)
                 (threatens-forced-checkmate? pos move)))
           moves))
+
+(: defensive-moves (-> Position (Listof Move) (Listof Move)))
+(define (defensive-moves pos moves)
+  (if (in-check? pos (Position-to-move pos))
+      moves
+      '()))
