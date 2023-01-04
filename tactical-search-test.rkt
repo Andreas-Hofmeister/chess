@@ -16,6 +16,9 @@
 ; Puzzle #I4bSW in lichess.org (forks the king and a rook with a queen to capture the rook)
 (define pos3 (pos-from-fen "3R4/5pk1/1n1p2p1/pPpP4/5PP1/1P1Q4/5K2/7q b - - 6 40"))
 
+(define s1 (set))
+
+
 (define m3 (legal-moves pos3))
-(define o3 (offensive-moves pos3 m3))
+(define t3 (forced-checkmate-threats pos3 m3))
 

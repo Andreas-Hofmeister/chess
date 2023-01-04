@@ -588,7 +588,8 @@
 (: forced-mate-search-moves (-> Position (Listof Move)))
 (define (forced-mate-search-moves pos)
   (if (in-check? pos (Position-to-move pos))
-      (legal-moves pos)
+      (let ([moves (legal-moves pos)])
+        (if (<= (length moves) 2) moves '()))
       (checking-moves pos (legal-moves pos))))
 
 (: forced-mate-search (-> Integer Position (Listof Move-evaluation)))
