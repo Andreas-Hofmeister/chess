@@ -1,4 +1,4 @@
-#lang racket
+#lang typed/racket
 (require racket/match)
 
 (require "basics.rkt")
@@ -16,4 +16,11 @@
 ; 'number-of-moves' moves, with the first move being 'first-move'
 (struct Forced-checkmate ([color : Color]
                           [number-of-moves : Integer]
-                          [first-move : 
+                          [first-move : Move]) #:transparent)
+
+; The sets of defenders and attackers of a piece are such that the attacker can gain a
+; material advantage through a sequence of exchanges.
+(struct Piece-is-en-prise ([piece : Piece]
+                           [location : Square-location]
+                           [exchanges : (Listof Move)]))
+
