@@ -9,6 +9,13 @@
 (require "check.rkt")
 (require "fen.rkt")
 
+(define-type Tactical-pattern
+  (U Checkmate
+     Forced-checkmate
+     Piece-is-en-prise
+     Fork
+     Threat))
+
 ; The player with color 'color' has checkmated his opponent
 (struct Checkmate ([color : Color]) #:transparent)
 
@@ -23,4 +30,25 @@
 (struct Piece-is-en-prise ([piece : Piece]
                            [location : Square-location]
                            [exchanges : (Listof Move)]))
+
+; A piece of color 'color' is attacking two or more enemy pieces simultaneously. Whether
+; or not the pieces are actually en prise or the fork is somehow defensible is not checked
+; by the functions that look for forks and produce values of type Fork.
+(struct Fork ([color : Color]
+              [piece : Piece]
+              [location : Square-location]
+              [enemies : (Listof (Pair Piece Square-location))]))
+
+; Several pieces are en prise simultaneously. Examples of how this happens in games
+; are forks and discovered attacks. The functions that look for forks and produce
+; values of type Fork do not check whether the attacked pieces are actually en prise.
+(struct Multi-attack ([attacked-pieces : (Listof Piece-is-en-prise)]))
+
+; If the player with color 'color' were allowed to play the moves 'steps'
+; consecutively, then he could produce the tactical pattern 'pattern'.
+; Example: (Threat 'white '()
+;                  (Forced-checkmate 'white 2
+;                                    (Capture (Square-location 5 7) (Square-location 6 7))))
+; means that if it were white's turn, white would have a forced checkmate in 2.
+(struct Threat ([color : Color] [steps : (Listof Move)] [pattern : Tactical-pattern]))
 
