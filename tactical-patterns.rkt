@@ -52,3 +52,19 @@
 ; means that if it were white's turn, white would have a forced checkmate in 2.
 (struct Threat ([color : Color] [steps : (Listof Move)] [pattern : Tactical-pattern]))
 
+; Auxiliary function that determines whether a position is a checkmate. Produces a
+; list with one Tactical-pattern of type Checkmate when the position is a checkmate and
+; an empty list otherwise.
+(: checkmate-patterns (-> Position (Listof Tactical-pattern)))
+(define (checkmate-patterns pos)
+  (let ([number-of-legal-moves (length (legal-moves pos))]
+        [to-move (Position-to-move pos)])
+    (if (and (= 0 number-of-legal-moves)
+             (in-check? pos to-move))
+        (list (Checkmate (opponent-of to-move)))
+        '())))
+
+; Finds all tactical patterns that are not threats
+(: immediate-tactical-patterns (-> Position (Listof Tactical-pattern)))
+(define (immediate-tactical-patterns pos)
+  (append (checkmate-patterns pos)))
