@@ -68,3 +68,49 @@
 (: immediate-tactical-patterns (-> Position (Listof Tactical-pattern)))
 (define (immediate-tactical-patterns pos)
   (append (checkmate-patterns pos)))
+
+(define-type Job (U Attacks Defends))
+
+; Sometimes a piece only becomes a direct attacker after an initial exchange has been
+; made. This is reflected in the 'directness' field. A direct attacker has
+; directness = 0 and can capture the enemy piece. If a piece can capture on the
+; target square after one exchange, then directness = 1, etc.
+; An example where this happens is when a queen and two rooks stands behind one
+; another on a file.
+(struct Attacks ([attacker-piece : Piece]
+                 [attacker-color : Color]
+                 [attacker-location : Square-location]
+                 [target-piece : Piece]
+                 [target-location : Square-location]
+                 [directness : Integer]))
+
+; For an explanation of the 'directness' field, see Attacks-piece above.
+(struct Defends ([defender-piece : Piece]
+                 [defender-color : Color]
+                 [defender-location : Square-location]
+                 [target-piece : Piece]
+                 [target-location : Square-location]
+                 [directness : Integer]))
+
+(define-type JobTable (HashTable (Pair Piece Square-location) (Listof Job)))
+
+(: make-job-table (-> JobTable))
+(define (make-job-table) (make-hash))
+(: job-table-set! (-> JobTable (Pair Piece Square-location) (Listof Job)
+                      Void))
+(define job-table-set! (inst hash-set! (Pair Piece Square-location) (Listof Job)))
+(: job-table-ref (-> JobTable (Pair Piece Square-location) (Listof Job) (Listof Job)))
+(define (job-table-ref table key default)
+  (if (hash-has-key? table key)
+      (hash-ref table key)
+      default))
+
+
+(: direct-attackers (-> Position (Listof Move) JobTable))
+(define (direct-attackers pos legal-moves)
+  (let* ([result (make-job-table)]
+         [add-job
+          (lambda ([piece : Piece] [location : Square-location] [job : Job])
+            (job-table-set! result (cons piece location)
+                            (cons job (job-table-ref result (cons piece location) '()))))])
+    result))
