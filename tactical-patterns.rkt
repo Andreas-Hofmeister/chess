@@ -105,7 +105,6 @@
       (hash-ref table key)
       default))
 
-
 (: direct-attackers (-> Position (Listof Move) JobTable))
 (define (direct-attackers pos legal-moves)
   (let* ([result (make-job-table)]
