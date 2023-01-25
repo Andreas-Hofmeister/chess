@@ -7,6 +7,7 @@
 (require "make-move.rkt")
 (require "move-search.rkt")
 (require "check.rkt")
+(require "position-etc.rkt")
 (require "fen.rkt")
 
 (define-type Tactical-pattern
