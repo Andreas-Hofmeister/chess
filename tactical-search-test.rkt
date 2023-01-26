@@ -29,7 +29,8 @@
 (define pos9 (pos-from-fen "3r1r1R/ppp1p1k1/6P1/5p2/4N2Q/5P2/2q1K3/3n2N1 w - - 0 27"))
 ; Exercise 2 for chapter "Cómo encontrar las combinaciones" (p. 256)
 (define pos10 (pos-from-fen "q4r1k/5p1p/p2pp2Q/1p2b3/8/2P2R2/P1P4P/6RK w - - 0 1"))
-
+; Puzzle #49fEC on lichess.org (simultaneously threaten checkmate and a fork to win a bishop)"
+(define pos11 (pos-from-fen "5rk1/5pp1/4pq1p/1B6/8/P5Q1/3n1PPP/3R2K1 b - - 2 26"))
 
 
 (define m3 (legal-moves pos3))
