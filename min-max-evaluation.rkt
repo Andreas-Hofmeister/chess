@@ -186,13 +186,13 @@
                         (begin
                           (when (move-evaluation> ev current-alpha)
                             (set! current-alpha ev))
-                          (if (move-evaluation> ev current-beta)
+                          (if (move-evaluation<= current-beta ev)
                               (list ev)
                               (cons ev (process-moves (cdr moves)))))
                         (begin
                           (when (move-evaluation< ev current-beta)
                             (set! current-beta ev))
-                          (if (move-evaluation< ev current-alpha)
+                          (if (move-evaluation<= ev current-alpha)
                               (list ev)
                               (cons ev (process-moves (cdr moves)))))))))
             (process-moves moves-to-consider))))))
