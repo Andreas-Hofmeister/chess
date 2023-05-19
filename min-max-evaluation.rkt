@@ -24,7 +24,7 @@
          (find-optimal-element rest better a)
          (find-optimal-element rest better best-so-far))]))
 
-(define-type Position-evaluation (U Normal-evaluation Checkmate-evaluation 'stalemate))
+(define-type Position-evaluation (U Normal-evaluation Checkmate-evaluation 'stalemate 'minus-infinity 'plus-infinity))
 (struct Normal-evaluation ([value : Integer]) #:transparent)
 (struct Checkmate-evaluation ([color : Color]) #:transparent)
 
@@ -38,8 +38,12 @@
     [((Checkmate-evaluation c) _) (if (equal? c 'black) #t #f)]
     [('stalemate (Normal-evaluation v)) (<= 0 v)]
     [('stalemate (Checkmate-evaluation c)) (if (equal? c 'white) #t #f)]
-    [('stalemate 'stalemate) #t]))
-
+    [('stalemate 'stalemate) #t]
+    [('minus-infinity _) #t]
+    [(_ 'plus-infinity) #t]
+    [('plus-infinity _) #f]
+    [(_ 'minus-infinity) #f]))
+    
 (define-type Move-evaluation (U Normal-move-evaluation Checkmate-move-evaluation
                                 No-move-evaluation))
 (struct Normal-move-evaluation ([move : Move] [v : Integer]) #:transparent)
@@ -77,6 +81,20 @@
 (: move-evaluation> (-> Move-evaluation Move-evaluation Boolean))
 (define (move-evaluation> ev1 ev2)
   (not (move-evaluation<= ev1 ev2)))
+
+(: move-evaluation= (-> Move-evaluation Move-evaluation Boolean))
+(define (move-evaluation= ev1 ev2)
+  (and (move-evaluation<= ev1 ev2) (move-evaluation<= ev2 ev1)))
+
+(: move-evaluation>= (-> Move-evaluation Move-evaluation Boolean))
+(define (move-evaluation>= ev1 ev2)
+  (or (move-evaluation> ev1 ev2)
+      (move-evaluation= ev1 ev2)))
+
+(: move-evaluation< (-> Move-evaluation Move-evaluation Boolean))
+(define (move-evaluation< ev1 ev2)
+  (and (move-evaluation<= ev1 ev2)
+       (not (move-evaluation<= ev2 ev1))))
 
 (: value-of-normal-evaluation (-> Move-evaluation Integer))
 (define (value-of-normal-evaluation ev)
@@ -140,3 +158,41 @@
              (map evaluate-move moves-to-consider))]
           [else '()]))))
 
+(: evaluate-moves-alpha-beta (-> (-> Position Position-evaluation)
+                                 (-> Position (Listof Move))
+                                 Integer Position Move-evaluation Move-evaluation
+                                 (Listof Move-evaluation)))
+(define (evaluate-moves-alpha-beta evaluate-position determine-candidate-moves depth pos alpha beta)
+  (let ([moves-to-consider (if (= depth 0) '() (determine-candidate-moves pos))])
+    (if (empty? moves-to-consider) (list (No-move-evaluation (evaluate-position pos)))
+        (let* ([player (Position-to-move pos)]
+               [opponent (opponent-of player)]
+               [min-or-max (evaluation-function-for-player opponent)]
+               [current-alpha alpha]
+               [current-beta beta])
+          (begin
+            (: process-moves (-> (Listof Move) (Listof Move-evaluation)))
+            (define (process-moves moves)
+              (if (empty? moves) '()
+                  (let* ([move (car moves)]
+                         [rec-evs (evaluate-moves-alpha-beta evaluate-position
+                                                             determine-candidate-moves
+                                                             (- depth 1)
+                                                             (make-move pos move)
+                                                             current-alpha
+                                                             current-beta)]
+                         [ev (discounted-evaluation move (min-or-max rec-evs))])
+                    (if (eq? player 'white)
+                        (begin
+                          (when (move-evaluation> ev current-alpha)
+                            (set! current-alpha ev))
+                          (if (move-evaluation> ev current-beta)
+                              (list ev)
+                              (cons ev (process-moves (cdr moves)))))
+                        (begin
+                          (when (move-evaluation< ev current-beta)
+                            (set! current-beta ev))
+                          (if (move-evaluation< ev current-alpha)
+                              (list ev)
+                              (cons ev (process-moves (cdr moves)))))))))
+            (process-moves moves-to-consider))))))
