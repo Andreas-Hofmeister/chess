@@ -211,6 +211,14 @@
          "0 1")
    " "))
 
+(: fens-from-file (-> String (Listof String)))
+(define (fens-from-file filepath)
+  (file->lines filepath))
+
+(: positions-from-file (-> String (Listof Position)))
+(define (positions-from-file filepath)
+  (map pos-from-fen (fens-from-file filepath)))
+
 ;(: fen1 String)
 ;(define fen1 "rnbqkbnr/pppppppp/8/8/8/8/pppppppp/RNBQKBNR w Kq e3 0 1")
 ;(display (pos->string (pos-from-fen fen1)))
