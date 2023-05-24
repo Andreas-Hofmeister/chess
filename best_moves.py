@@ -45,8 +45,12 @@ def read_fen_positions(file_path):
         fen_positions = file.readlines()
     return [fen.strip() for fen in fen_positions]
 
+f = open("output.txt", "w")
 positions = read_fen_positions(input_file)
 for fen_position in positions:
     next_moves = get_best_moves(fen_position, num_moves=7)
     str_moves = map(str, next_moves)
-    print(" ".join(str_moves))
+    out_str = " ".join(str_moves)
+    print(out_str)
+    f.write(out_str+"\n")
+f.close()
