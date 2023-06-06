@@ -466,6 +466,16 @@
 (define (forced-mate-search depth pos)
   (evaluate-moves checkmate-position-evaluation forced-mate-search-moves depth pos))
 
+(: forced-checkmate-move-evaluation? (-> Move-evaluation Boolean))
+(define (forced-checkmate-move-evaluation? ev)
+  (match ev
+    [(Checkmate-move-evaluation _ _ _) #t]
+    [_ #f]))
+
+(: forced-mate-moves (-> (Listof Move-evaluation) (Listof Move-evaluation)))
+(define (forced-mate-moves moves)
+  (filter forced-checkmate-move-evaluation? moves))
+
 (: threatens-forced-checkmate? (-> Position Move Boolean))
 (define (threatens-forced-checkmate? pos move)
   (let ([evs (forced-mate-search 7 (switch-to-move (make-move pos move)))])
@@ -531,3 +541,22 @@
   (if (in-check? pos (Position-to-move pos))
       moves
       '()))
+
+(: move-evaluation-eq? (-> Move Move-evaluation Boolean))
+(define (move-evaluation-eq? move ev)
+  (match ev
+    [(Normal-move-evaluation ev-move _)
+     (equal? ev-move move)]
+    [(Checkmate-move-evaluation ev-move _ _)
+     (equal? ev-move move)]
+    [_ #f]))
+
+(: move-evaluations-cmp-string (-> Move (Listof Move-evaluation) String))
+(define (move-evaluations-cmp-string move evs)
+  (cond
+    [(empty? evs) "No move found"]
+    [(= 1 (length evs)) (if (move-evaluation-eq? move (car evs))
+                            "ok"
+                            (format "mismatch: ~a vs. ~a" move (car evs)))]
+    [else "Too many candidate moves found"]))
+
