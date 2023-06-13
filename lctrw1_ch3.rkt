@@ -15,9 +15,9 @@
 (define (move-search pos)
   (forced-mate-moves (forced-mate-search 1 pos)))
 
-(define positions (positions-from-file "../krr-test/fen_lctrw1_ch1.fen"))
+(define positions (positions-from-file "../krr-test/fen_lctrw1_ch3.fen"))
 
-(define movestrings (file->lines "solutions_lctrw1_ch1.txt"))
+(define movestrings (file->lines "solutions_lctrw1_ch3.txt"))
 
 (for ([pos positions] [movestr movestrings] [index (range 1 (+ 1 (length positions)))])
   (let* ([move (movestring->move pos movestr)]
