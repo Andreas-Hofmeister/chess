@@ -550,13 +550,3 @@
     [(Checkmate-move-evaluation ev-move _ _)
      (equal? ev-move move)]
     [_ #f]))
-
-(: move-evaluations-cmp-string (-> Move (Listof Move-evaluation) String))
-(define (move-evaluations-cmp-string move evs)
-  (cond
-    [(empty? evs) "No move found"]
-    [(= 1 (length evs)) (if (move-evaluation-eq? move (car evs))
-                            "ok"
-                            (format "mismatch: ~a vs. ~a" move (car evs)))]
-    [else "Too many candidate moves found"]))
-
