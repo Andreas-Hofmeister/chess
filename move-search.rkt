@@ -451,6 +451,18 @@
 (define (puts-opponent-in-check? pos move)
   (in-check? (make-move pos move) (opponent-of (Position-to-move pos))))
 
+(: king-move? (-> Position Move Boolean))
+(define (king-move? pos move) #f)
+
+(: move-by-piece-adjacent-to-king? (-> Position Move Boolean))
+(define (move-by-piece-adjacent-to-king? pos move) #f)
+
+(: move-defends-square? (-> Position Move Square-location Boolean))
+(define (move-defends-square? pos move square) #f)
+
+(: move-blocks-move? (-> Position Move Move Boolean))
+(define (move-blocks-move? pos blocking-move move-to-be-blocked) #f)
+
 (: checking-moves (-> Position (Listof Move) (Listof Move)))
 (define (checking-moves pos moves)
   (filter (curry puts-opponent-in-check? pos) moves))

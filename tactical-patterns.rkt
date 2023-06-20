@@ -47,7 +47,7 @@
 
 ; If the player with color 'color' were allowed to play the moves 'steps'
 ; consecutively, then he could produce the tactical pattern 'pattern'.
-; Example: (Threat 'white '()
+; Example: (Threat 'white '(...)
 ;                  (Forced-checkmate 'white 2
 ;                                    (Capture (Square-location 5 7) (Square-location 6 7))))
 ; means that if it were white's turn, white would have a forced checkmate in 2.
