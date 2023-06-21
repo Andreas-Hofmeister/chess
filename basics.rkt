@@ -19,6 +19,12 @@
 (struct Occupied-square ([c : Color] [p : Piece]) #:transparent)
 (define-type Square (U 'empty-square Occupied-square))
 
+(: piece-on-square (-> Square (Option Piece)))
+(define (piece-on-square square)
+  (match square
+    ['empty-square 'none]
+    [(Occupied-square c piece) (Some piece)]))
+
 (define square-vector-set! (inst vector-set! Square))
 (define square-vector-ref (inst vector-ref Square))
 (define square-vector (inst vector Square))
@@ -218,6 +224,32 @@
 (define (location-occupied-by-friendly-piece? pp loc c)
   (occupied-by-friendly-piece? pp (Square-location-rank loc) (Square-location-file loc) c))
 
+(: locations-between (-> Square-location Square-location
+                         (Listof Square-location)))
+(define (locations-between from-location to-location)
+  (: locations-along-direction (-> Square-location Integer Integer (Listof Square-location)))
+  (define (locations-along-direction current-location dir-x dir-y)
+    (if (equal? current-location to-location) '()
+        (cons current-location
+              (locations-along-direction
+               (Square-location (+ dir-y (Square-location-rank current-location))
+                                (+ dir-x (Square-location-file current-location)))
+               dir-x dir-y))))
+  (let* ([from-file (Square-location-file from-location)]
+         [to-file (Square-location-file to-location)]
+         [from-rank (Square-location-rank from-location)]
+         [to-rank (Square-location-rank to-location)]
+         [delta-x (- to-file from-file)]
+         [delta-y (- to-rank from-rank)]
+         [dir-x (sgn delta-x)]
+         [dir-y (sgn delta-y)])
+    (cond
+      [(and (= 0 delta-x) (= 0 delta-y)) '()]
+      [(or (= 0 delta-x) (= 0 delta-y) (= (abs delta-x) (abs delta-y)))
+       (remove from-location
+               (locations-along-direction from-location dir-x dir-y))]
+      [else '()])))
+                 
 (struct Pawn-double-step ([to-rank : Integer] [on-file : Integer]) #:transparent)
 
 (define-type Castling-type (U 'queen-side 'king-side))

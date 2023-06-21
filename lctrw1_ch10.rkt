@@ -60,3 +60,7 @@
               movesstrings
               (range 1 (+ 1 (length positions))))
 |#
+
+(define locs1 (locations-between (Square-location 0 0) (Square-location 2 3)))
+(displayln locs1)
+

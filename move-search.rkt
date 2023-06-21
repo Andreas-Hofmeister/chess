@@ -452,17 +452,38 @@
   (in-check? (make-move pos move) (opponent-of (Position-to-move pos))))
 
 (: king-move? (-> Position Move Boolean))
-(define (king-move? pos move) #f)
+(define (king-move? pos move)
+  (match (piece-of-move move (Position-pp pos))
+    [(Some p) (eq? p 'king)]
+    [_ #f]))
 
 (: move-by-piece-adjacent-to-king? (-> Position Move Boolean))
-(define (move-by-piece-adjacent-to-king? pos move) #f)
+(define (move-by-piece-adjacent-to-king? pos move)
+  (match (get-square-by-location (Position-pp pos) (from-of-move move))
+    [(Occupied-square color piece)
+     (let* ([needle (Occupied-square color 'king)]
+            [adjacent-squares (map (lambda ([loc : Square-location])
+                                     (get-square-by-location (Position-pp pos) loc))
+                                   (adjacent-squares (from-of-move move)))])
+       (exists-in adjacent-squares (lambda ([sq : Square]) (equal? sq needle))))]))
 
 (: move-defends-square? (-> Position Move Square-location Boolean))
-(define (move-defends-square? pos move square) #f)
+(define (move-defends-square? pos move loc)
+  (let* ([new-pos (switch-to-move (make-move pos move))]
+         [new-moves (legal-moves new-pos)])
+    (exists-in new-moves
+               (lambda ([move : Move])
+                 (equal? loc (to-of-move move))))))
 
 (: move-blocks-move? (-> Position Move Move Boolean))
 (define (move-blocks-move? pos blocking-move move-to-be-blocked) #f)
-
+#|
+(define (move-blocks-move? pos blocking-move move-to-be-blocked)
+  (let* ([piece-to-be-blocked (piece-of-move move-to-be-blocked
+                                             (Position-pp pos))])
+    (if (eq? piece-to-be-blocked 'knight) #f
+        (let 
+|#
 (: checking-moves (-> Position (Listof Move) (Listof Move)))
 (define (checking-moves pos moves)
   (filter (curry puts-opponent-in-check? pos) moves))
