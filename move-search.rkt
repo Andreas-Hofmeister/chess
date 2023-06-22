@@ -475,15 +475,31 @@
                (lambda ([move : Move])
                  (equal? loc (to-of-move move))))))
 
+(: blocking-squares-of-pawn-move (-> Move (Listof Square-location)))
+(define (blocking-squares-of-pawn-move move)
+  (match move
+    [(From-to-move _ to) (list to)]
+    [(Double-step _ to)
+     (let* ([on-file (Square-location-file to)]
+            [to-rank (Square-location-rank to)]
+            [between-rank (if (= to-rank 3) 2 5)]
+            [between-square (Square-location between-rank on-file)])
+       (list to between-square))]
+    [(Promotion from to _) (list to)]
+    [_ '()]))
+
 (: move-blocks-move? (-> Position Move Move Boolean))
-(define (move-blocks-move? pos blocking-move move-to-be-blocked) #f)
-#|
 (define (move-blocks-move? pos blocking-move move-to-be-blocked)
   (let* ([piece-to-be-blocked (piece-of-move move-to-be-blocked
                                              (Position-pp pos))])
-    (if (eq? piece-to-be-blocked 'knight) #f
-        (let 
-|#
+    (match piece-to-be-blocked
+      ['knight #f]
+      ['pawn (list? (member (to-of-move blocking-move)
+                            (blocking-squares-of-pawn-move move-to-be-blocked)))]
+      [_ (list? (member (to-of-move blocking-move)
+                        (locations-between (from-of-move move-to-be-blocked)
+                                           (to-of-move move-to-be-blocked))))])))
+
 (: checking-moves (-> Position (Listof Move) (Listof Move)))
 (define (checking-moves pos moves)
   (filter (curry puts-opponent-in-check? pos) moves))

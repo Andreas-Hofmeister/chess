@@ -249,7 +249,7 @@
        (remove from-location
                (locations-along-direction from-location dir-x dir-y))]
       [else '()])))
-                 
+
 (struct Pawn-double-step ([to-rank : Integer] [on-file : Integer]) #:transparent)
 
 (define-type Castling-type (U 'queen-side 'king-side))
