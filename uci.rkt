@@ -115,44 +115,6 @@
                       (pos->string current-position)))
          #t)])))
 
-(: position-evaluation->integer (-> Position-evaluation Integer))
-(define (position-evaluation->integer pev)
-  (match pev
-    [(Normal-evaluation v) v]
-    [(Checkmate-evaluation c)
-     (match c
-       ['black -1000]
-       ['white 1000])]
-    ['stalemate 0]))
-
-(: move-evaluation->integer (-> Move-evaluation Integer))
-(define (move-evaluation->integer mev)
-  (match mev
-    [(Normal-move-evaluation _ v) v]
-    [(Checkmate-move-evaluation move n-moves c)
-     (match c
-       ['black (+ -1000 n-moves)]
-       ['white (- 1000 n-moves)])]
-    [(No-move-evaluation pev) (position-evaluation->integer pev)]))
-
-(: cmp-of-player (-> Color (-> Move-evaluation Move-evaluation Boolean)))
-(define (cmp-of-player c)
-  (match c
-    ['black move-evaluation<=]
-    ['white
-     (lambda ([ev1 : Move-evaluation] [ev2 : Move-evaluation])
-       (move-evaluation<= ev2 ev1))]))
-
-(: moves-of-evaluations (-> (Listof Move-evaluation) (Listof Move)))
-(define (moves-of-evaluations evs)
-  (match evs
-    ['() '()]
-    [(cons ev tl)
-     (match ev
-       [(Normal-move-evaluation m _) (cons m (moves-of-evaluations tl))]
-       [(Checkmate-move-evaluation m _ _) (cons m (moves-of-evaluations tl))]
-       [_ (moves-of-evaluations tl)])]))
-
 (: position-evaluation->string (-> Position-evaluation String))
 (define (position-evaluation->string pev)
   (match pev

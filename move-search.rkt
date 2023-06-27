@@ -599,3 +599,55 @@
     [(Checkmate-move-evaluation ev-move _ _)
      (equal? ev-move move)]
     [_ #f]))
+
+(: cmp-of-player (-> Color (-> Move-evaluation Move-evaluation Boolean)))
+(define (cmp-of-player c)
+  (match c
+    ['black move-evaluation<=]
+    ['white
+     (lambda ([ev1 : Move-evaluation] [ev2 : Move-evaluation])
+       (move-evaluation<= ev2 ev1))]))
+
+(: position-evaluation->integer (-> Position-evaluation Integer))
+(define (position-evaluation->integer pev)
+  (match pev
+    [(Normal-evaluation v) v]
+    [(Checkmate-evaluation c)
+     (match c
+       ['black -1000]
+       ['white 1000])]
+    ['stalemate 0]))
+
+(: move-evaluation->integer (-> Move-evaluation Integer))
+(define (move-evaluation->integer mev)
+  (match mev
+    [(Normal-move-evaluation _ v) v]
+    [(Checkmate-move-evaluation move n-moves c)
+     (match c
+       ['black (+ -1000 n-moves)]
+       ['white (- 1000 n-moves)])]
+    [(No-move-evaluation pev) (position-evaluation->integer pev)]))
+
+(: moves-of-evaluations (-> (Listof Move-evaluation) (Listof Move)))
+(define (moves-of-evaluations evs)
+  (match evs
+    ['() '()]
+    [(cons ev tl)
+     (match ev
+       [(Normal-move-evaluation m _) (cons m (moves-of-evaluations tl))]
+       [(Checkmate-move-evaluation m _ _) (cons m (moves-of-evaluations tl))]
+       [_ (moves-of-evaluations tl)])]))
+
+(: best-among-all-moves (-> Position Integer
+                            (-> Position Position-evaluation)
+                            (Listof Move)))
+(define (best-among-all-moves pos depth ev-f)
+  (let* ([evaluations (evaluate-moves ev-f legal-moves depth pos)]
+         [cmp (cmp-of-player (Position-to-move pos))]
+         [sorted-evaluations (sort evaluations cmp)]
+         [best-value (move-evaluation->integer (car sorted-evaluations))]
+         [best-evaluations
+          (filter (lambda ([ev : Move-evaluation])
+                    (= (move-evaluation->integer ev) best-value))
+                  sorted-evaluations)])
+    (moves-of-evaluations best-evaluations)))

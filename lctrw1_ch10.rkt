@@ -9,6 +9,8 @@
 (require "move-search.rkt")
 (require "min-max-evaluation.rkt")
 (require "test-common.rkt")
+(require "check.rkt")
+(require "legal-moves.rkt")
 
 (define positions (positions-from-file "../krr-test/fen_lctrw1_ch10.fen"))
 (define movesstrings (file->lines "solutions_lctrw1_ch10.txt"))
@@ -24,12 +26,39 @@
                 (puts-opponent-in-check? pos move)))
           all-moves))
 
-#|
+(: best-move (-> Position (Listof Move)))
+(define (best-move pos)
+  (let ([best (best-among-all-moves pos 1 evaluate-opening-position)])
+    (if (empty? best) '()
+        (list (car best)))))
+
+(: flatten-moves (-> (Listof (Listof Move)) (Listof Move)))
+(define (flatten-moves lst)
+  (apply append lst))
+
+(: defensive-moves-for-search-with-threats (-> Position (Listof Move) (Listof Move)))
+(define (defensive-moves-for-search-with-threats pos moves)
+  (if (in-check? pos (Position-to-move pos)) moves
+      (let* ([checkmate-threats (forced-checkmate-threats pos moves)]
+             [compute-defenses (lambda ([move : Move])
+                                 (defensive-moves-for-checkmate-threat pos move moves))]
+             [checkmate-threat-defenses (flatten-moves (map compute-defenses checkmate-threats))])
+        (if (empty? checkmate-threat-defenses)
+            (best-move pos)
+            checkmate-threat-defenses))))
+
+(: search-with-threats-moves (-> Position (Listof Move)))
+(define (search-with-threats-moves pos)
+  (let ([moves (legal-moves pos)])
+    (append (offensive-moves pos moves)
+            (defensive-moves-for-search-with-threats pos moves))))
+
+(: move-search (-> Position (Listof Move-evaluation)))
 (define (move-search pos)
   (let ([forced-by-successive-checks (forced-mate-move-search pos 3)])
     (if (not (empty? forced-by-successive-checks))
         forced-by-successive-checks
-|#      
+        (evaluate-moves evaluate-opening-position search-with-threats-moves 3 pos))))
 
 (: check-solution (-> Position (Listof String) (Listof Move-evaluation)
                       String))
@@ -52,15 +81,11 @@
   (for ([pos positions]
         [movesstr movesstrings] [index indices])
     (let* ([movestrings (string-split movesstr)]
-           [calculated-moves (forced-mate-move-search pos 3)])
+           [calculated-moves (move-search pos)])
       (displayln (format "~a: ~a" index
                          (check-solution pos movestrings calculated-moves))))))
-#|
+
 (perform-test positions
               movesstrings
               (range 1 (+ 1 (length positions))))
-|#
-
-(define locs1 (locations-between (Square-location 0 0) (Square-location 2 3)))
-(displayln locs1)
 
