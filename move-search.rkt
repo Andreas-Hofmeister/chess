@@ -537,7 +537,6 @@
 (define (forced-checkmate-threats pos moves)
   (filter (curry threatens-forced-checkmate? pos) moves))
 
-
 (: tactical-search (-> (-> Position Position-evaluation)
                        (-> Position (Listof Move) (Listof Move))
                        (-> Position (Listof Move) (Listof Move))
