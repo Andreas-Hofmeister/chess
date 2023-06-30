@@ -43,7 +43,7 @@ d5c3 e2e1 d8d1
 d7d3 c2c1 d3d1
 h2h4 g4f3 h4f4
 e3h3 h1g1 f7f2
-h5g3 f5g3 e4g3
+e4g3 f5g3 h5g3
 e4h1 f1e2 h1d1
 h5g3 h1g1 b8a7
 d8d2 e2e3 f5f4

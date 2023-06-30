@@ -24,6 +24,7 @@
                 (move-by-piece-adjacent-to-king? pos move)
                 (move-defends-square? pos move (to-of-move threatened-move))
                 (move-blocks-move? pos move threatened-move)
+                (captures-on-square? move (from-of-move threatened-move))
                 (puts-opponent-in-check? pos move)))
           all-moves))
 
@@ -39,16 +40,17 @@
 
 (: defensive-moves-for-search-with-threats (-> Position (Listof Move) (Listof Move)))
 (define (defensive-moves-for-search-with-threats pos moves)
-  (displayln (fen-from-position pos))
   (if (in-check? pos (Position-to-move pos)) moves
-      (let* ([checkmate-threats (forced-checkmate-threats pos moves)]
+      (let* ([rev-pos (switch-to-move pos)]
+             [rev-moves (legal-moves rev-pos)]
+             [checkmate-threats (moves-of-evaluations (forced-mate-moves (forced-mate-search 3 rev-pos)))]
              [compute-defenses (lambda ([move : Move])
                                  (defensive-moves-for-checkmate-threat pos move moves))]
              [checkmate-threat-defenses (flatten-moves (map compute-defenses checkmate-threats))]
              [result (if (empty? checkmate-threat-defenses)
                    (best-move pos)
                    checkmate-threat-defenses)])
-        (begin (displayln "...done") result))))
+        result)))
 
 (: search-with-threats-moves (-> Position (Listof Move)))
 (define (search-with-threats-moves pos)
@@ -87,29 +89,35 @@
            [calculated-moves (move-search pos)])
       (displayln (format "~a: ~a" index
                          (check-solution pos movestrings calculated-moves))))))
-#|
 (perform-test positions
               movesstrings
               (range 1 (+ 1 (length positions))))
-|#
 
+#|
 (define pos17 (list-ref positions 16))
 (define moves17 (legal-moves pos17))
+
+(define evs17 (move-search pos17))
+(displayln evs17)
+
 (define move1 (list-ref moves17 0))
-;(displayln move1)
-;(define defensive17 (defensive-moves-for-search-with-threats pos17 moves17))
-;(displayln defensive17)
-;(define pos2 (make-move pos17 move1))
-;(define moves2 (legal-moves pos2))
-;(define defensive2 (defensive-moves-for-search-with-threats pos2 moves2))
-;(displayln defensive2)
-;(define move3 (car defensive2))
-;(define pos3 (make-move pos2 move3))
-;(define moves3 (legal-moves pos3))
-;(define defensive3 (defensive-moves-for-search-with-threats pos3 moves3))
-;(displayln defensive3)
+
+
+(displayln move1)
+(define defensive17 (defensive-moves-for-search-with-threats pos17 moves17))
+(displayln defensive17)
+(define pos2 (make-move pos17 move1))
+(define moves2 (legal-moves pos2))
+(define defensive2 (defensive-moves-for-search-with-threats pos2 moves2))
+(displayln defensive2)
+(define move3 (car defensive2))
+(define pos3 (make-move pos2 move3))
+(define moves3 (legal-moves pos3))
+(define defensive3 (defensive-moves-for-search-with-threats pos3 moves3))
+(displayln defensive3)
 
 (define pos4 (pos-from-fen "7k/7P/6P1/7K/8/8/8/1q6 b - - 0 1"))
 (define moves4 (legal-moves pos4))
-(define defensive4 (defensive-moves-for-search-with-threats pos4 moves4))
+(define defensive4 (remove-duplicates (defensive-moves-for-search-with-threats pos4 moves4)))
 (displayln defensive4)
+|#

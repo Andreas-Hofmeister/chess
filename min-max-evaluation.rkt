@@ -133,10 +133,10 @@
     ['white maximal-evaluation]
     ['black minimal-evaluation]))
 
-(: evaluate-moves (-> (-> Position Position-evaluation)
-                      (-> Position (Listof Move))
-                      Integer Position (Listof Move-evaluation)))
-(define (evaluate-moves evaluate-position determine-candidate-moves depth pos)
+(: evaluate-moves-old (-> (-> Position Position-evaluation)
+                                    (-> Position (Listof Move))
+                                    Integer Position (Listof Move-evaluation)))
+(define (evaluate-moves-old evaluate-position determine-candidate-moves depth pos)
   (let ([moves-to-consider (determine-candidate-moves pos)])
     (if (empty? moves-to-consider)
         (list (No-move-evaluation (evaluate-position pos)))
@@ -196,3 +196,15 @@
                               (list ev)
                               (cons ev (process-moves (cdr moves)))))))))
             (process-moves moves-to-consider))))))
+
+(: evaluate-moves (-> (-> Position Position-evaluation)
+                      (-> Position (Listof Move))
+                      Integer Position (Listof Move-evaluation)))
+(define (evaluate-moves evaluate-position determine-candidate-moves depth pos)
+  (evaluate-moves-alpha-beta
+   evaluate-position
+   determine-candidate-moves
+   depth
+   pos
+   (No-move-evaluation 'minus-infinity)
+   (No-move-evaluation 'plus-infinity)))

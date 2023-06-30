@@ -63,6 +63,11 @@
     [(Promotion-with-capture _ _ _) #t]
     [_ #f]))
 
+(: captures-on-square? (-> Move Square-location Boolean))
+(define (captures-on-square? move loc)
+  (and (capturing-move? move)
+       (equal? loc (to-of-move move))))
+
 (: piece-of-move (-> Move Piece-placements (Option Piece)))
 (define (piece-of-move move pp)
   (piece-on-square (get-square-by-location pp (from-of-move move))))

@@ -178,7 +178,11 @@
 
 (: fen-from-castling-availabilities (-> (Listof Castling-availability) String))
 (define (fen-from-castling-availabilities cavls)
-  (string-join (map fen-from-castling-availability cavls) ""))
+  (let ([availability-string
+         (string-join (map fen-from-castling-availability cavls) "")])
+    (if (= 0 (string-length availability-string))
+        "-"
+        availability-string)))
 
 (: fen-from-double-step (-> (Option Pawn-double-step) String))
 (define (fen-from-double-step ds)
