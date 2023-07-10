@@ -650,3 +650,17 @@
                     (= (move-evaluation->integer ev) best-value))
                   sorted-evaluations)])
     (moves-of-evaluations best-evaluations)))
+
+(: best-evaluations (-> (Listof Move-evaluation)
+                        Color
+                        (Listof Move-evaluation)))
+(define (best-evaluations evs to-move)
+  (let* ([cmp (cmp-of-player to-move)]
+         [sorted-evaluations (sort evs cmp)]
+         [best-value (move-evaluation->integer (car sorted-evaluations))])
+    (filter (lambda ([ev : Move-evaluation])
+              (= (move-evaluation->integer ev) best-value))
+            sorted-evaluations)))
+
+
+    
