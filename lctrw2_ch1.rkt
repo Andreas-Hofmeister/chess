@@ -16,7 +16,6 @@
 (define positions (positions-from-file "../krr-test/fen_lctrw2_ch1.fen"))
 (define movesstrings (file->lines "solutions_lctrw2_ch1.txt"))
 
-
 (: best-move (-> Position (Listof Move)))
 (define (best-move pos)
   (let ([best (best-among-all-moves pos 1 evaluate-opening-position)])
@@ -25,17 +24,21 @@
 
 (define first-position #t)
 
-(: candidate-moves (-> Position (Listof Move)))
-(define (candidate-moves pos)
+(: candidate-moves2 (-> Position (Listof Move)))
+(define (candidate-moves2 pos)
   (if first-position
       (begin
         (set! first-position #f)
         (capturing-moves (legal-moves pos)))
       (offensive-moves pos (legal-moves pos))))
 
+(: candidate-moves (-> Position (Listof Move)))
+(define (candidate-moves pos)
+  (capturing-moves (legal-moves pos)))
+
 (: move-search (-> Position (Listof Move-evaluation)))
 (define (move-search pos)
-  (evaluate-moves evaluate-opening-position candidate-moves 2 pos))
+  (evaluate-moves evaluate-opening-position candidate-moves 4 pos))
 
 (: check-solution (-> Position (Listof String) (Listof Move-evaluation)
                       String))
@@ -62,6 +65,19 @@
            [calculated-moves (move-search pos)])
       (displayln (format "~a: ~a" index
                          (check-solution pos movestrings calculated-moves))))))
+
 (perform-test positions
               movesstrings
               (range 1 (+ 1 (length positions))))
+
+#|
+(define pos4 (list-ref positions 3))
+(define evs1 (move-search pos4))
+(displayln evs1)
+
+(define moves1 (moves-of-evaluations evs1))
+(define strange-move (list-ref moves1 2))
+(define pos4-2 (make-move pos4 strange-move))
+(define evs2 (move-search pos4-2))
+(displayln evs2)
+|#
