@@ -23,7 +23,8 @@
                 [target-location : Square-location]
                 [target-piece : Piece]
                 [target-color : Color]
-                [directness : Integer]))
+                [directness : Integer])
+  #:transparent)
 
 (: attacks-in-direction (-> Piece-placements
                             Square-location
@@ -63,6 +64,59 @@
           (attacks-in-direction pp loc (add-to-square-location loc -1 -1) 0 color 'queen -1 -1 (set 'queen 'bishop))
           (attacks-in-direction pp loc (add-to-square-location loc 1 -1) 0 color 'queen 1 -1 (set 'queen 'bishop))
           (attacks-in-direction pp loc (add-to-square-location loc -1 1) 0 color 'queen -1 1 (set 'queen 'bishop))))
+
+(: attacks-by-rook (-> Piece-placements Square-location Color
+                       (Listof Attack)))
+(define (attacks-by-rook pp loc color)
+  (append (attacks-in-direction pp loc (add-to-square-location loc 1 0) 0 color 'rook 1 0 (set 'queen 'rook))
+          (attacks-in-direction pp loc (add-to-square-location loc -1 0) 0 color 'rook -1 0 (set 'queen 'rook))
+          (attacks-in-direction pp loc (add-to-square-location loc 0 1) 0 color 'rook 0 1 (set 'queen 'rook))
+          (attacks-in-direction pp loc (add-to-square-location loc 0 -1) 0 color 'rook 0 -1 (set 'queen 'rook))))
+
+(: attacks-by-bishop (-> Piece-placements Square-location Color
+                         (Listof Attack)))
+(define (attacks-by-bishop pp loc color)
+  (append (attacks-in-direction pp loc (add-to-square-location loc 1 1) 0 color 'bishop 1 0 (set 'queen 'bishop))
+          (attacks-in-direction pp loc (add-to-square-location loc -1 -1) 0 color 'bishop -1 0 (set 'queen 'bishop))
+          (attacks-in-direction pp loc (add-to-square-location loc 1 -1) 0 color 'bishop 0 1 (set 'queen 'bishop))
+          (attacks-in-direction pp loc (add-to-square-location loc -1 1) 0 color 'bishop 0 -1 (set 'queen 'bishop))))
+
+(: attack-by-knight (-> Piece-placements Square-location Color Integer Integer
+                         (Listof Attack)))
+(define (attack-by-knight pp loc color delta-x delta-y)
+  (let ([target-loc (add-to-square-location loc delta-x delta-y)])
+    (if (location-valid? target-loc)
+        (match (get-square-by-location pp target-loc)
+          [(Occupied-square target-color target-piece)
+           #:when (not (eq? target-color color))
+           (list (Attack loc 'knight color target-loc target-piece target-color 0))]
+          [_ '()])
+        '())))
+
+(: attacks-by-knight (-> Piece-placements Square-location Color
+                         (Listof Attack)))
+(define (attacks-by-knight pp loc color)
+  (: iter (-> (Listof (Pairof Integer Integer)) (Listof Attack)))
+  (define (iter deltas)
+    (if (empty? deltas) '()
+        (append (attack-by-knight pp loc color (car (car deltas)) (cdr (car deltas)))
+                (iter (cdr deltas)))))
+  (iter (list (cons 1 2) (cons -1 2) (cons -2 1) (cons -2 -1)
+              (cons -1 -2) (cons 1 -2) (cons 2 -1) (cons 2 1))))
+
+(: attack->string (-> Attack String))
+(define (attack->string attack)
+  (match attack
+    [(Attack a-loc a-piece a-color t-loc t-piece t-color directness)
+     (format "~a ~a on ~a attacks ~a ~a on ~a (directness: ~a)"
+             a-color a-piece (square-location->string a-loc)
+             t-color t-piece (square-location->string t-loc) directness)]))
+
+(define test1 (pos-from-fen "2bqkb1r/r1ppppnp/3R1B2/3B4/p1RQ1n2/2p5/PPP1PPPP/1N2K1N1 w k - 0 1"))
+(define test1pp (Position-pp test1))
+(define attacks (attacks-by-bishop test1pp (Square-location 5 5) 'white))
+(for ([attack attacks])
+  (displayln (attack->string attack)))
 
 (: candidate-moves (-> Position (Listof Move)))
 (define (candidate-moves pos)
@@ -109,6 +163,7 @@
 (define indices-to-be-tested (range 1 (+ 1 (length positions))))
 |#
 
+#|
 (define positions-to-be-tested (list (list-ref positions 6)))
 (define movesstrings-to-be-tested (list (list-ref movesstrings 6)))
 (define indices-to-be-tested (list 7))
@@ -116,3 +171,4 @@
 (perform-test positions-to-be-tested
               movesstrings-to-be-tested
               indices-to-be-tested)
+|#
