@@ -1,5 +1,6 @@
 #lang typed/racket
 (require racket/match)
+(require racket/set)
 
 (require "basics.rkt")
 (require "fen.rkt")
@@ -16,21 +17,52 @@
 (define positions (positions-from-file "../krr-test/fen_lctrw2_ch7.fen"))
 (define movesstrings (file->lines "solutions_lctrw2_ch7.txt"))
 
-(: best-move (-> Position (Listof Move)))
-(define (best-move pos)
-  (let ([best (best-among-all-moves pos 1 evaluate-opening-position)])
-    (if (empty? best) '()
-        (list (car best)))))
+(struct Attack ([attacker-location : Square-location]
+                [attacker-piece : Piece]
+                [attacker-color : Color]
+                [target-location : Square-location]
+                [target-piece : Piece]
+                [target-color : Color]
+                [directness : Integer]))
 
-(define first-position #t)
+(: attacks-in-direction (-> Piece-placements
+                            Square-location
+                            Square-location
+                            Integer
+                            Color
+                            Piece
+                            Integer Integer
+                            (Setof Piece)
+                            (Listof Attack)))
+(define (attacks-in-direction pp attacker-loc current-loc current-directness color piece dir-x dir-y extension-pieces)
+  (if (not (location-valid? current-loc)) '()
+      (match (get-square-by-location pp current-loc)
+        ['empty-square (attacks-in-direction pp attacker-loc
+                                             (add-to-square-location current-loc dir-x dir-y)
+                                             current-directness
+                                             color piece dir-x dir-y extension-pieces)]
+        [(Occupied-square target-color target-piece)
+         #:when (eq? target-color color)
+         (if (set-member? extension-pieces target-piece)
+             (attacks-in-direction pp attacker-loc
+                                   (add-to-square-location current-loc dir-x dir-y)
+                                   (+ current-directness 1)
+                                   color piece dir-x dir-y extension-pieces)
+             '())]
+        [(Occupied-square target-color target-piece)
+         (list (Attack attacker-loc piece color current-loc target-piece target-color current-directness))])))
 
-(: candidate-moves2 (-> Position (Listof Move)))
-(define (candidate-moves2 pos)
-  (if first-position
-      (begin
-        (set! first-position #f)
-        (capturing-moves (legal-moves pos)))
-      (offensive-moves pos (legal-moves pos))))
+(: attacks-by-queen (-> Piece-placements Square-location Color
+                        (Listof Attack)))
+(define (attacks-by-queen pp loc color)
+  (append (attacks-in-direction pp loc (add-to-square-location loc 1 0) 0 color 'queen 1 0 (set 'queen 'rook))
+          (attacks-in-direction pp loc (add-to-square-location loc -1 0) 0 color 'queen -1 0 (set 'queen 'rook))
+          (attacks-in-direction pp loc (add-to-square-location loc 0 1) 0 color 'queen 0 1 (set 'queen 'rook))
+          (attacks-in-direction pp loc (add-to-square-location loc 0 -1) 0 color 'queen 0 -1 (set 'queen 'rook))
+          (attacks-in-direction pp loc (add-to-square-location loc 1 1) 0 color 'queen 1 1 (set 'queen 'bishop))
+          (attacks-in-direction pp loc (add-to-square-location loc -1 -1) 0 color 'queen -1 -1 (set 'queen 'bishop))
+          (attacks-in-direction pp loc (add-to-square-location loc 1 -1) 0 color 'queen 1 -1 (set 'queen 'bishop))
+          (attacks-in-direction pp loc (add-to-square-location loc -1 1) 0 color 'queen -1 1 (set 'queen 'bishop))))
 
 (: candidate-moves (-> Position (Listof Move)))
 (define (candidate-moves pos)

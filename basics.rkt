@@ -183,6 +183,11 @@
 
 (struct Square-location ([rank : Integer] [file : Integer]) #:transparent)
 
+(: add-to-square-location (-> Square-location Integer Integer Square-location))
+(define (add-to-square-location loc delta-x delta-y)
+  (Square-location (+ (Square-location-rank loc) delta-y)
+                   (+ (Square-location-file loc) delta-x)))
+
 (: get-square-by-location (-> Piece-placements Square-location Square))
 (define (get-square-by-location pp loc)
   (match loc

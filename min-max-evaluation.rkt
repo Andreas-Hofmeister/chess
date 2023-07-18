@@ -164,7 +164,7 @@
                                  (Listof Move-evaluation)))
 (define (evaluate-moves-alpha-beta evaluate-position determine-candidate-moves depth pos alpha beta)
   (let ([moves-to-consider (if (= depth 0) '() (determine-candidate-moves pos))])
-    (begin (displayln (format "~a: ~a" depth moves-to-consider))
+;    (begin (displayln (format "~a: ~a" depth moves-to-consider))
     (if (empty? moves-to-consider) (list (No-move-evaluation (evaluate-position pos)))
         (let* ([player (Position-to-move pos)]
                [opponent (opponent-of player)]
@@ -196,7 +196,8 @@
                           (if (move-evaluation< ev current-alpha)
                               (list ev)
                               (cons ev (process-moves (cdr moves)))))))))
-            (process-moves moves-to-consider)))))))
+            (process-moves moves-to-consider))))))
+;)
 
 (: evaluate-moves (-> (-> Position Position-evaluation)
                       (-> Position (Listof Move))
