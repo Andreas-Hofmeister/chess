@@ -81,28 +81,78 @@
           (attacks-in-direction pp loc (add-to-square-location loc 1 -1) 0 color 'bishop 0 1 (set 'queen 'bishop))
           (attacks-in-direction pp loc (add-to-square-location loc -1 1) 0 color 'bishop 0 -1 (set 'queen 'bishop))))
 
-(: attack-by-knight (-> Piece-placements Square-location Color Integer Integer
-                         (Listof Attack)))
-(define (attack-by-knight pp loc color delta-x delta-y)
+(: one-step-attack (-> Piece-placements Square-location Piece Color Integer Integer
+                       (Listof Attack)))
+(define (one-step-attack pp loc piece color delta-x delta-y)
   (let ([target-loc (add-to-square-location loc delta-x delta-y)])
     (if (location-valid? target-loc)
         (match (get-square-by-location pp target-loc)
           [(Occupied-square target-color target-piece)
            #:when (not (eq? target-color color))
-           (list (Attack loc 'knight color target-loc target-piece target-color 0))]
+           (list (Attack loc piece color target-loc target-piece target-color 0))]
           [_ '()])
         '())))
+
+(: one-step-attacks (-> Piece-placements Square-location Piece Color
+                        (Listof (Pairof Integer Integer))
+                        (Listof Attack)))
+(define (one-step-attacks pp loc piece color deltas)
+  (: iter (-> (Listof (Pairof Integer Integer)) (Listof Attack)))
+  (define (iter deltas)
+    (if (empty? deltas) '()
+        (append (one-step-attack pp loc piece color (car (car deltas)) (cdr (car deltas)))
+                (iter (cdr deltas)))))
+  (iter deltas))
 
 (: attacks-by-knight (-> Piece-placements Square-location Color
                          (Listof Attack)))
 (define (attacks-by-knight pp loc color)
-  (: iter (-> (Listof (Pairof Integer Integer)) (Listof Attack)))
-  (define (iter deltas)
-    (if (empty? deltas) '()
-        (append (attack-by-knight pp loc color (car (car deltas)) (cdr (car deltas)))
-                (iter (cdr deltas)))))
-  (iter (list (cons 1 2) (cons -1 2) (cons -2 1) (cons -2 -1)
-              (cons -1 -2) (cons 1 -2) (cons 2 -1) (cons 2 1))))
+  (one-step-attacks pp loc 'knight color
+                    (list (cons 1 2) (cons -1 2) (cons -2 1) (cons -2 -1)
+                          (cons -1 -2) (cons 1 -2) (cons 2 -1) (cons 2 1))))
+
+(: attacks-by-pawn (-> Piece-placements Square-location Color
+                       (Listof Attack)))
+(define (attacks-by-pawn pp loc color)
+  (let ([delta-y (if (eq? color 'white) 1 -1)])
+    (one-step-attacks pp loc 'pawn color
+                      (list (cons 1 delta-y) (cons -1 delta-y)))))
+
+(: attacks-by-king (-> Piece-placements Square-location Color
+                       (Listof Attack)))
+(define (attacks-by-king pp loc color)
+  (one-step-attacks pp loc 'king color
+                    (list (cons 1 0) (cons 1 1) (cons 0 1) (cons -1 1)
+                          (cons -1 0) (cons -1 -1) (cons 0 -1) (cons 1 -1))))
+
+(: attacks-of-piece (-> Piece-placements Square-location Piece Color
+                        (Listof Attack)))
+(define (attacks-of-piece pp loc piece color)
+  (match piece
+    ['pawn (attacks-by-pawn pp loc color)]
+    ['rook (attacks-by-rook pp loc color)]
+    ['bishop (attacks-by-bishop pp loc color)]
+    ['knight (attacks-by-knight pp loc color)]
+    ['queen (attacks-by-queen pp loc color)]
+    ['king (attacks-by-king pp loc color)]))
+
+(struct Attacks ([white : (Listof Attack)]
+                 [black : (Listof Attack)])
+  #:transparent)
+
+(: attacks-of-pp (-> Piece-placements Attacks))
+(define (attacks-of-pp pp)
+  (let ([white-attacks : (Listof Attack) '()]
+        [black-attacks : (Listof Attack) '()])
+    (for ([loc valid-locations])
+      (match (get-square-by-location pp loc)
+        [(Occupied-square color piece)
+         #:when (eq? color 'white)
+         (set! white-attacks (append white-attacks (attacks-of-piece pp loc piece color)))]
+        [(Occupied-square color piece)
+         (set! black-attacks (append black-attacks (attacks-of-piece pp loc piece color)))]
+        [_ '()]))
+    (Attacks white-attacks black-attacks)))
 
 (: attack->string (-> Attack String))
 (define (attack->string attack)
@@ -112,11 +162,22 @@
              a-color a-piece (square-location->string a-loc)
              t-color t-piece (square-location->string t-loc) directness)]))
 
-(define test1 (pos-from-fen "2bqkb1r/r1ppppnp/3R1B2/3B4/p1RQ1n2/2p5/PPP1PPPP/1N2K1N1 w k - 0 1"))
+(: attack-list->string (-> (Listof Attack) String))
+(define (attack-list->string attacks)
+  (foldr (lambda ([attack : Attack] [s : String])
+           (string-append (attack->string attack) "\n" s))
+         ""
+         attacks))
+
+(: attacks->string (-> Attacks String))
+(define (attacks->string attacks)
+  (string-append "white attacks:\n" (attack-list->string (Attacks-white attacks))
+                 "\nblack attacks:\n" (attack-list->string (Attacks-black attacks))))
+
+(define test1 (pos-from-fen "2bqk1br/r1pPppK1/3R1B2/1N1B4/p1RQ1n2/2p3P1/PPP2P1P/6N1 w k - 0 1"))
 (define test1pp (Position-pp test1))
-(define attacks (attacks-by-bishop test1pp (Square-location 5 5) 'white))
-(for ([attack attacks])
-  (displayln (attack->string attack)))
+(define attacks (attacks-of-pp test1pp))
+(displayln (attacks->string attacks))
 
 (: candidate-moves (-> Position (Listof Move)))
 (define (candidate-moves pos)
