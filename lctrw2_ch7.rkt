@@ -174,10 +174,70 @@
   (string-append "white attacks:\n" (attack-list->string (Attacks-white attacks))
                  "\nblack attacks:\n" (attack-list->string (Attacks-black attacks))))
 
+(struct Defense ([defender-location : Square-location]
+                 [defender-piece : Piece]
+                 [color : Color]
+                 [target-location : Square-location]
+                 [target-piece : Piece]
+                 [directness : Integer])
+  #:transparent)
+
+(: defenses-in-direction (-> Piece-placements
+                             Square-location
+                             Square-location
+                             Integer
+                             Color
+                             Piece
+                             Integer Integer
+                             (Setof Piece)
+                             (Listof Defense)))
+(define (defenses-in-direction pp defender-loc current-loc current-directness color piece dir-x dir-y extension-pieces)
+  (if (not (location-valid? current-loc)) '()
+      (match (get-square-by-location pp current-loc)
+        ['empty-square (defenses-in-direction pp defender-loc
+                         (add-to-square-location current-loc dir-x dir-y)
+                         current-directness
+                         color piece dir-x dir-y extension-pieces)]
+        [(Occupied-square target-color target-piece)
+         #:when (eq? target-color color)
+         (let ([defense (Defense defender-loc piece color current-loc target-piece current-directness)])
+           (if (set-member? extension-pieces target-piece)
+               (cons defense
+                     (defenses-in-direction pp defender-loc
+                       (add-to-square-location current-loc dir-x dir-y)
+                       (+ current-directness 1)
+                       color piece dir-x dir-y extension-pieces))
+               (list defense)))]
+        [_ '()])))
+
+(: defenses-by-queen (-> Piece-placements Square-location Color
+                         (Listof Defense)))
+(define (defenses-by-queen pp loc color)
+  (append (defenses-in-direction pp loc (add-to-square-location loc 1 0) 0 color 'queen 1 0 (set 'queen 'rook))
+          (defenses-in-direction pp loc (add-to-square-location loc -1 0) 0 color 'queen -1 0 (set 'queen 'rook))
+          (defenses-in-direction pp loc (add-to-square-location loc 0 1) 0 color 'queen 0 1 (set 'queen 'rook))
+          (defenses-in-direction pp loc (add-to-square-location loc 0 -1) 0 color 'queen 0 -1 (set 'queen 'rook))
+          (defenses-in-direction pp loc (add-to-square-location loc 1 1) 0 color 'queen 1 1 (set 'queen 'bishop))
+          (defenses-in-direction pp loc (add-to-square-location loc -1 -1) 0 color 'queen -1 -1 (set 'queen 'bishop))
+          (defenses-in-direction pp loc (add-to-square-location loc 1 -1) 0 color 'queen 1 -1 (set 'queen 'bishop))
+          (defenses-in-direction pp loc (add-to-square-location loc -1 1) 0 color 'queen -1 1 (set 'queen 'bishop))))
+
+(: defense->string (-> Defense String))
+(define (defense->string attack)
+  (match attack
+    [(Defense d-loc d-piece color t-loc t-piece directness)
+     (format "~a ~a on ~a defends ~a ~a on ~a (directness: ~a)"
+             color d-piece (square-location->string d-loc)
+             color t-piece (square-location->string t-loc) directness)]))
+
 (define test1 (pos-from-fen "2bqk1br/r1pPppK1/3R1B2/1N1B4/p1RQ1n2/2p3P1/PPP2P1P/6N1 w k - 0 1"))
 (define test1pp (Position-pp test1))
 (define attacks (attacks-of-pp test1pp))
 (displayln (attacks->string attacks))
+
+(define defenses (defenses-by-queen test1pp (Square-location 3 3) 'white))
+(for ([defense defenses])
+  (displayln (defense->string defense)))
 
 (: candidate-moves (-> Position (Listof Move)))
 (define (candidate-moves pos)
