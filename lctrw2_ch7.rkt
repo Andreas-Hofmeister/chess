@@ -33,53 +33,74 @@
                             Color
                             Piece
                             Integer Integer
-                            (Setof Piece)
+                            (HashTable Piece Integer)
+                            Integer
                             (Listof Attack)))
-(define (attacks-in-direction pp attacker-loc current-loc current-directness color piece dir-x dir-y extension-pieces)
-  (if (not (location-valid? current-loc)) '()
+(define (attacks-in-direction pp attacker-loc current-loc current-directness color piece dir-x dir-y extension-pieces fuel)
+  (if (or (not (location-valid? current-loc)) (= 0 fuel)) '()
       (match (get-square-by-location pp current-loc)
         ['empty-square (attacks-in-direction pp attacker-loc
                                              (add-to-square-location current-loc dir-x dir-y)
                                              current-directness
-                                             color piece dir-x dir-y extension-pieces)]
+                                             color piece dir-x dir-y extension-pieces (- fuel 1))]
         [(Occupied-square target-color target-piece)
          #:when (eq? target-color color)
-         (if (set-member? extension-pieces target-piece)
+         (if (hash-has-key? extension-pieces target-piece)
              (attacks-in-direction pp attacker-loc
                                    (add-to-square-location current-loc dir-x dir-y)
                                    (+ current-directness 1)
-                                   color piece dir-x dir-y extension-pieces)
+                                   color piece dir-x dir-y extension-pieces (min (- fuel 1)
+                                                                                 (hash-ref extension-pieces target-piece)))
              '())]
         [(Occupied-square target-color target-piece)
          (list (Attack attacker-loc piece color current-loc target-piece target-color current-directness))])))
 
+(: attacks-in-directions (-> Piece-placements
+                            Square-location
+                            Color
+                            Piece
+                            (Listof (Pairof Integer Integer))
+                            (HashTable Piece Integer)
+                            (Listof Attack)))
+(define (attacks-in-directions pp attacker-loc color piece dir-list extension-pieces)
+  (if (empty? dir-list) '()
+      (let* ([dir (car dir-list)]
+             [delta-x (car dir)]
+             [delta-y (cdr dir)])
+        (append (attacks-in-direction pp attacker-loc (add-to-square-location attacker-loc delta-x delta-y)
+                                      0 color piece delta-x delta-y extension-pieces 8)
+                (attacks-in-directions pp attacker-loc color piece (cdr dir-list) extension-pieces)))))
+
+(define up-down-left-right-dirs (list (cons 1 0) (cons -1 0) (cons 0 1) (cons 0 -1)))
+(define diagonal-up-dirs (list (cons 1 1) (cons -1 1)))
+(define diagonal-down-dirs (list (cons 1 -1) (cons -1 -1)))
+(define up-down-left-right-extensions (hash 'queen 8 'rook 8))
+(: diagonal-up-extensions (-> Color (HashTable Piece Integer)))
+(define (diagonal-up-extensions color)
+  (if (eq? color 'white) (hash 'queen 8 'bishop 8 'pawn 1)
+      (hash 'queen 8 'bishop 8)))
+(: diagonal-down-extensions (-> Color (HashTable Piece Integer)))
+(define (diagonal-down-extensions color)
+  (if (eq? color 'white) (hash 'queen 8 'bishop 8)
+      (hash 'queen 8 'bishop 8 'pawn 1)))
+
 (: attacks-by-queen (-> Piece-placements Square-location Color
                         (Listof Attack)))
 (define (attacks-by-queen pp loc color)
-  (append (attacks-in-direction pp loc (add-to-square-location loc 1 0) 0 color 'queen 1 0 (set 'queen 'rook))
-          (attacks-in-direction pp loc (add-to-square-location loc -1 0) 0 color 'queen -1 0 (set 'queen 'rook))
-          (attacks-in-direction pp loc (add-to-square-location loc 0 1) 0 color 'queen 0 1 (set 'queen 'rook))
-          (attacks-in-direction pp loc (add-to-square-location loc 0 -1) 0 color 'queen 0 -1 (set 'queen 'rook))
-          (attacks-in-direction pp loc (add-to-square-location loc 1 1) 0 color 'queen 1 1 (set 'queen 'bishop))
-          (attacks-in-direction pp loc (add-to-square-location loc -1 -1) 0 color 'queen -1 -1 (set 'queen 'bishop))
-          (attacks-in-direction pp loc (add-to-square-location loc 1 -1) 0 color 'queen 1 -1 (set 'queen 'bishop))
-          (attacks-in-direction pp loc (add-to-square-location loc -1 1) 0 color 'queen -1 1 (set 'queen 'bishop))))
+  (append (attacks-in-directions pp loc color 'queen up-down-left-right-dirs up-down-left-right-extensions)
+          (attacks-in-directions pp loc color 'queen diagonal-up-dirs (diagonal-up-extensions color))
+          (attacks-in-directions pp loc color 'queen diagonal-down-dirs (diagonal-down-extensions color))))
 
 (: attacks-by-rook (-> Piece-placements Square-location Color
                        (Listof Attack)))
 (define (attacks-by-rook pp loc color)
-  (append (attacks-in-direction pp loc (add-to-square-location loc 1 0) 0 color 'rook 1 0 (set 'queen 'rook))
-          (attacks-in-direction pp loc (add-to-square-location loc -1 0) 0 color 'rook -1 0 (set 'queen 'rook))
-          (attacks-in-direction pp loc (add-to-square-location loc 0 1) 0 color 'rook 0 1 (set 'queen 'rook))
-          (attacks-in-direction pp loc (add-to-square-location loc 0 -1) 0 color 'rook 0 -1 (set 'queen 'rook))))
+  (attacks-in-directions pp loc color 'rook up-down-left-right-dirs up-down-left-right-extensions))
 
 (: attacks-by-bishop (-> Piece-placements Square-location Color
                          (Listof Attack)))
 (define (attacks-by-bishop pp loc color)
-  (append (attacks-in-direction pp loc (add-to-square-location loc 1 1) 0 color 'bishop 1 0 (set 'queen 'bishop))
-          (attacks-in-direction pp loc (add-to-square-location loc -1 -1) 0 color 'bishop -1 0 (set 'queen 'bishop))
-          (attacks-in-direction pp loc (add-to-square-location loc 1 -1) 0 color 'bishop 0 1 (set 'queen 'bishop))
-          (attacks-in-direction pp loc (add-to-square-location loc -1 1) 0 color 'bishop 0 -1 (set 'queen 'bishop))))
+  (append (attacks-in-directions pp loc color 'bishop diagonal-up-dirs (diagonal-up-extensions color))
+          (attacks-in-directions pp loc color 'bishop diagonal-down-dirs (diagonal-down-extensions color))))
 
 (: one-step-attack (-> Piece-placements Square-location Piece Color Integer Integer
                        (Listof Attack)))
@@ -189,38 +210,86 @@
                              Color
                              Piece
                              Integer Integer
-                             (Setof Piece)
+                             (HashTable Piece Integer)
+                             Integer
                              (Listof Defense)))
-(define (defenses-in-direction pp defender-loc current-loc current-directness color piece dir-x dir-y extension-pieces)
-  (if (not (location-valid? current-loc)) '()
+(define (defenses-in-direction pp defender-loc current-loc current-directness color piece dir-x dir-y extension-pieces fuel)
+  (if (or (not (location-valid? current-loc)) (= 0 fuel)) '()
       (match (get-square-by-location pp current-loc)
         ['empty-square (defenses-in-direction pp defender-loc
                          (add-to-square-location current-loc dir-x dir-y)
                          current-directness
-                         color piece dir-x dir-y extension-pieces)]
+                         color piece dir-x dir-y extension-pieces (- fuel 1))]
         [(Occupied-square target-color target-piece)
          #:when (eq? target-color color)
          (let ([defense (Defense defender-loc piece color current-loc target-piece current-directness)])
-           (if (set-member? extension-pieces target-piece)
+           (if (hash-has-key? extension-pieces target-piece)
                (cons defense
                      (defenses-in-direction pp defender-loc
                        (add-to-square-location current-loc dir-x dir-y)
                        (+ current-directness 1)
-                       color piece dir-x dir-y extension-pieces))
+                       color piece dir-x dir-y extension-pieces (min (- fuel 1)
+                                                                     (hash-ref extension-pieces target-piece))))
                (list defense)))]
         [_ '()])))
+
+(: defenses-in-directions (-> Piece-placements
+                              Square-location
+                              Color
+                              Piece
+                              (Listof (Pairof Integer Integer))
+                              (HashTable Piece Integer)
+                              (Listof Defense)))
+(define (defenses-in-directions pp defender-loc color piece dir-list extension-pieces)
+  (if (empty? dir-list) '()
+      (let* ([dir (car dir-list)]
+             [delta-x (car dir)]
+             [delta-y (cdr dir)])
+        (append (defenses-in-direction pp defender-loc (add-to-square-location defender-loc delta-x delta-y)
+                  0 color piece delta-x delta-y extension-pieces 8)
+                (defenses-in-directions pp defender-loc color piece (cdr dir-list) extension-pieces)))))
 
 (: defenses-by-queen (-> Piece-placements Square-location Color
                          (Listof Defense)))
 (define (defenses-by-queen pp loc color)
-  (append (defenses-in-direction pp loc (add-to-square-location loc 1 0) 0 color 'queen 1 0 (set 'queen 'rook))
-          (defenses-in-direction pp loc (add-to-square-location loc -1 0) 0 color 'queen -1 0 (set 'queen 'rook))
-          (defenses-in-direction pp loc (add-to-square-location loc 0 1) 0 color 'queen 0 1 (set 'queen 'rook))
-          (defenses-in-direction pp loc (add-to-square-location loc 0 -1) 0 color 'queen 0 -1 (set 'queen 'rook))
-          (defenses-in-direction pp loc (add-to-square-location loc 1 1) 0 color 'queen 1 1 (set 'queen 'bishop))
-          (defenses-in-direction pp loc (add-to-square-location loc -1 -1) 0 color 'queen -1 -1 (set 'queen 'bishop))
-          (defenses-in-direction pp loc (add-to-square-location loc 1 -1) 0 color 'queen 1 -1 (set 'queen 'bishop))
-          (defenses-in-direction pp loc (add-to-square-location loc -1 1) 0 color 'queen -1 1 (set 'queen 'bishop))))
+  (append (defenses-in-directions pp loc color 'queen up-down-left-right-dirs up-down-left-right-extensions)
+          (defenses-in-directions pp loc color 'queen diagonal-up-dirs (diagonal-up-extensions color))
+          (defenses-in-directions pp loc color 'queen diagonal-down-dirs (diagonal-down-extensions color))))
+
+(: defenses-by-rook (-> Piece-placements Square-location Color
+                        (Listof Defense)))
+(define (defenses-by-rook pp loc color)
+  (defenses-in-directions pp loc color 'rook up-down-left-right-dirs up-down-left-right-extensions))
+
+(: defenses-by-bishop (-> Piece-placements Square-location Color
+                          (Listof Defense)))
+(define (defenses-by-bishop pp loc color)
+  (append (defenses-in-directions pp loc color 'bishop diagonal-up-dirs (diagonal-up-extensions color))
+          (defenses-in-directions pp loc color 'bishop diagonal-down-dirs (diagonal-down-extensions color))))
+
+(: one-step-defense (-> Piece-placements Square-location Piece Color Integer Integer
+                        (Listof Defense)))
+(define (one-step-defense pp loc piece color delta-x delta-y)
+  (let ([target-loc (add-to-square-location loc delta-x delta-y)])
+    (if (location-valid? target-loc)
+        (match (get-square-by-location pp target-loc)
+          [(Occupied-square target-color target-piece)
+           #:when (eq? target-color color)
+           (list (Defense loc piece color target-loc target-piece 0))]
+          [_ '()])
+        '())))
+
+(: one-step-defenses (-> Piece-placements Square-location Piece Color
+                         (Listof (Pairof Integer Integer))
+                         (Listof Defense)))
+(define (one-step-defenses pp loc piece color deltas)
+  (: iter (-> (Listof (Pairof Integer Integer)) (Listof Defense)))
+  (define (iter deltas)
+    (if (empty? deltas) '()
+        (append (one-step-defense pp loc piece color (car (car deltas)) (cdr (car deltas)))
+                (iter (cdr deltas)))))
+  (iter deltas))
+
 
 (: defense->string (-> Defense String))
 (define (defense->string attack)
@@ -230,12 +299,13 @@
              color d-piece (square-location->string d-loc)
              color t-piece (square-location->string t-loc) directness)]))
 
-(define test1 (pos-from-fen "2bqk1br/r1pPppK1/3R1B2/1N1B4/p1RQ1n2/2p3P1/PPP2P1P/6N1 w k - 0 1"))
-(define test1pp (Position-pp test1))
-(define attacks (attacks-of-pp test1pp))
+(define test1 (pos-from-fen "2bqk1br/r1pPppK1/3R1B2/PN1B4/p1RQ1n2/2p3P1/P1P2P1P/6N1 w k - 0 1"))
+(define test2 (pos-from-fen "rn1qkbn1/pppppppN/2b5/3P1B2/4P3/3Q1B2/PPP1P1PP/RN2KB1R w KQq - 0 1"))
+(define testpp (Position-pp test2))
+(define attacks (attacks-of-pp testpp))
 (displayln (attacks->string attacks))
 
-(define defenses (defenses-by-queen test1pp (Square-location 3 3) 'white))
+(define defenses (defenses-by-queen testpp (Square-location 2 3) 'white))
 (for ([defense defenses])
   (displayln (defense->string defense)))
 
