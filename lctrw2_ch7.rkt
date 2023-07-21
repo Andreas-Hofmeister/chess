@@ -83,7 +83,15 @@
 (define (diagonal-down-extensions color)
   (if (eq? color 'white) (hash 'queen 8 'bishop 8)
       (hash 'queen 8 'bishop 8 'pawn 1)))
-
+(define knight-jump-deltas (list (cons 1 2) (cons -1 2) (cons -2 1) (cons -2 -1)
+                                 (cons -1 -2) (cons 1 -2) (cons 2 -1) (cons 2 1)))
+(: pawn-deltas (-> Color (Listof (Pairof Integer Integer))))
+(define (pawn-deltas color)
+  (let ([delta-y (if (eq? color 'white) 1 -1)])
+    (list (cons 1 delta-y) (cons -1 delta-y))))
+(define king-deltas (list (cons 1 0) (cons 1 1) (cons 0 1) (cons -1 1)
+                          (cons -1 0) (cons -1 -1) (cons 0 -1) (cons 1 -1)))
+    
 (: attacks-by-queen (-> Piece-placements Square-location Color
                         (Listof Attack)))
 (define (attacks-by-queen pp loc color)
@@ -128,23 +136,17 @@
 (: attacks-by-knight (-> Piece-placements Square-location Color
                          (Listof Attack)))
 (define (attacks-by-knight pp loc color)
-  (one-step-attacks pp loc 'knight color
-                    (list (cons 1 2) (cons -1 2) (cons -2 1) (cons -2 -1)
-                          (cons -1 -2) (cons 1 -2) (cons 2 -1) (cons 2 1))))
+  (one-step-attacks pp loc 'knight color knight-jump-deltas))
 
 (: attacks-by-pawn (-> Piece-placements Square-location Color
                        (Listof Attack)))
 (define (attacks-by-pawn pp loc color)
-  (let ([delta-y (if (eq? color 'white) 1 -1)])
-    (one-step-attacks pp loc 'pawn color
-                      (list (cons 1 delta-y) (cons -1 delta-y)))))
+  (one-step-attacks pp loc 'pawn color (pawn-deltas color)))
 
 (: attacks-by-king (-> Piece-placements Square-location Color
                        (Listof Attack)))
 (define (attacks-by-king pp loc color)
-  (one-step-attacks pp loc 'king color
-                    (list (cons 1 0) (cons 1 1) (cons 0 1) (cons -1 1)
-                          (cons -1 0) (cons -1 -1) (cons 0 -1) (cons 1 -1))))
+  (one-step-attacks pp loc 'king color king-deltas))
 
 (: attacks-of-piece (-> Piece-placements Square-location Piece Color
                         (Listof Attack)))
@@ -290,6 +292,49 @@
                 (iter (cdr deltas)))))
   (iter deltas))
 
+(: defenses-by-knight (-> Piece-placements Square-location Color
+                          (Listof Defense)))
+(define (defenses-by-knight pp loc color)
+  (one-step-defenses pp loc 'knight color knight-jump-deltas))
+
+(: defenses-by-pawn (-> Piece-placements Square-location Color
+                        (Listof Defense)))
+(define (defenses-by-pawn pp loc color)
+  (one-step-defenses pp loc 'pawn color (pawn-deltas color)))
+
+(: defenses-by-king (-> Piece-placements Square-location Color
+                        (Listof Defense)))
+(define (defenses-by-king pp loc color)
+  (one-step-defenses pp loc 'king color king-deltas))
+
+(: defenses-of-piece (-> Piece-placements Square-location Piece Color
+                         (Listof Defense)))
+(define (defenses-of-piece pp loc piece color)
+  (match piece
+    ['pawn (defenses-by-pawn pp loc color)]
+    ['rook (defenses-by-rook pp loc color)]
+    ['bishop (defenses-by-bishop pp loc color)]
+    ['knight (defenses-by-knight pp loc color)]
+    ['queen (defenses-by-queen pp loc color)]
+    ['king (defenses-by-king pp loc color)]))
+
+(struct Defenses ([white : (Listof Defense)]
+                  [black : (Listof Defense)])
+  #:transparent)
+
+(: defenses-of-pp (-> Piece-placements Defenses))
+(define (defenses-of-pp pp)
+  (let ([white-defenses : (Listof Defense) '()]
+        [black-defenses : (Listof Defense) '()])
+    (for ([loc valid-locations])
+      (match (get-square-by-location pp loc)
+        [(Occupied-square color piece)
+         #:when (eq? color 'white)
+         (set! white-defenses (append white-defenses (defenses-of-piece pp loc piece color)))]
+        [(Occupied-square color piece)
+         (set! black-defenses (append black-defenses (defenses-of-piece pp loc piece color)))]
+        [_ '()]))
+    (Defenses white-defenses black-defenses)))
 
 (: defense->string (-> Defense String))
 (define (defense->string attack)
@@ -299,15 +344,25 @@
              color d-piece (square-location->string d-loc)
              color t-piece (square-location->string t-loc) directness)]))
 
+(: defense-list->string (-> (Listof Defense) String))
+(define (defense-list->string defenses)
+  (foldr (lambda ([defense : Defense] [s : String])
+           (string-append (defense->string defense) "\n" s))
+         ""
+         defenses))
+
+(: defenses->string (-> Defenses String))
+(define (defenses->string defenses)
+  (string-append "white defenses:\n" (defense-list->string (Defenses-white defenses))
+                 "\nblack defenses:\n" (defense-list->string (Defenses-black defenses))))
+
 (define test1 (pos-from-fen "2bqk1br/r1pPppK1/3R1B2/PN1B4/p1RQ1n2/2p3P1/P1P2P1P/6N1 w k - 0 1"))
 (define test2 (pos-from-fen "rn1qkbn1/pppppppN/2b5/3P1B2/4P3/3Q1B2/PPP1P1PP/RN2KB1R w KQq - 0 1"))
 (define testpp (Position-pp test2))
-(define attacks (attacks-of-pp testpp))
+(define attacks (attacks-of-pp testpp))  
 (displayln (attacks->string attacks))
-
-(define defenses (defenses-by-queen testpp (Square-location 2 3) 'white))
-(for ([defense defenses])
-  (displayln (defense->string defense)))
+(define defenses (defenses-of-pp testpp))
+(displayln (defenses->string defenses))
 
 (: candidate-moves (-> Position (Listof Move)))
 (define (candidate-moves pos)
