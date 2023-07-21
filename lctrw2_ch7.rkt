@@ -356,9 +356,29 @@
   (string-append "white defenses:\n" (defense-list->string (Defenses-white defenses))
                  "\nblack defenses:\n" (defense-list->string (Defenses-black defenses))))
 
+(define sorted-attacks-ref! (inst hash-ref! Square-location (Listof Attack)))
+
+(: sort-attacks-by-target (-> (Listof Attack) 
+                              (HashTable Square-location (Listof Attack))))
+(define (sort-attacks-by-target attacks)
+  (: sorted-attacks (HashTable Square-location (Listof Attack)))
+  (define sorted-attacks (make-hash))
+  (: iter (-> (Listof Attack) (HashTable Square-location (Listof Attack))))
+  (define (iter attacks)
+    (if (empty? attacks) sorted-attacks
+        (let* ([attack (car attacks)]
+               [target-loc (Attack-target-location attack)]
+               [attacks-so-far (sorted-attacks-ref! sorted-attacks target-loc (lambda () '()))])
+          (hash-set! sorted-attacks target-loc (cons attack attacks-so-far))
+          (iter (cdr attacks)))))
+  (iter attacks))
+
 (define test1 (pos-from-fen "2bqk1br/r1pPppK1/3R1B2/PN1B4/p1RQ1n2/2p3P1/P1P2P1P/6N1 w k - 0 1"))
 (define test2 (pos-from-fen "rn1qkbn1/pppppppN/2b5/3P1B2/4P3/3Q1B2/PPP1P1PP/RN2KB1R w KQq - 0 1"))
-(define testpp (Position-pp test2))
+(define test3 (pos-from-fen "rn1qkbnr/ppp1pppp/2b5/3p4/4P3/5B2/PPPP1PQP/RNB1K1NR w KQkq - 0 1"))
+(define test4 (pos-from-fen "rn1qkb1r/ppp1pppp/2b2n2/3p4/4P3/2N2Q2/PPPP1PBP/RNB1K2R w KQkq - 0 1"))
+
+(define testpp (Position-pp test4))
 (define attacks (attacks-of-pp testpp))  
 (displayln (attacks->string attacks))
 (define defenses (defenses-of-pp testpp))
