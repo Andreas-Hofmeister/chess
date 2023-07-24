@@ -89,3 +89,6 @@
                                  ap1ex6-B
                                  ap1ex6-C)))
 
+
+(define pos-k0skV (pos-from-fen "r1b4r/p5Q1/1q1kp3/1p1pn3/3b4/2N3P1/PP3P1P/2R2RK1 w - - 4 23"))
+

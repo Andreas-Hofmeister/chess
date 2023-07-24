@@ -364,14 +364,104 @@
   (: sorted-attacks (HashTable Square-location (Listof Attack)))
   (define sorted-attacks (make-hash))
   (: iter (-> (Listof Attack) (HashTable Square-location (Listof Attack))))
-  (define (iter attacks)
-    (if (empty? attacks) sorted-attacks
-        (let* ([attack (car attacks)]
+  (define (iter remaining-attacks)
+    (if (empty? remaining-attacks) sorted-attacks
+        (let* ([attack (car remaining-attacks)]
                [target-loc (Attack-target-location attack)]
                [attacks-so-far (sorted-attacks-ref! sorted-attacks target-loc (lambda () '()))])
           (hash-set! sorted-attacks target-loc (cons attack attacks-so-far))
-          (iter (cdr attacks)))))
+          (iter (cdr remaining-attacks)))))
   (iter attacks))
+
+(define sorted-defenses-ref! (inst hash-ref! Square-location (Listof Defense)))
+
+(: sort-defenses-by-target (-> (Listof Defense) 
+                               (HashTable Square-location (Listof Defense))))
+(define (sort-defenses-by-target defenses)
+  (: sorted-defenses (HashTable Square-location (Listof Defense)))
+  (define sorted-defenses (make-hash))
+  (: iter (-> (Listof Defense) (HashTable Square-location (Listof Defense))))
+  (define (iter remaining-defenses)
+    (if (empty? remaining-defenses) sorted-defenses
+        (let* ([defense (car remaining-defenses)]
+               [target-loc (Defense-target-location defense)]
+               [defenses-so-far (sorted-defenses-ref! sorted-defenses target-loc (lambda () '()))])
+          (hash-set! sorted-defenses target-loc (cons defense defenses-so-far))
+          (iter (cdr remaining-defenses)))))
+  (iter defenses))
+
+(: sorted-attacks->string (-> (HashTable Square-location (Listof Attack)) String))
+(define (sorted-attacks->string sorted-attacks)
+  (let* ([result ""])
+    (hash-for-each sorted-attacks
+                   (lambda ([target-location : Square-location]
+                            [attacks : (Listof Attack)])
+                     (let ([target-color (Attack-target-color (car attacks))]
+                           [target-piece (Attack-target-piece (car attacks))])
+                       (set! result (format "~a~a ~a on ~a is attacked by:\n"
+                                            (if (non-empty-string? result) (format "~a\n" result) result)
+                                            target-color target-piece
+                                            (square-location->string target-location)))
+                       (set! result (string-append result (attack-list->string attacks))))))
+    result))
+
+(: sorted-defenses->string (-> (HashTable Square-location (Listof Defense)) String))
+(define (sorted-defenses->string sorted-defenses)
+  (let* ([result ""])
+    (hash-for-each sorted-defenses
+                   (lambda ([target-location : Square-location]
+                            [defenses : (Listof Defense)])
+                     (let ([target-color (Defense-color (car defenses))]
+                           [target-piece (Defense-target-piece (car defenses))])
+                       (set! result (format "~a~a ~a on ~a is defended by:\n"
+                                            (if (non-empty-string? result) (format "~a\n" result) result)
+                                            target-color target-piece
+                                            (square-location->string target-location)))
+                       (set! result (string-append result (defense-list->string defenses))))))
+    result))
+
+#|
+black pawn on d5 is attacked by:
+white pawn on e4 attacks black pawn on d5 (directness: 0)
+white queen on f3 attacks black pawn on d5 (directness: 1)
+white knight on c3 attacks black pawn on d5 (directness: 0)
+white bishop on g2 attacks black pawn on d5 (directness: 2)
+
+black pawn on d5 is defended by:
+black queen on d8 defends black pawn on d5 (directness: 0)
+black knight on f6 defends black pawn on d5 (directness: 0)
+black bishop on c6 defends black pawn on d5 (directness: 0)
+|#
+
+(: value-of-piece (-> Piece Integer))
+(define (value-of-piece p)
+  (match p
+    ['queen 9]
+    ['rook 5]
+    ['bishop 3]
+    ['knight 3]
+    ['pawn 1]
+    ['king 700]))
+
+(: piece< (-> Piece Piece Boolean))
+(define (piece< piece1 piece2)
+  (< (value-of-piece piece1) (value-of-piece piece2)))
+
+(: sort-attacks-by-piece-value (-> (Listof Attack) (Listof Attack)))
+(define (sort-attacks-by-piece-value attacks)
+  (sort attacks
+        (lambda ([attack1 : Attack] [attack2 : Attack])
+          (piece< (Attack-attacker-piece attack1)
+                  (Attack-attacker-piece attack2)))))
+
+(: sort-defenses-by-piece-value (-> (Listof Defense) (Listof Defense)))
+(define (sort-defenses-by-piece-value defenses)
+  (sort defenses
+        (lambda ([defense1 : Defense] [defense2 : Defense])
+          (piece< (Defense-defender-piece defense1)
+                  (Defense-defender-piece defense2)))))
+
+;(define (possibly-en-prise? piece color loc attacks defenses)
 
 (define test1 (pos-from-fen "2bqk1br/r1pPppK1/3R1B2/PN1B4/p1RQ1n2/2p3P1/P1P2P1P/6N1 w k - 0 1"))
 (define test2 (pos-from-fen "rn1qkbn1/pppppppN/2b5/3P1B2/4P3/3Q1B2/PPP1P1PP/RN2KB1R w KQq - 0 1"))
@@ -380,9 +470,14 @@
 
 (define testpp (Position-pp test4))
 (define attacks (attacks-of-pp testpp))  
-(displayln (attacks->string attacks))
+;(displayln (attacks->string attacks))
 (define defenses (defenses-of-pp testpp))
-(displayln (defenses->string defenses))
+;(displayln (defenses->string defenses))
+(define sorted-attacks (sort-attacks-by-target (Attacks-white attacks)))
+(define sorted-defenses (sort-defenses-by-target (Defenses-black defenses)))
+(displayln (sorted-attacks->string sorted-attacks))
+(displayln (sorted-defenses->string sorted-defenses))
+
 
 (: candidate-moves (-> Position (Listof Move)))
 (define (candidate-moves pos)
