@@ -356,8 +356,6 @@
   (string-append "white defenses:\n" (defense-list->string (Defenses-white defenses))
                  "\nblack defenses:\n" (defense-list->string (Defenses-black defenses))))
 
-(define sorted-attacks-ref! (inst hash-ref! Square-location (Listof Attack)))
-
 (: sort-attacks-by-target (-> (Listof Attack) 
                               (HashTable Square-location (Listof Attack))))
 (define (sort-attacks-by-target attacks)
@@ -368,12 +366,10 @@
     (if (empty? remaining-attacks) sorted-attacks
         (let* ([attack (car remaining-attacks)]
                [target-loc (Attack-target-location attack)]
-               [attacks-so-far (sorted-attacks-ref! sorted-attacks target-loc (lambda () '()))])
+               [attacks-so-far : (Listof Attack) (hash-ref! sorted-attacks target-loc (lambda () '()))])
           (hash-set! sorted-attacks target-loc (cons attack attacks-so-far))
           (iter (cdr remaining-attacks)))))
   (iter attacks))
-
-(define sorted-defenses-ref! (inst hash-ref! Square-location (Listof Defense)))
 
 (: sort-defenses-by-target (-> (Listof Defense) 
                                (HashTable Square-location (Listof Defense))))
@@ -385,7 +381,7 @@
     (if (empty? remaining-defenses) sorted-defenses
         (let* ([defense (car remaining-defenses)]
                [target-loc (Defense-target-location defense)]
-               [defenses-so-far (sorted-defenses-ref! sorted-defenses target-loc (lambda () '()))])
+               [defenses-so-far : (Listof Defense) (hash-ref! sorted-defenses target-loc (lambda () '()))])
           (hash-set! sorted-defenses target-loc (cons defense defenses-so-far))
           (iter (cdr remaining-defenses)))))
   (iter defenses))
@@ -420,19 +416,6 @@
                        (set! result (string-append result (defense-list->string defenses))))))
     result))
 
-#|
-black pawn on d5 is attacked by:
-white pawn on e4 attacks black pawn on d5 (directness: 0)
-white queen on f3 attacks black pawn on d5 (directness: 1)
-white knight on c3 attacks black pawn on d5 (directness: 0)
-white bishop on g2 attacks black pawn on d5 (directness: 2)
-
-black pawn on d5 is defended by:
-black queen on d8 defends black pawn on d5 (directness: 0)
-black knight on f6 defends black pawn on d5 (directness: 0)
-black bishop on c6 defends black pawn on d5 (directness: 0)
-|#
-
 (: value-of-piece (-> Piece Integer))
 (define (value-of-piece p)
   (match p
@@ -461,12 +444,71 @@ black bishop on c6 defends black pawn on d5 (directness: 0)
           (piece< (Defense-defender-piece defense1)
                   (Defense-defender-piece defense2)))))
 
-;(define (possibly-en-prise? piece color loc attacks defenses)
+(: sequence-of-material-gain (-> Piece (Listof Attack) (Listof Defense) Boolean Integer
+                                 (Listof Integer)))
+(define (sequence-of-material-gain target-piece sorted-attacks sorted-defenses attacker-to-move material-balance-so-far)
+  (cond
+    [(and attacker-to-move (empty? sorted-attacks)) '()]
+    [(and (not attacker-to-move) (empty? sorted-defenses)) '()]
+    [attacker-to-move
+     (let* ([attack (car sorted-attacks)]
+            [attacking-piece (Attack-attacker-piece attack)]
+            [new-balance (+ material-balance-so-far (value-of-piece target-piece))])
+       (cons new-balance (sequence-of-material-gain attacking-piece
+                                                    (cdr sorted-attacks)
+                                                    sorted-defenses
+                                                    false
+                                                    new-balance)))]
+    [else ; i.e. (not attacker-to-move)
+     (let* ([defense (car sorted-defenses)]
+            [defending-piece (Defense-defender-piece defense)]
+            [new-balance (- material-balance-so-far (value-of-piece target-piece))])
+       (cons new-balance (sequence-of-material-gain defending-piece
+                                                    sorted-attacks
+                                                    (cdr sorted-defenses)
+                                                    true
+                                                    new-balance)))]))
+
+
+#|
+white pawn on e4 attacks black pawn on d5 (directness: 0)
+white knight on c3 attacks black pawn on d5 (directness: 0)
+white bishop on g2 attacks black pawn on d5 (directness: 2)
+white queen on f3 attacks black pawn on d5 (directness: 1)
+
+black knight on f6 defends black pawn on d5 (directness: 0)
+black bishop on c6 defends black pawn on d5 (directness: 0)
+black queen on d8 defends black pawn on d5 (directness: 0)
+
+b: pawn 1
+w: pawn 0
+b: knight 3
+w: knight 0
+b: bishop 3
+w: bishop 0
+b: queen 9
+(pawn, pawn, knight, knight, bishop, bishop, queen, 
+|#
+
+(: possibly-en-prise? (-> Piece (Listof Attack) (Listof Defense) Boolean))
+(define (possibly-en-prise? piece attacks defenses)
+  (let* ([balances (sequence-of-material-gain piece
+                                              (sort-attacks-by-piece-value attacks)
+                                              (sort-defenses-by-piece-value defenses)
+                                              true
+                                              0)]
+         [len (length balances)])
+    (or (exists-in (range len)
+                   (lambda ([i : Integer])
+                     (and (odd? i)
+                          (> (list-ref balances i) 0))))
+        (> (list-ref balances (- len 1)) 0))))
 
 (define test1 (pos-from-fen "2bqk1br/r1pPppK1/3R1B2/PN1B4/p1RQ1n2/2p3P1/P1P2P1P/6N1 w k - 0 1"))
 (define test2 (pos-from-fen "rn1qkbn1/pppppppN/2b5/3P1B2/4P3/3Q1B2/PPP1P1PP/RN2KB1R w KQq - 0 1"))
 (define test3 (pos-from-fen "rn1qkbnr/ppp1pppp/2b5/3p4/4P3/5B2/PPPP1PQP/RNB1K1NR w KQkq - 0 1"))
-(define test4 (pos-from-fen "rn1qkb1r/ppp1pppp/2b2n2/3p4/4P3/2N2Q2/PPPP1PBP/RNB1K2R w KQkq - 0 1"))
+(define test4 (pos-from-fen "r2qkb1r/ppp1pppp/2b2n2/3p4/1n2P3/2N2Q2/PPPP1PBP/RNB1K2R w KQkq - 0 1"))
+(define test5 (pos-from-fen "rnb1kbnr/pp1p1ppp/2p1p3/3q4/8/1B3Q2/PPPPPPPP/RNB1K1NR w KQkq - 0 1"))
 
 (define testpp (Position-pp test4))
 (define attacks (attacks-of-pp testpp))  
@@ -475,9 +517,14 @@ black bishop on c6 defends black pawn on d5 (directness: 0)
 ;(displayln (defenses->string defenses))
 (define sorted-attacks (sort-attacks-by-target (Attacks-white attacks)))
 (define sorted-defenses (sort-defenses-by-target (Defenses-black defenses)))
-(displayln (sorted-attacks->string sorted-attacks))
-(displayln (sorted-defenses->string sorted-defenses))
-
+(define d5-attacks (sort-attacks-by-piece-value (hash-ref sorted-attacks (Square-location 4 3))))
+(define d5-defenses (sort-defenses-by-piece-value (hash-ref sorted-defenses (Square-location 4 3))))
+;(displayln (attack-list->string d5-attacks))
+;(displayln (defense-list->string d5-defenses))
+;(displayln (sorted-attacks->string sorted-attacks))
+;(displayln (sorted-defenses->string sorted-defenses))
+(displayln (sequence-of-material-gain 'pawn d5-attacks d5-defenses true 0))
+(displayln (possibly-en-prise? 'pawn d5-attacks d5-defenses))
 
 (: candidate-moves (-> Position (Listof Move)))
 (define (candidate-moves pos)
