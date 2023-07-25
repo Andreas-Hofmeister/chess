@@ -469,27 +469,6 @@
                                                     true
                                                     new-balance)))]))
 
-
-#|
-white pawn on e4 attacks black pawn on d5 (directness: 0)
-white knight on c3 attacks black pawn on d5 (directness: 0)
-white bishop on g2 attacks black pawn on d5 (directness: 2)
-white queen on f3 attacks black pawn on d5 (directness: 1)
-
-black knight on f6 defends black pawn on d5 (directness: 0)
-black bishop on c6 defends black pawn on d5 (directness: 0)
-black queen on d8 defends black pawn on d5 (directness: 0)
-
-b: pawn 1
-w: pawn 0
-b: knight 3
-w: knight 0
-b: bishop 3
-w: bishop 0
-b: queen 9
-(pawn, pawn, knight, knight, bishop, bishop, queen, 
-|#
-
 (: possibly-en-prise? (-> Piece (Listof Attack) (Listof Defense) Boolean))
 (define (possibly-en-prise? piece attacks defenses)
   (let* ([balances (sequence-of-material-gain piece
@@ -503,6 +482,31 @@ b: queen 9
                      (and (odd? i)
                           (> (list-ref balances i) 0))))
         (> (list-ref balances (- len 1)) 0))))
+
+(: locations-with-possibly-en-prise-piece (-> Piece-placements (Listof Square-location)))
+(define (locations-with-possibly-en-prise-piece pp)
+  (let* ([attacks (attacks-of-pp pp)]
+         [defenses (defenses-of-pp pp)]
+         [sorted-white-attacks (sort-attacks-by-target (Attacks-white attacks))]
+         [sorted-black-attacks (sort-attacks-by-target (Attacks-black attacks))]
+         [sorted-white-defenses (sort-defenses-by-target (Defenses-white defenses))]
+         [sorted-black-defenses (sort-defenses-by-target (Defenses-black defenses))]
+         [locations-en-prise : (Listof Square-location) '()])
+    (for ([loc valid-locations])
+       (match (get-square-by-location pp loc)
+         [(Occupied-square color piece)
+          (let* ([sorted-attacks : (HashTable Square-location (Listof Attack))
+                                 (if (eq? color 'white) sorted-black-attacks
+                                     sorted-white-attacks)]
+                 [sorted-defenses : (HashTable Square-location (Listof Defense))
+                                  (if (eq? color 'white) sorted-white-defenses
+                                      sorted-black-defenses)]
+                 [piece-attacks : (Listof Attack) (hash-ref sorted-attacks loc (lambda () '()))]
+                 [piece-defenses : (Listof Defense) (hash-ref sorted-defenses loc (lambda () '()))])
+            (when (possibly-en-prise? piece piece-attacks piece-defenses)
+              (set! locations-en-prise (cons loc locations-en-prise))))]
+         [_ 'nil]))
+    locations-en-prise))
 
 (define test1 (pos-from-fen "2bqk1br/r1pPppK1/3R1B2/PN1B4/p1RQ1n2/2p3P1/P1P2P1P/6N1 w k - 0 1"))
 (define test2 (pos-from-fen "rn1qkbn1/pppppppN/2b5/3P1B2/4P3/3Q1B2/PPP1P1PP/RN2KB1R w KQq - 0 1"))
@@ -523,8 +527,9 @@ b: queen 9
 ;(displayln (defense-list->string d5-defenses))
 ;(displayln (sorted-attacks->string sorted-attacks))
 ;(displayln (sorted-defenses->string sorted-defenses))
-(displayln (sequence-of-material-gain 'pawn d5-attacks d5-defenses true 0))
-(displayln (possibly-en-prise? 'pawn d5-attacks d5-defenses))
+(define possibly-en-prise (locations-with-possibly-en-prise-piece testpp))
+(for ([loc possibly-en-prise])
+  (displayln (square-location->string loc)))
 
 (: candidate-moves (-> Position (Listof Move)))
 (define (candidate-moves pos)
