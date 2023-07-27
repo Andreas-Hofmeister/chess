@@ -500,6 +500,23 @@
                         (locations-between (from-of-move move-to-be-blocked)
                                            (to-of-move move-to-be-blocked))))])))
 
+(: defensive-moves-for-checkmate-threat (-> Position Move (Listof Move)
+                                            (Listof Move)))
+(define (defensive-moves-for-checkmate-threat pos threatened-move all-moves)
+  (filter (lambda ([move : Move])
+            (or (king-move? pos move)
+                (move-by-piece-adjacent-to-king? pos move)
+                (move-defends-square? pos move (to-of-move threatened-move))
+                (move-blocks-move? pos move threatened-move)
+                (captures-on-square? move (from-of-move threatened-move))
+                (puts-opponent-in-check? pos move)))
+          all-moves))
+
+
+(: flatten-moves (-> (Listof (Listof Move)) (Listof Move)))
+(define (flatten-moves lst)
+  (apply append lst))
+
 (: checking-moves (-> Position (Listof Move) (Listof Move)))
 (define (checking-moves pos moves)
   (filter (curry puts-opponent-in-check? pos) moves))

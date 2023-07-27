@@ -210,3 +210,68 @@
    pos
    (No-move-evaluation 'minus-infinity)
    (No-move-evaluation 'plus-infinity)))
+
+(: evaluate-moves-alpha-beta-with-optional-stopping (-> (-> Position Position-evaluation)
+                                                        (-> Position Integer (Listof Move))
+                                                        (-> Position Integer Boolean)
+                                                        Integer Integer Position Move-evaluation Move-evaluation
+                                                        (Listof Move-evaluation)))
+(define (evaluate-moves-alpha-beta-with-optional-stopping evaluate-position
+                                                          determine-candidate-moves
+                                                          optional-stop?
+                                                          depth-fuel current-depth
+                                                          pos alpha beta)
+  (let ([moves-to-consider (if (= depth-fuel 0) '() (determine-candidate-moves pos current-depth))])
+    (if (empty? moves-to-consider) (list (No-move-evaluation (evaluate-position pos)))
+        (let* ([player (Position-to-move pos)]
+               [opponent (opponent-of player)]
+               [min-or-max (evaluation-function-for-player opponent)]
+               [current-alpha alpha]
+               [current-beta beta])
+          (begin
+            (: process-moves (-> (Listof Move) (Listof Move-evaluation)))
+            (define (process-moves moves)
+              (if (empty? moves) '()
+                  (let* ([move (car moves)]
+                         [rec-evs (evaluate-moves-alpha-beta-with-optional-stopping
+                                   evaluate-position
+                                   determine-candidate-moves
+                                   optional-stop?
+                                   (- depth-fuel 1) (+ current-depth 1)
+                                   (make-move pos move)
+                                   current-alpha
+                                   current-beta)]
+                         [candidate-evs (if (optional-stop? pos current-depth)
+                                            (cons (No-move-evaluation (evaluate-position pos))
+                                                  rec-evs)
+                                            rec-evs)]
+                         [ev (discounted-evaluation move (min-or-max candidate-evs))])
+                    (if (eq? player 'white)
+                        (begin
+                          (when (move-evaluation> ev current-alpha)
+                            (set! current-alpha ev))
+                          (if (move-evaluation< current-beta ev)
+                              (list ev)
+                              (cons ev (process-moves (cdr moves)))))
+                        (begin
+                          (when (move-evaluation< ev current-beta)
+                            (set! current-beta ev))
+                          (if (move-evaluation< ev current-alpha)
+                              (list ev)
+                              (cons ev (process-moves (cdr moves)))))))))
+            (process-moves moves-to-consider))))))
+
+(: evaluate-moves-with-optional-stopping (-> (-> Position Position-evaluation)
+                                             (-> Position Integer (Listof Move))
+                                             (-> Position Integer Boolean)
+                                             Integer Position (Listof Move-evaluation)))
+(define (evaluate-moves-with-optional-stopping evaluate-position determine-candidate-moves optional-stop? depth-fuel pos)
+  (evaluate-moves-alpha-beta-with-optional-stopping
+   evaluate-position
+   determine-candidate-moves
+   optional-stop?
+   depth-fuel 0
+   pos
+   (No-move-evaluation 'minus-infinity)
+   (No-move-evaluation 'plus-infinity)))
+

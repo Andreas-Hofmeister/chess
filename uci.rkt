@@ -36,27 +36,6 @@
 (define (select-random-element l)
   (list-ref l (random (length l))))
 
-(: move->uci-string (-> Move String))
-(define (move->uci-string m)
-  (: normal-move (-> Square-location Square-location String))
-  (define (normal-move from-loc to-loc)
-    (format "~a~a"
-             (square-location->string from-loc)
-             (square-location->string to-loc)))
-  (match m
-    [(From-to-move from-loc to-loc) (normal-move from-loc to-loc)]
-    [(Capture from-loc to-loc) (normal-move from-loc to-loc)]
-    [(Double-step from-loc to-loc) (normal-move from-loc to-loc)]
-    [(En-passant from-loc to-loc) (normal-move from-loc to-loc)]
-    [(Promotion from-loc to-loc piece)
-     (format "~a~a" (normal-move from-loc to-loc) (piece->string piece))]
-    [(Promotion-with-capture from-loc to-loc piece)
-     (format "~a~a" (normal-move from-loc to-loc) (piece->string piece))]
-    [(Castle 'white 'queen-side) "e1c1"]
-    [(Castle 'white 'king-side) "e1g1"]
-    [(Castle 'black 'queen-side) "e8c8"]
-    [(Castle 'black 'king-side) "e8g8"]))
-
 (: handle-uci (-> String Boolean))
 (define (handle-uci s)
   (if (equal? s "uci")

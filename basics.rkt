@@ -219,6 +219,12 @@
 (define (location-occupied-by-enemy-piece? pp loc c)
   (occupied-by-enemy-piece? pp (Square-location-rank loc) (Square-location-file loc) c))
 
+(: locations-occupied-by-enemy-piece (-> Piece-placements (Listof Square-location) Color
+                                         (Listof Square-location)))
+(define (locations-occupied-by-enemy-piece pp locs c)
+  (filter (lambda ([loc : Square-location]) (location-occupied-by-enemy-piece? pp loc c))
+          locs))
+
 (: occupied-by-friendly-piece? (-> Piece-placements Integer Integer Color Boolean))
 (define (occupied-by-friendly-piece? pp rank file c)
   (match (get-square pp rank file)

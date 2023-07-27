@@ -16,27 +16,11 @@
 (define positions (positions-from-file "../krr-test/fen_lctrw1_ch10.fen"))
 (define movesstrings (file->lines "solutions_lctrw1_ch10.txt"))
 
-(: defensive-moves-for-checkmate-threat (-> Position Move (Listof Move)
-                                            (Listof Move)))
-(define (defensive-moves-for-checkmate-threat pos threatened-move all-moves)
-  (filter (lambda ([move : Move])
-            (or (king-move? pos move)
-                (move-by-piece-adjacent-to-king? pos move)
-                (move-defends-square? pos move (to-of-move threatened-move))
-                (move-blocks-move? pos move threatened-move)
-                (captures-on-square? move (from-of-move threatened-move))
-                (puts-opponent-in-check? pos move)))
-          all-moves))
-
 (: best-move (-> Position (Listof Move)))
 (define (best-move pos)
   (let ([best (best-among-all-moves pos 1 evaluate-opening-position)])
     (if (empty? best) '()
         (list (car best)))))
-
-(: flatten-moves (-> (Listof (Listof Move)) (Listof Move)))
-(define (flatten-moves lst)
-  (apply append lst))
 
 (: defensive-moves-for-search-with-threats (-> Position (Listof Move) (Listof Move)))
 (define (defensive-moves-for-search-with-threats pos moves)
