@@ -47,13 +47,56 @@
                                enemies-en-prise-then)])
     (not (empty? new-en-prise))))
 
+(: equivalent-trade? (-> Piece (Listof Attack) (Listof Defense) Boolean))
+(define (equivalent-trade? piece attacks defenses)
+  (let* ([balances (sequence-of-material-gain piece
+                                              (sort-attacks-by-piece-value attacks)
+                                              (sort-defenses-by-piece-value defenses)
+                                              true
+                                              0)]
+         [len (length balances)])
+    (or (exists-in (range len)
+                   (lambda ([i : Integer])
+                     (and (odd? i)
+                          (= (list-ref balances i) 0))))
+        (and (> len 0)
+             (= (list-ref balances (- len 1)) 0)))))
+
+(: locations-with-equivalent-trades (-> Piece-placements (Listof Square-location)))
+(define (locations-with-equivalent-trades pp)
+  (let* ([attacks (attacks-of-pp pp)]
+         [defenses (defenses-of-pp pp)]
+         [sorted-white-attacks (sort-attacks-by-target (Attacks-white attacks))]
+         [sorted-black-attacks (sort-attacks-by-target (Attacks-black attacks))]
+         [sorted-white-defenses (sort-defenses-by-target (Defenses-white defenses))]
+         [sorted-black-defenses (sort-defenses-by-target (Defenses-black defenses))]
+         [locs : (Listof Square-location) '()])
+    (for ([loc valid-locations])
+       (match (get-square-by-location pp loc)
+         [(Occupied-square color piece)
+          (let* ([sorted-attacks : (HashTable Square-location (Listof Attack))
+                                 (if (eq? color 'white) sorted-black-attacks
+                                     sorted-white-attacks)]
+                 [sorted-defenses : (HashTable Square-location (Listof Defense))
+                                  (if (eq? color 'white) sorted-white-defenses
+                                      sorted-black-defenses)]
+                 [piece-attacks : (Listof Attack) (hash-ref sorted-attacks loc (lambda () '()))]
+                 [piece-defenses : (Listof Defense) (hash-ref sorted-defenses loc (lambda () '()))])
+            (when (equivalent-trade? piece piece-attacks piece-defenses)
+              (set! locs (cons loc locs))))]
+         [_ 'nil]))
+    locs))
+
 (: candidate-moves (-> Position Integer (Listof Move)))
 (define (candidate-moves pos depth)
   (cond
     [(in-check? pos (Position-to-move pos)) (legal-moves pos)]
-    ;[(empty? (locations-with-possibly-en-prise-piece (Position-pp pos))) '()]
     [else
      (let* ([moves (legal-moves pos)]
+            [enemies-en-prise (locations-occupied-by-enemy-piece
+                               (Position-pp pos)
+                               (locations-with-possibly-en-prise-piece (Position-pp pos))
+                               (Position-to-move pos))]
             [offensive-moves
              (filter (lambda ([move : Move])
                        (or (capturing-move? move)
@@ -73,8 +116,8 @@
 
 (: optional-stop? (-> Position Integer Boolean))
 (define (optional-stop? pos depth)
-;#f)
-  (empty? (locations-with-possibly-en-prise-piece (Position-pp pos))))
+#f)
+;  (empty? (locations-with-possibly-en-prise-piece (Position-pp pos))))
 
 (: move-search (-> Position (Listof Move-evaluation)))
 (define (move-search pos)
@@ -88,7 +131,7 @@
     (for ([move moves]
           [v vs])
       (set! result (cons (format "~a: ~a" (move->uci-string move) v) result)))
-    (string-join result ", ")))
+    (string-join (reverse result) ", ")))
 
 (: check-solution (-> Position (Listof String) (Listof Move-evaluation)
                       String))
@@ -103,8 +146,8 @@
        (format "No solutions found")]
       [else
        (if (not (move-in-evaluations? move best-solutions))
-           (format "Wrong move: ~a" best-solutions)
-;                   (evs->string (sort-evaluations solution-moves (Position-to-move pos))))
+           (format "Wrong move: ~a"
+                   (evs->string (sort-evaluations solution-moves (Position-to-move pos))))
            (format "Ok"))])))
 
 (: perform-test (-> (Listof Position) (Listof String) (Listof Integer)
@@ -126,7 +169,7 @@
 (define movesstrings-to-be-tested (take movesstrings 20))
 (define indices-to-be-tested (range 1 21))
 |#
-
+#|
 (define positions-to-be-tested (list (list-ref positions 7)))
 (define movesstrings-to-be-tested (list (list-ref movesstrings 7)))
 (define indices-to-be-tested (list 8))
@@ -134,5 +177,6 @@
 (perform-test positions-to-be-tested
               movesstrings-to-be-tested
               indices-to-be-tested)
+|#
 
 
