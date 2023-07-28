@@ -235,6 +235,12 @@
 (define (location-occupied-by-friendly-piece? pp loc c)
   (occupied-by-friendly-piece? pp (Square-location-rank loc) (Square-location-file loc) c))
 
+(: locations-occupied-by-friendly-piece (-> Piece-placements (Listof Square-location) Color
+                                         (Listof Square-location)))
+(define (locations-occupied-by-friendly-piece pp locs c)
+  (filter (lambda ([loc : Square-location]) (location-occupied-by-friendly-piece? pp loc c))
+          locs))
+
 (: locations-between (-> Square-location Square-location
                          (Listof Square-location)))
 (define (locations-between from-location to-location)

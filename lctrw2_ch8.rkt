@@ -17,11 +17,12 @@
 (define positions (positions-from-file "../krr-test/fen_lctrw2_ch8.fen"))
 (define movesstrings (file->lines "solutions_lctrw2_ch8.txt"))
 
-;(: defends-en-prise (-> Position Square-location Move Boolean))
-;(define (defends-en-prise
+(: defends-en-prise? (-> Position Square-location Move Boolean))
+(define (defends-en-prise? pos loc move)
+  (equal? loc (from-of-move move)))
 
-(: defensive-moves (-> Position (Listof Move) (Listof Move)))
-(define (defensive-moves pos moves)
+(: checkmate-defensive-moves (-> Position (Listof Move) (Listof Move)))
+(define (checkmate-defensive-moves pos moves)
   (if (in-check? pos (Position-to-move pos)) moves
       (let* ([rev-pos (switch-to-move pos)]
              [rev-moves (legal-moves rev-pos)]
@@ -44,9 +45,6 @@
                                  (not (exists-in en-prise-now
                                                  (lambda ([loc2 : Square-location]) (equal? loc loc2)))))
                                enemies-en-prise-then)])
-    (displayln (format "Before: ~a, After: ~a"
-                       (map square-location->string en-prise-now)
-                       (map square-location->string en-prise-then)))
     (not (empty? new-en-prise))))
 
 (: candidate-moves (-> Position Integer (Listof Move)))
@@ -59,18 +57,38 @@
             [offensive-moves
              (filter (lambda ([move : Move])
                        (or (capturing-move? move)
-                           (puts-opponent-in-check? pos move)))
+                           (puts-opponent-in-check? pos move)
+                           (puts-en-prise? pos move)))
                      moves)]
-            [def-moves (defensive-moves pos moves)])
-       (remove-duplicates (append offensive-moves def-moves)))]))
+            [cm-def-moves (defensive-moves pos moves)]
+            [en-prise (locations-occupied-by-friendly-piece (Position-pp pos)
+                                                            (locations-with-possibly-en-prise-piece (Position-pp pos))
+                                                            (Position-to-move pos))]
+            [ep-def-moves (filter (lambda ([move : Move])
+                                    (exists-in en-prise
+                                     (lambda ([loc : Square-location])
+                                       (defends-en-prise? pos loc move))))
+                                  moves)])
+       (remove-duplicates (append offensive-moves cm-def-moves ep-def-moves)))]))
 
 (: optional-stop? (-> Position Integer Boolean))
-(define (optional-stop? pos depth) #f)
-;  (empty? (locations-with-possibly-en-prise-piece (Position-pp pos))))
+(define (optional-stop? pos depth)
+;#f)
+  (empty? (locations-with-possibly-en-prise-piece (Position-pp pos))))
 
 (: move-search (-> Position (Listof Move-evaluation)))
 (define (move-search pos)
   (evaluate-moves-with-optional-stopping evaluate-opening-position candidate-moves optional-stop? 4 pos))
+
+(: evs->string (-> (Listof Move-evaluation) String))
+(define (evs->string evs)
+  (let ([moves (moves-of-evaluations evs)]
+        [vs (map move-evaluation->integer evs)]
+        [result : (Listof String) '()])
+    (for ([move moves]
+          [v vs])
+      (set! result (cons (format "~a: ~a" (move->uci-string move) v) result)))
+    (string-join result ", ")))
 
 (: check-solution (-> Position (Listof String) (Listof Move-evaluation)
                       String))
@@ -85,7 +103,8 @@
        (format "No solutions found")]
       [else
        (if (not (move-in-evaluations? move best-solutions))
-           (format "Wrong move: ~a" solution-moves)
+           (format "Wrong move: ~a" best-solutions)
+;                   (evs->string (sort-evaluations solution-moves (Position-to-move pos))))
            (format "Ok"))])))
 
 (: perform-test (-> (Listof Position) (Listof String) (Listof Integer)
@@ -103,17 +122,17 @@
 (define indices-to-be-tested (range 1 (+ 1 (length positions))))
 |#
 #|
-(define positions-to-be-tested (take positions 15))
-(define movesstrings-to-be-tested (take movesstrings 15))
-(define indices-to-be-tested (range 1 16))
+(define positions-to-be-tested (take positions 20))
+(define movesstrings-to-be-tested (take movesstrings 20))
+(define indices-to-be-tested (range 1 21))
 |#
 
-(define positions-to-be-tested (list (list-ref positions 16)))
-(define movesstrings-to-be-tested (list (list-ref movesstrings 16)))
-(define indices-to-be-tested (list 17))
-#|
+(define positions-to-be-tested (list (list-ref positions 7)))
+(define movesstrings-to-be-tested (list (list-ref movesstrings 7)))
+(define indices-to-be-tested (list 8))
+
 (perform-test positions-to-be-tested
               movesstrings-to-be-tested
               indices-to-be-tested)
-|#
+
 
