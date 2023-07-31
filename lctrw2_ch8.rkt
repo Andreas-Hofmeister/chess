@@ -19,7 +19,11 @@
 
 (: defends-en-prise? (-> Position Square-location Move Boolean))
 (define (defends-en-prise? pos loc move)
-  (equal? loc (from-of-move move)))
+  (and (equal? loc (from-of-move move))
+       (let* ([new-pos (make-move pos move)]
+              [new-loc (to-of-move move)]
+              [en-prise-then (locations-with-possibly-en-prise-piece (Position-pp new-pos))])
+         (not (member new-loc en-prise-then)))))
 
 (: checkmate-defensive-moves (-> Position (Listof Move) (Listof Move)))
 (define (checkmate-defensive-moves pos moves)
@@ -33,8 +37,8 @@
              [result checkmate-threat-defenses])
         result)))
 
-(: puts-en-prise? (-> Position Move Boolean))
-(define (puts-en-prise? pos move)
+(: puts-en-prise (-> Position Move (Listof Square-location)))
+(define (puts-en-prise pos move)
   (let* ([en-prise-now (locations-with-possibly-en-prise-piece (Position-pp pos))]
          [new-pos (make-move pos move)]
          [en-prise-then (locations-with-possibly-en-prise-piece (Position-pp new-pos))]
@@ -45,7 +49,7 @@
                                  (not (exists-in en-prise-now
                                                  (lambda ([loc2 : Square-location]) (equal? loc loc2)))))
                                enemies-en-prise-then)])
-    (not (empty? new-en-prise))))
+    new-en-prise))
 
 (: equivalent-trade? (-> Piece (Listof Attack) (Listof Defense) Boolean))
 (define (equivalent-trade? piece attacks defenses)
@@ -87,32 +91,63 @@
          [_ 'nil]))
     locs))
 
+(: is-only-defender? (-> Square-location (HashTable Square-location (Listof Defense)) Boolean))
+(define (is-only-defender? defender-loc sorted-defenses)
+  (let ([result : Boolean #f])
+    (hash-for-each sorted-defenses
+                   (lambda ([target-loc : Square-location]
+                            [defenses : (Listof Defense)])
+                     (when (and (= (length defenses) 1)
+                                (equal? (Defense-defender-location (car defenses)) defender-loc))
+                       (set! result #t))))
+    result))
+#|
+(: is-mate-in-one? (-> Pos Move Boolean))
+(define (is-mate-in-one? pos move)
+  (let* ([new-pos (make-move
+  (empty? (legal-moves ([new-pos (make-move pos move)]
+|#
+
 (: candidate-moves (-> Position Integer (Listof Move)))
 (define (candidate-moves pos depth)
   (cond
     [(in-check? pos (Position-to-move pos)) (legal-moves pos)]
     [else
      (let* ([moves (legal-moves pos)]
-            [enemies-en-prise (locations-occupied-by-enemy-piece
-                               (Position-pp pos)
-                               (locations-with-possibly-en-prise-piece (Position-pp pos))
-                               (Position-to-move pos))]
+            [to-move (Position-to-move pos)]
+            [pp (Position-pp pos)]
+            [attacks (attacks-of-pp pp)]
+            [defenses (defenses-of-pp pp)]
+            [sorted-white-attacks (sort-attacks-by-target (Attacks-white attacks))]
+            [sorted-black-attacks (sort-attacks-by-target (Attacks-black attacks))]
+            [sorted-white-defenses (sort-defenses-by-target (Defenses-white defenses))]
+            [sorted-black-defenses (sort-defenses-by-target (Defenses-black defenses))]
+            [sorted-own-attacks (if (eq? to-move 'white) sorted-white-attacks sorted-black-attacks)]
+            [sorted-enemy-attacks (if (eq? to-move 'white) sorted-black-attacks sorted-white-attacks)]
+            [sorted-own-defenses (if (eq? to-move 'white) sorted-white-defenses sorted-black-defenses)]
+            [sorted-enemy-defenses (if (eq? to-move 'white) sorted-black-defenses sorted-white-defenses)]
+            [en-prise (locations-with-possibly-en-prise-piece (Position-pp pos))]
+            [own-en-prise (locations-occupied-by-friendly-piece pp en-prise to-move)]
+            [enemies-en-prise (locations-occupied-by-enemy-piece pp en-prise to-move)]
+            [equivalent-trades (locations-with-equivalent-trades (Position-pp pos))]
             [offensive-moves
              (filter (lambda ([move : Move])
-                       (or (capturing-move? move)
-                           (puts-opponent-in-check? pos move)
-                           (puts-en-prise? pos move)))
+                       (or (and (capturing-move? move)
+                                (or (member (to-of-move move) enemies-en-prise)
+                                    (member (to-of-move move) equivalent-trades)))
+                           
+                           (exists-in (puts-en-prise pos move)
+                                      (lambda ([loc : Square-location])
+                                        (is-only-defender? loc sorted-enemy-defenses)))))
                      moves)]
-            [cm-def-moves (defensive-moves pos moves)]
-            [en-prise (locations-occupied-by-friendly-piece (Position-pp pos)
-                                                            (locations-with-possibly-en-prise-piece (Position-pp pos))
-                                                            (Position-to-move pos))]
-            [ep-def-moves (filter (lambda ([move : Move])
-                                    (exists-in en-prise
-                                     (lambda ([loc : Square-location])
-                                       (defends-en-prise? pos loc move))))
-                                  moves)])
-       (remove-duplicates (append offensive-moves cm-def-moves ep-def-moves)))]))
+            [defensive-moves
+              (filter (lambda ([move : Move])
+                        (exists-in own-en-prise
+                                   (lambda ([loc : Square-location])
+                                     (defends-en-prise? pos loc move))))
+                      moves)])
+       ;(displayln offensive-moves)
+       (remove-duplicates (append offensive-moves defensive-moves)))]))
 
 (: optional-stop? (-> Position Integer Boolean))
 (define (optional-stop? pos depth)
@@ -138,7 +173,8 @@
 (define (check-solution pos move-strs solution-moves)
   (let* ([move (movestring->move pos (car move-strs))]
          [best-solutions (best-evaluations solution-moves
-                                           (Position-to-move pos))])
+                                           (Position-to-move pos))]
+         [pos-ev-before (evaluate-opening-position pos)])
     (cond
       [(> (length best-solutions) 1)
        (format "More than one solution found: ~a" best-solutions)]
@@ -148,7 +184,7 @@
        (if (not (move-in-evaluations? move best-solutions))
            (format "Wrong move: ~a"
                    (evs->string (sort-evaluations solution-moves (Position-to-move pos))))
-           (format "Ok"))])))
+           (format "Ok: ~a (before: ~a)" (evs->string best-solutions) (position-evaluation->integer pos-ev-before)))])))
 
 (: perform-test (-> (Listof Position) (Listof String) (Listof Integer)
                     Void))
@@ -164,19 +200,34 @@
 (define movesstrings-to-be-tested movesstrings)
 (define indices-to-be-tested (range 1 (+ 1 (length positions))))
 |#
+
+(define positions-to-be-tested (take positions 17))
+(define movesstrings-to-be-tested (take movesstrings 17))
+(define indices-to-be-tested (range 1 18))
+
 #|
-(define positions-to-be-tested (take positions 20))
-(define movesstrings-to-be-tested (take movesstrings 20))
-(define indices-to-be-tested (range 1 21))
+(define positions-to-be-tested (list (list-ref positions 16)))
+(define movesstrings-to-be-tested (list (list-ref movesstrings 16)))
+(define indices-to-be-tested (list 17))
+
+(define pos17 (list-ref positions 16))
+(define moves17 (legal-moves pos17))
+(for ([m moves17]
+      [i (range 0 (length moves17))])
+  (displayln (format "~a: ~a" i m)))
+(define solution17 (list-ref moves17 22))
+(displayln solution17)
+(displayln (puts-en-prise pos17 solution17))
+(define defenses17 (defenses-of-pp (Position-pp pos17)))
+(define sorted-black-defenses17 (sort-defenses-by-target (Defenses-black defenses17)))
+(displayln (sorted-defenses->string sorted-black-defenses17))
+(displayln (is-only-defender? (Square-location 5 5) sorted-black-defenses17))
 |#
-#|
-(define positions-to-be-tested (list (list-ref positions 7)))
-(define movesstrings-to-be-tested (list (list-ref movesstrings 7)))
-(define indices-to-be-tested (list 8))
+
 
 (perform-test positions-to-be-tested
               movesstrings-to-be-tested
               indices-to-be-tested)
-|#
+
 
 

@@ -1056,6 +1056,21 @@
           (iter (cdr remaining-defenses)))))
   (iter defenses))
 
+(: sort-defenses-by-defender (-> (Listof Defense) 
+                                 (HashTable Square-location (Listof Defense))))
+(define (sort-defenses-by-defender defenses)
+  (: sorted-defenses (HashTable Square-location (Listof Defense)))
+  (define sorted-defenses (make-hash))
+  (: iter (-> (Listof Defense) (HashTable Square-location (Listof Defense))))
+  (define (iter remaining-defenses)
+    (if (empty? remaining-defenses) sorted-defenses
+        (let* ([defense (car remaining-defenses)]
+               [defender-loc (Defense-defender-location defense)]
+               [defenses-so-far : (Listof Defense) (hash-ref! sorted-defenses defender-loc (lambda () '()))])
+          (hash-set! sorted-defenses defender-loc (cons defense defenses-so-far))
+          (iter (cdr remaining-defenses)))))
+  (iter defenses))
+
 (: sorted-attacks->string (-> (HashTable Square-location (Listof Attack)) String))
 (define (sorted-attacks->string sorted-attacks)
   (let* ([result ""])
