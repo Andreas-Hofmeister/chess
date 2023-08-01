@@ -630,8 +630,8 @@
     [(Normal-evaluation v) v]
     [(Checkmate-evaluation c)
      (match c
-       ['black -1000]
-       ['white 1000])]
+       ['black -10000]
+       ['white 10000])]
     ['stalemate 0]))
 
 (: move-evaluation->integer (-> Move-evaluation Integer))
@@ -640,8 +640,8 @@
     [(Normal-move-evaluation _ v) v]
     [(Checkmate-move-evaluation move n-moves c)
      (match c
-       ['black (+ -1000 n-moves)]
-       ['white (- 1000 n-moves)])]
+       ['black (+ -10000 n-moves)]
+       ['white (- 10000 n-moves)])]
     [(No-move-evaluation pev) (position-evaluation->integer pev)]))
 
 (: moves-of-evaluations (-> (Listof Move-evaluation) (Listof Move)))

@@ -101,12 +101,84 @@
                                 (equal? (Defense-defender-location (car defenses)) defender-loc))
                        (set! result #t))))
     result))
+
+(define-type Pattern-recognizer (-> Position Move Boolean))
+(struct Position-info ([pos : Position]
+                       [equivalent-trades : (Option (Listof Square-location))])
+  #:transparent)
+
 #|
-(: is-mate-in-one? (-> Pos Move Boolean))
-(define (is-mate-in-one? pos move)
-  (let* ([new-pos (make-move
-  (empty? (legal-moves ([new-pos (make-move pos move)]
+(define (Pos-info-equivalent-trades pos-info)
+  (let [(
+  (match (Position-info-equivalent-trades)
+    ['none 
 |#
+
+(: is-mate-in-one? Pattern-recognizer)
+(define (is-mate-in-one? pos move)
+  (let* ([new-pos (make-move pos move)])
+    (and (in-check? new-pos (Position-to-move new-pos))
+         (empty? (legal-moves new-pos)))))
+
+(: candidate-moves-of-tactical-patterns (-> (Listof Pattern-recognizer) (-> Position Integer (Listof Move))))
+(define (candidate-moves-of-tactical-patterns patterns)
+  (cond
+    [(empty? patterns) (lambda ([pos : Position] [depth : Integer]) '())]
+    [(= (length patterns) 1)
+     (lambda ([pos : Position] [depth : Integer])
+       (filter (lambda ([move : Move])
+                 ((car patterns) pos move))
+               (legal-moves pos)))]
+    [else
+     (let ([rec-candidates (candidate-moves-of-tactical-patterns (cdr patterns))])
+       (lambda ([pos : Position] [depth : Integer])
+         (if (= depth 0)
+             (filter (lambda ([move : Move]) ((car patterns) pos move))
+                     (legal-moves pos))
+             (rec-candidates pos (- depth 1)))))]))
+
+(: candidate-moves-trade-n-capture (-> Position Integer (Listof Move)))
+(define (candidate-moves-trade-n-capture pos depth)
+  (cond
+    [(= depth 0)
+     (let* ([moves (legal-moves pos)]
+            [equivalent-trades (locations-with-equivalent-trades (Position-pp pos))]
+            [offensive-moves
+             (filter (lambda ([move : Move])
+                       (and (capturing-move? move)
+                            (member (to-of-move move) equivalent-trades)))
+                     moves)])
+       offensive-moves)]
+    [(= depth 1)
+     (let* ([moves (legal-moves pos)]
+            [pp (Position-pp pos)]
+            [to-move (Position-to-move pos)]
+            [en-prise (locations-with-possibly-en-prise-piece pp)]
+            [enemies-en-prise (locations-occupied-by-enemy-piece pp en-prise to-move)]
+            [equivalent-trades (locations-with-equivalent-trades pp)]
+            [offensive-moves
+             (filter (lambda ([move : Move])
+                       (and (capturing-move? move)
+                            (or (member (to-of-move move) enemies-en-prise)
+                                (member (to-of-move move) equivalent-trades))))
+                     moves)])
+       offensive-moves)]
+    [else
+          (let* ([moves (legal-moves pos)]
+            [pp (Position-pp pos)]
+            [to-move (Position-to-move pos)]
+            [en-prise (locations-with-possibly-en-prise-piece pp)]
+            [enemies-en-prise (locations-occupied-by-enemy-piece pp en-prise to-move)]
+            [equivalent-trades (locations-with-equivalent-trades pp)]
+            [offensive-moves
+             (filter (lambda ([move : Move])
+                       (or (and (capturing-move? move)
+                                (or (member (to-of-move move) enemies-en-prise)
+                                    (member (to-of-move move) equivalent-trades)))
+                           (is-mate-in-one? pos move)))
+                     moves)])
+       offensive-moves)]))
+
 
 (: candidate-moves (-> Position Integer (Listof Move)))
 (define (candidate-moves pos depth)
@@ -135,7 +207,6 @@
                        (or (and (capturing-move? move)
                                 (or (member (to-of-move move) enemies-en-prise)
                                     (member (to-of-move move) equivalent-trades)))
-                           
                            (exists-in (puts-en-prise pos move)
                                       (lambda ([loc : Square-location])
                                         (is-only-defender? loc sorted-enemy-defenses)))))
@@ -156,7 +227,7 @@
 
 (: move-search (-> Position (Listof Move-evaluation)))
 (define (move-search pos)
-  (evaluate-moves-with-optional-stopping evaluate-opening-position candidate-moves optional-stop? 4 pos))
+  (evaluate-moves-with-optional-stopping evaluate-opening-position candidate-moves-trade-n-capture optional-stop? 4 pos))
 
 (: evs->string (-> (Listof Move-evaluation) String))
 (define (evs->string evs)
@@ -200,10 +271,12 @@
 (define movesstrings-to-be-tested movesstrings)
 (define indices-to-be-tested (range 1 (+ 1 (length positions))))
 |#
+(define first 1)
+(define last 24)
 
-(define positions-to-be-tested (take positions 17))
-(define movesstrings-to-be-tested (take movesstrings 17))
-(define indices-to-be-tested (range 1 18))
+(define positions-to-be-tested (drop (take positions last) (- first 1)))
+(define movesstrings-to-be-tested (drop (take movesstrings last) (- first 1)))
+(define indices-to-be-tested (range first (+ last 1)))
 
 #|
 (define positions-to-be-tested (list (list-ref positions 16)))
