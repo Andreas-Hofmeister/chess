@@ -3,7 +3,7 @@
 
 (provide (all-defined-out))
 
-(struct (a) Some ([v : a]))
+(struct (a) Some ([v : a]) #:transparent)
 (define-type (Option a) (U 'none (Some a)))
 
 (define-type Color (U 'black 'white))

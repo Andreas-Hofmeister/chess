@@ -102,23 +102,99 @@
                        (set! result #t))))
     result))
 
-(define-type Pattern-recognizer (-> Position Move Boolean))
 (struct Position-info ([pos : Position]
-                       [equivalent-trades : (Option (Listof Square-location))])
-  #:transparent)
+                       [equivalent-trades : (Option (Listof Square-location))]
+                       [en-prise : (Option (Listof Square-location))]
+                       [enemies-en-prise : (Option (Listof Square-location))])
+  #:transparent
+  #:mutable)
 
-#|
-(define (Pos-info-equivalent-trades pos-info)
-  (let [(
-  (match (Position-info-equivalent-trades)
-    ['none 
-|#
+(: make-empty-pos-info (-> Position Position-info))
+(define (make-empty-pos-info pos)
+  (Position-info pos 'none 'none 'none))
+
+(: make-Pos-info-getter (All (A) (-> (-> Position-info (Option A))
+                                     (-> Position-info (Option A) Void)
+                                     (-> Position-info A)
+                                     (-> Position-info A))))
+(define (make-Pos-info-getter getter setter! calculator)
+  (lambda ([pos-info : Position-info])
+    (match (getter pos-info)
+      ['none
+       (let ([calculated (calculator pos-info)])
+         (setter! pos-info (Some calculated))
+         calculated)]
+      [(Some already-calculated) already-calculated])))
+
+(: Pos-info-equivalent-trades (-> Position-info (Listof Square-location)))
+(define Pos-info-equivalent-trades
+  (make-Pos-info-getter Position-info-equivalent-trades
+                        set-Position-info-equivalent-trades!
+                        (lambda ([pos-info : Position-info])
+                          (locations-with-equivalent-trades (Position-pp (Position-info-pos pos-info))))))
+
+(: Pos-info-en-prise (-> Position-info (Listof Square-location)))
+(define Pos-info-en-prise
+  (make-Pos-info-getter Position-info-en-prise
+                        set-Position-info-en-prise!
+                        (lambda ([pos-info : Position-info])
+                          (locations-with-possibly-en-prise-piece (Position-pp (Position-info-pos pos-info))))))
+
+(: Pos-info-enemies-en-prise (-> Position-info (Listof Square-location)))
+(define Pos-info-enemies-en-prise
+  (make-Pos-info-getter Position-info-enemies-en-prise
+                        set-Position-info-enemies-en-prise!
+                        (lambda ([pos-info : Position-info])
+                          (let ([pos (Position-info-pos pos-info)])
+                            (locations-occupied-by-enemy-piece (Position-pp pos)
+                                                               (Pos-info-en-prise pos-info)
+                                                               (Position-to-move pos))))))
+
+
+
+(define-type Pattern-recognizer (-> Position-info Move Boolean))
+
+(: r-and (-> Pattern-recognizer * Pattern-recognizer))
+(define (r-and . rs)
+  (lambda ([pos-info : Position-info] [move : Move])
+    (if (empty? rs) #t
+        (and ((car rs) pos-info move)
+             ((apply r-and (cdr rs)) pos-info move)))))
+
+(: r-or (-> Pattern-recognizer * Pattern-recognizer))
+(define (r-or . rs)
+  (lambda ([pos-info : Position-info] [move : Move])
+    (if (empty? rs) #f
+        (or ((car rs) pos-info move)
+             ((apply r-and (cdr rs)) pos-info move)))))
 
 (: is-mate-in-one? Pattern-recognizer)
-(define (is-mate-in-one? pos move)
-  (let* ([new-pos (make-move pos move)])
+(define (is-mate-in-one? pos-info move)
+  (let* ([new-pos (make-move (Position-info-pos pos-info) move)])
     (and (in-check? new-pos (Position-to-move new-pos))
          (empty? (legal-moves new-pos)))))
+
+(: is-capturing-move? Pattern-recognizer)
+(define (is-capturing-move? pos-info move)
+  (capturing-move? move))
+
+(: to-en-prise? Pattern-recognizer)
+(define (to-en-prise? pos-info move)
+  (set-member? (Pos-info-enemies-en-prise pos-info) (to-of-move move)))
+
+(: to-equivalent-trade? Pattern-recognizer)
+(define (to-equivalent-trade? pos-info move)
+  (set-member? (Pos-info-equivalent-trades pos-info) (to-of-move move)))
+
+(: initiates-equivalent-trade? Pattern-recognizer)
+(define (initiates-equivalent-trade? pos-info move)
+  (and (capturing-move? move)
+       (set-member? (Pos-info-equivalent-trades pos-info) (to-of-move move))))
+
+(: initiates-equivalent-trade-or-better? Pattern-recognizer)
+(define initiates-equivalent-trade-or-better?
+  (r-and is-capturing-move?
+         (r-or to-en-prise? to-equivalent-trade?)))
 
 (: candidate-moves-of-tactical-patterns (-> (Listof Pattern-recognizer) (-> Position Integer (Listof Move))))
 (define (candidate-moves-of-tactical-patterns patterns)
@@ -126,17 +202,28 @@
     [(empty? patterns) (lambda ([pos : Position] [depth : Integer]) '())]
     [(= (length patterns) 1)
      (lambda ([pos : Position] [depth : Integer])
-       (filter (lambda ([move : Move])
-                 ((car patterns) pos move))
-               (legal-moves pos)))]
+       (let ([pos-info (make-empty-pos-info pos)])
+         (filter (lambda ([move : Move])
+                   ((car patterns) pos-info move))
+                 (legal-moves pos))))]
     [else
      (let ([rec-candidates (candidate-moves-of-tactical-patterns (cdr patterns))])
        (lambda ([pos : Position] [depth : Integer])
          (if (= depth 0)
-             (filter (lambda ([move : Move]) ((car patterns) pos move))
-                     (legal-moves pos))
+             (let ([pos-info (make-empty-pos-info pos)])
+               (filter (lambda ([move : Move]) ((car patterns) pos-info move))
+                       (legal-moves pos)))
              (rec-candidates pos (- depth 1)))))]))
 
+(: candidate-moves-trade-n-capture (-> Position Integer (Listof Move)))
+(define candidate-moves-trade-n-capture
+  (candidate-moves-of-tactical-patterns
+   (list initiates-equivalent-trade?
+         initiates-equivalent-trade-or-better?
+         (r-or is-mate-in-one?
+               initiates-equivalent-trade-or-better?))))
+
+#|
 (: candidate-moves-trade-n-capture (-> Position Integer (Listof Move)))
 (define (candidate-moves-trade-n-capture pos depth)
   (cond
@@ -178,7 +265,7 @@
                            (is-mate-in-one? pos move)))
                      moves)])
        offensive-moves)]))
-
+|#
 
 (: candidate-moves (-> Position Integer (Listof Move)))
 (define (candidate-moves pos depth)
@@ -271,6 +358,7 @@
 (define movesstrings-to-be-tested movesstrings)
 (define indices-to-be-tested (range 1 (+ 1 (length positions))))
 |#
+
 (define first 1)
 (define last 24)
 
@@ -278,29 +366,8 @@
 (define movesstrings-to-be-tested (drop (take movesstrings last) (- first 1)))
 (define indices-to-be-tested (range first (+ last 1)))
 
-#|
-(define positions-to-be-tested (list (list-ref positions 16)))
-(define movesstrings-to-be-tested (list (list-ref movesstrings 16)))
-(define indices-to-be-tested (list 17))
-
-(define pos17 (list-ref positions 16))
-(define moves17 (legal-moves pos17))
-(for ([m moves17]
-      [i (range 0 (length moves17))])
-  (displayln (format "~a: ~a" i m)))
-(define solution17 (list-ref moves17 22))
-(displayln solution17)
-(displayln (puts-en-prise pos17 solution17))
-(define defenses17 (defenses-of-pp (Position-pp pos17)))
-(define sorted-black-defenses17 (sort-defenses-by-target (Defenses-black defenses17)))
-(displayln (sorted-defenses->string sorted-black-defenses17))
-(displayln (is-only-defender? (Square-location 5 5) sorted-black-defenses17))
-|#
-
 
 (perform-test positions-to-be-tested
               movesstrings-to-be-tested
               indices-to-be-tested)
-
-
 
