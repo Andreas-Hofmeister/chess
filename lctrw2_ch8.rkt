@@ -17,14 +17,6 @@
 (define positions (positions-from-file "../krr-test/fen_lctrw2_ch8.fen"))
 (define movesstrings (file->lines "solutions_lctrw2_ch8.txt"))
 
-(: defends-en-prise? (-> Position Square-location Move Boolean))
-(define (defends-en-prise? pos loc move)
-  (and (equal? loc (from-of-move move))
-       (let* ([new-pos (make-move pos move)]
-              [new-loc (to-of-move move)]
-              [en-prise-then (locations-with-possibly-en-prise-piece (Position-pp new-pos))])
-         (not (member new-loc en-prise-then)))))
-
 (: checkmate-defensive-moves (-> Position (Listof Move) (Listof Move)))
 (define (checkmate-defensive-moves pos moves)
   (if (in-check? pos (Position-to-move pos)) moves
@@ -36,20 +28,6 @@
              [checkmate-threat-defenses (flatten-moves (map compute-defenses checkmate-threats))]
              [result checkmate-threat-defenses])
         result)))
-
-(: puts-en-prise (-> Position Move (Listof Square-location)))
-(define (puts-en-prise pos move)
-  (let* ([en-prise-now (locations-with-possibly-en-prise-piece (Position-pp pos))]
-         [new-pos (make-move pos move)]
-         [en-prise-then (locations-with-possibly-en-prise-piece (Position-pp new-pos))]
-         [enemies-en-prise-then (locations-occupied-by-enemy-piece (Position-pp new-pos)
-                                                                   en-prise-then
-                                                                   (Position-to-move pos))]
-         [new-en-prise (filter (lambda ([loc : Square-location])
-                                 (not (exists-in en-prise-now
-                                                 (lambda ([loc2 : Square-location]) (equal? loc loc2)))))
-                               enemies-en-prise-then)])
-    new-en-prise))
 
 (: equivalent-trade? (-> Piece (Listof Attack) (Listof Defense) Boolean))
 (define (equivalent-trade? piece attacks defenses)
@@ -66,15 +44,15 @@
         (and (> len 0)
              (= (list-ref balances (- len 1)) 0)))))
 
-(: locations-with-equivalent-trades (-> Piece-placements (Listof Square-location)))
-(define (locations-with-equivalent-trades pp)
-  (let* ([attacks (attacks-of-pp pp)]
-         [defenses (defenses-of-pp pp)]
-         [sorted-white-attacks (sort-attacks-by-target (Attacks-white attacks))]
-         [sorted-black-attacks (sort-attacks-by-target (Attacks-black attacks))]
-         [sorted-white-defenses (sort-defenses-by-target (Defenses-white defenses))]
-         [sorted-black-defenses (sort-defenses-by-target (Defenses-black defenses))]
-         [locs : (Listof Square-location) '()])
+(: locations-with-equivalent-trades (-> Piece-placements
+                                        (HashTable Square-location (Listof Attack))
+                                        (HashTable Square-location (Listof Attack))
+                                        (HashTable Square-location (Listof Defense))
+                                        (HashTable Square-location (Listof Defense))
+                                        (Listof Square-location)))
+(define (locations-with-equivalent-trades pp sorted-white-attacks sorted-black-attacks
+                                          sorted-white-defenses sorted-black-defenses)
+  (let* ([locs : (Listof Square-location) '()])
     (for ([loc valid-locations])
        (match (get-square-by-location pp loc)
          [(Occupied-square color piece)
@@ -102,16 +80,38 @@
                        (set! result #t))))
     result))
 
+(: is-defender? (-> Square-location (HashTable Square-location (Listof Defense)) Boolean))
+(define (is-defender? defender-loc sorted-defenses)
+  (let ([result : Boolean #f])
+    (hash-for-each sorted-defenses
+                   (lambda ([target-loc : Square-location]
+                            [defenses : (Listof Defense)])
+                     (when (equal? (Defense-defender-location (car defenses)) defender-loc)
+                       (set! result #t))))
+    result))
+
 (struct Position-info ([pos : Position]
                        [equivalent-trades : (Option (Listof Square-location))]
                        [en-prise : (Option (Listof Square-location))]
-                       [enemies-en-prise : (Option (Listof Square-location))])
+                       [enemies-en-prise : (Option (Listof Square-location))]
+                       [own-en-prise : (Option (Listof Square-location))]
+                       [defenses : (Option Defenses)]
+                       [sorted-white-defenses : (Option (HashTable Square-location (Listof Defense)))]
+                       [sorted-black-defenses : (Option (HashTable Square-location (Listof Defense)))]
+                       [attacks : (Option Attacks)]
+                       [sorted-white-attacks : (Option (HashTable Square-location (Listof Attack)))]
+                       [sorted-black-attacks : (Option (HashTable Square-location (Listof Attack)))])
+
   #:transparent
   #:mutable)
 
 (: make-empty-pos-info (-> Position Position-info))
 (define (make-empty-pos-info pos)
-  (Position-info pos 'none 'none 'none))
+  (Position-info pos 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none))
+
+(: Pos-info-pp (-> Position-info Piece-placements))
+(define (Pos-info-pp pos-info)
+  (Position-pp (Position-info-pos pos-info)))
 
 (: make-Pos-info-getter (All (A) (-> (-> Position-info (Option A))
                                      (-> Position-info (Option A) Void)
@@ -126,19 +126,75 @@
          calculated)]
       [(Some already-calculated) already-calculated])))
 
+(: Pos-info-attacks (-> Position-info Attacks))
+(define Pos-info-attacks
+  (make-Pos-info-getter Position-info-attacks
+                        set-Position-info-attacks!
+                        (lambda ([pos-info : Position-info])
+                          (attacks-of-pp (Pos-info-pp pos-info)))))
+
+(: Pos-info-sorted-white-attacks (-> Position-info (HashTable Square-location (Listof Attack))))
+(define Pos-info-sorted-white-attacks
+  (make-Pos-info-getter Position-info-sorted-white-attacks
+                        set-Position-info-sorted-white-attacks!
+                        (lambda ([pos-info : Position-info])
+                          (sort-attacks-by-target (Attacks-white (Pos-info-attacks pos-info))))))
+
+(: Pos-info-sorted-black-attacks (-> Position-info (HashTable Square-location (Listof Attack))))
+(define Pos-info-sorted-black-attacks
+  (make-Pos-info-getter Position-info-sorted-black-attacks
+                        set-Position-info-sorted-black-attacks!
+                        (lambda ([pos-info : Position-info])
+                          (sort-attacks-by-target (Attacks-black (Pos-info-attacks pos-info))))))
+
+(: Pos-info-defenses (-> Position-info Defenses))
+(define Pos-info-defenses
+  (make-Pos-info-getter Position-info-defenses
+                        set-Position-info-defenses!
+                        (lambda ([pos-info : Position-info])
+                          (defenses-of-pp (Pos-info-pp pos-info)))))
+
+(: Pos-info-sorted-white-defenses (-> Position-info (HashTable Square-location (Listof Defense))))
+(define Pos-info-sorted-white-defenses
+  (make-Pos-info-getter Position-info-sorted-white-defenses
+                        set-Position-info-sorted-white-defenses!
+                        (lambda ([pos-info : Position-info])
+                          (sort-defenses-by-target (Defenses-white (Pos-info-defenses pos-info))))))
+
+(: Pos-info-sorted-black-defenses (-> Position-info (HashTable Square-location (Listof Defense))))
+(define Pos-info-sorted-black-defenses
+  (make-Pos-info-getter Position-info-sorted-black-defenses
+                        set-Position-info-sorted-black-defenses!
+                        (lambda ([pos-info : Position-info])
+                          (sort-defenses-by-target (Defenses-black (Pos-info-defenses pos-info))))))
+
+(: Pos-info-sorted-enemy-defenses (-> Position-info (HashTable Square-location (Listof Defense))))
+(define (Pos-info-sorted-enemy-defenses pos-info)
+  (if (eq? (Position-to-move (Position-info-pos pos-info)) 'white)
+      (Pos-info-sorted-black-defenses pos-info)
+      (Pos-info-sorted-white-defenses pos-info)))
+
 (: Pos-info-equivalent-trades (-> Position-info (Listof Square-location)))
 (define Pos-info-equivalent-trades
   (make-Pos-info-getter Position-info-equivalent-trades
                         set-Position-info-equivalent-trades!
                         (lambda ([pos-info : Position-info])
-                          (locations-with-equivalent-trades (Position-pp (Position-info-pos pos-info))))))
+                          (locations-with-equivalent-trades (Pos-info-pp pos-info)
+                                                            (Pos-info-sorted-white-attacks pos-info)
+                                                            (Pos-info-sorted-black-attacks pos-info)
+                                                            (Pos-info-sorted-white-defenses pos-info)
+                                                            (Pos-info-sorted-black-defenses pos-info)))))
 
 (: Pos-info-en-prise (-> Position-info (Listof Square-location)))
 (define Pos-info-en-prise
   (make-Pos-info-getter Position-info-en-prise
                         set-Position-info-en-prise!
                         (lambda ([pos-info : Position-info])
-                          (locations-with-possibly-en-prise-piece (Position-pp (Position-info-pos pos-info))))))
+                          (locations-with-possibly-en-prise-piece (Pos-info-pp pos-info)
+                                                                  (Pos-info-sorted-white-attacks pos-info)
+                                                                  (Pos-info-sorted-black-attacks pos-info)
+                                                                  (Pos-info-sorted-white-defenses pos-info)
+                                                                  (Pos-info-sorted-black-defenses pos-info)))))
 
 (: Pos-info-enemies-en-prise (-> Position-info (Listof Square-location)))
 (define Pos-info-enemies-en-prise
@@ -150,7 +206,25 @@
                                                                (Pos-info-en-prise pos-info)
                                                                (Position-to-move pos))))))
 
+(: Pos-info-own-en-prise (-> Position-info (Listof Square-location)))
+(define Pos-info-own-en-prise
+  (make-Pos-info-getter Position-info-own-en-prise
+                        set-Position-info-own-en-prise!
+                        (lambda ([pos-info : Position-info])
+                          (let ([pos (Position-info-pos pos-info)])
+                            (locations-occupied-by-friendly-piece (Position-pp pos)
+                                                                  (Pos-info-en-prise pos-info)
+                                                                  (Position-to-move pos))))))
 
+(: enemies-put-en-prise (-> Position-info Move (Listof Square-location)))
+(define (enemies-put-en-prise pos-info move)
+  (let* ([en-prise-now (Pos-info-enemies-en-prise pos-info)]
+         [new-pos-info (make-empty-pos-info (make-move (Position-info-pos pos-info) move))]
+         [en-prise-then (Pos-info-own-en-prise new-pos-info)]
+         [new-en-prise (filter (lambda ([loc : Square-location])
+                                 (not (set-member? en-prise-now loc)))
+                               en-prise-then)])
+    new-en-prise))
 
 (define-type Pattern-recognizer (-> Position-info Move Boolean))
 
@@ -196,7 +270,21 @@
   (r-and is-capturing-move?
          (r-or to-en-prise? to-equivalent-trade?)))
 
-(: candidate-moves-of-tactical-patterns (-> (Listof Pattern-recognizer) (-> Position Integer (Listof Move))))
+(: puts-defender-en-prise? Pattern-recognizer)
+(define (puts-defender-en-prise? pos-info move)
+  (exists-in (enemies-put-en-prise pos-info move)
+             (lambda ([loc : Square-location])
+               (is-defender? loc (Pos-info-sorted-enemy-defenses pos-info)))))
+
+(: moves-en-prise-piece? Pattern-recognizer)
+(define (moves-en-prise-piece? pos-info move)
+  (exists-in (Pos-info-own-en-prise pos-info)
+             (lambda ([loc : Square-location])
+               (equal? loc (from-of-move move)))))
+
+(define-type Candidate-moves-function (-> Position Integer (Listof Move)))
+
+(: candidate-moves-of-tactical-patterns (-> (Listof Pattern-recognizer) Candidate-moves-function))
 (define (candidate-moves-of-tactical-patterns patterns)
   (cond
     [(empty? patterns) (lambda ([pos : Position] [depth : Integer]) '())]
@@ -215,7 +303,7 @@
                        (legal-moves pos)))
              (rec-candidates pos (- depth 1)))))]))
 
-(: candidate-moves-trade-n-capture (-> Position Integer (Listof Move)))
+(: candidate-moves-trade-n-capture Candidate-moves-function)
 (define candidate-moves-trade-n-capture
   (candidate-moves-of-tactical-patterns
    (list initiates-equivalent-trade?
@@ -223,16 +311,31 @@
          (r-or is-mate-in-one?
                initiates-equivalent-trade-or-better?))))
 
-(: 
+(: candidate-moves-scare-off-defender Candidate-moves-function)
+(define candidate-moves-scare-off-defender
+  (candidate-moves-of-tactical-patterns
+   (list puts-defender-en-prise?
+         moves-en-prise-piece?
+         (r-or is-mate-in-one?
+               initiates-equivalent-trade-or-better?))))
 
 (: optional-stop? (-> Position Integer Boolean))
 (define (optional-stop? pos depth)
 #f)
 ;  (empty? (locations-with-possibly-en-prise-piece (Position-pp pos))))
 
-(: move-search (-> Position (Listof Move-evaluation)))
+(: move-search (-> Position (Pairof Symbol (Listof Move-evaluation))))
 (define (move-search pos)
-  (evaluate-moves-with-optional-stopping evaluate-opening-position candidate-moves-trade-n-capture optional-stop? 4 pos))
+  (: iter (-> (Listof (Pairof Symbol Candidate-moves-function))
+              (Pairof Symbol (Listof Move-evaluation))))
+  (define (iter arsenal)
+    (if (empty? arsenal)
+        (cons 'none '())
+        (let* ([
+  (let ([arsenal (list candidate-moves-trade-n-capture
+                       candidate-moves-scare-off-defender)])
+    (
+    (evaluate-moves-with-optional-stopping evaluate-opening-position candidate-moves-scare-off-defender optional-stop? 4 pos))
 
 (: evs->string (-> (Listof Move-evaluation) String))
 (define (evs->string evs)
@@ -277,8 +380,8 @@
 (define indices-to-be-tested (range 1 (+ 1 (length positions))))
 |#
 
-(define first 1)
-(define last 24)
+(define first 17)
+(define last 17)
 
 (define positions-to-be-tested (drop (take positions last) (- first 1)))
 (define movesstrings-to-be-tested (drop (take movesstrings last) (- first 1)))

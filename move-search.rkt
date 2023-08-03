@@ -1169,15 +1169,15 @@
         (and (> len 0)
              (> (list-ref balances (- len 1)) 0)))))
 
-(: locations-with-possibly-en-prise-piece (-> Piece-placements (Listof Square-location)))
-(define (locations-with-possibly-en-prise-piece pp)
-  (let* ([attacks (attacks-of-pp pp)]
-         [defenses (defenses-of-pp pp)]
-         [sorted-white-attacks (sort-attacks-by-target (Attacks-white attacks))]
-         [sorted-black-attacks (sort-attacks-by-target (Attacks-black attacks))]
-         [sorted-white-defenses (sort-defenses-by-target (Defenses-white defenses))]
-         [sorted-black-defenses (sort-defenses-by-target (Defenses-black defenses))]
-         [locations-en-prise : (Listof Square-location) '()])
+(: locations-with-possibly-en-prise-piece (-> Piece-placements
+                                              (HashTable Square-location (Listof Attack))
+                                              (HashTable Square-location (Listof Attack))
+                                              (HashTable Square-location (Listof Defense))
+                                              (HashTable Square-location (Listof Defense))                                             
+                                              (Listof Square-location)))
+(define (locations-with-possibly-en-prise-piece pp sorted-white-attacks sorted-black-attacks
+                                                sorted-white-defenses sorted-black-defenses)
+  (let* ([locations-en-prise : (Listof Square-location) '()])
     (for ([loc valid-locations])
        (match (get-square-by-location pp loc)
          [(Occupied-square color piece)
