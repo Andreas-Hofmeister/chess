@@ -45,7 +45,7 @@
         (if (in-check? pos (Position-to-move pos))
             (Checkmate-evaluation (opponent-of (Position-to-move pos)))
             'stalemate)
-        (Normal-evaluation (material-balance-of-position (Position-pp pos))))))
+        (Normal-evaluation (* 100 (material-balance-of-position (Position-pp pos)))))))
 
 (: central-squares (Listof Square-location))
 (define central-squares
@@ -681,11 +681,11 @@
                         (Listof Move-evaluation)))
 (define (best-evaluations evs to-move)
   (let* ([sorted-evaluations (sort-evaluations evs to-move)]
-         [best-value (move-evaluation->integer (car sorted-evaluations))])
+         [best-value (if (empty? evs) 0
+                         (move-evaluation->integer (car sorted-evaluations)))])
     (filter (lambda ([ev : Move-evaluation])
               (= (move-evaluation->integer ev) best-value))
             sorted-evaluations)))
-
 
 (struct Attack ([attacker-location : Square-location]
                 [attacker-piece : Piece]

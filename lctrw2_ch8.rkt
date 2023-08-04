@@ -324,18 +324,35 @@
 #f)
 ;  (empty? (locations-with-possibly-en-prise-piece (Position-pp pos))))
 
-(: move-search (-> Position (Pairof Symbol (Listof Move-evaluation))))
-(define (move-search pos)
+(: tactical-move-search-with-arsenal (-> Position
+                                         (Listof (Pairof Symbol Candidate-moves-function))
+                                         Integer Integer
+                                         (Pairof Symbol (Listof Move-evaluation))))
+(define (tactical-move-search-with-arsenal pos arsenal max-depth improvement-threshold)
   (: iter (-> (Listof (Pairof Symbol Candidate-moves-function))
+              Integer
               (Pairof Symbol (Listof Move-evaluation))))
-  (define (iter arsenal)
+  (define (iter arsenal initial-evaluation)
     (if (empty? arsenal)
         (cons 'none '())
-        (let* ([
-  (let ([arsenal (list candidate-moves-trade-n-capture
-                       candidate-moves-scare-off-defender)])
-    (
-    (evaluate-moves-with-optional-stopping evaluate-opening-position candidate-moves-scare-off-defender optional-stop? 4 pos))
+        (let* ([candidate-moves-function (cdr (car arsenal))]
+               [candidate-moves-name (car (car arsenal))]
+               [move-evs (evaluate-moves-with-optional-stopping
+                          evaluate-position
+                          candidate-moves-function
+                          (lambda (pos depth) #f)
+                          max-depth pos)]
+               [best-moves (best-evaluations move-evs
+                                             (Position-to-move pos))]
+               [delta (if (empty? best-moves) 0
+                          (- (move-evaluation->integer (car best-moves))
+                             initial-evaluation))]
+               [color-sgn (if (eq? 'white (Position-to-move pos)) 1 -1)]
+               [improvement (* color-sgn delta)])
+          (if (>= improvement improvement-threshold)
+              (cons candidate-moves-name move-evs)
+              (iter (cdr arsenal) initial-evaluation)))))
+  (iter arsenal (position-evaluation->integer (evaluate-position pos))))
 
 (: evs->string (-> (Listof Move-evaluation) String))
 (define (evs->string evs)
@@ -353,7 +370,7 @@
   (let* ([move (movestring->move pos (car move-strs))]
          [best-solutions (best-evaluations solution-moves
                                            (Position-to-move pos))]
-         [pos-ev-before (evaluate-opening-position pos)])
+         [pos-ev-before (evaluate-position pos)])
     (cond
       [(> (length best-solutions) 1)
        (format "More than one solution found: ~a" best-solutions)]
@@ -365,28 +382,29 @@
                    (evs->string (sort-evaluations solution-moves (Position-to-move pos))))
            (format "Ok: ~a (before: ~a)" (evs->string best-solutions) (position-evaluation->integer pos-ev-before)))])))
 
+(define arsenal
+  (list (cons 'trade-and-capture candidate-moves-trade-n-capture)
+        (cons 'scare-off-defender candidate-moves-scare-off-defender)))
+
 (: perform-test (-> (Listof Position) (Listof String) (Listof Integer)
                     Void))
 (define (perform-test positions movesstrings indices)
   (for ([pos positions]
         [movesstr movesstrings] [index indices])
     (let* ([movestrings (string-split movesstr)]
-           [calculated-moves (move-search pos)])
-      (displayln (format "~a: ~a" index
-                         (check-solution pos movestrings calculated-moves))))))
-#|
-(define positions-to-be-tested positions)
-(define movesstrings-to-be-tested movesstrings)
-(define indices-to-be-tested (range 1 (+ 1 (length positions))))
-|#
+           [tactic-name-and-evs (tactical-move-search-with-arsenal pos arsenal 4 100)]
+           [tactic-name (car tactic-name-and-evs)]
+           [calculated-moves (cdr tactic-name-and-evs)])
+      (displayln (format "~a: ~a (found by ~a)" index
+                         (check-solution pos movestrings calculated-moves)
+                         tactic-name)))))
 
-(define first 17)
-(define last 17)
+(define first 1)
+(define last 30)
 
 (define positions-to-be-tested (drop (take positions last) (- first 1)))
 (define movesstrings-to-be-tested (drop (take movesstrings last) (- first 1)))
 (define indices-to-be-tested (range first (+ last 1)))
-
 
 (perform-test positions-to-be-tested
               movesstrings-to-be-tested
