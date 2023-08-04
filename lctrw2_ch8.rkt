@@ -226,6 +226,16 @@
                                en-prise-then)])
     new-en-prise))
 
+(: friendlies-put-en-prise (-> Position-info Move (Listof Square-location)))
+(define (friendlies-put-en-prise pos-info move)
+  (let* ([en-prise-now (Pos-info-own-en-prise pos-info)]
+         [new-pos-info (make-empty-pos-info (make-move (Position-info-pos pos-info) move))]
+         [en-prise-then (Pos-info-enemies-en-prise new-pos-info)]
+         [new-en-prise (filter (lambda ([loc : Square-location])
+                                 (not (set-member? en-prise-now loc)))
+                               en-prise-then)])
+    new-en-prise))
+
 (define-type Pattern-recognizer (-> Position-info Move Boolean))
 
 (: r-and (-> Pattern-recognizer * Pattern-recognizer))
@@ -240,7 +250,12 @@
   (lambda ([pos-info : Position-info] [move : Move])
     (if (empty? rs) #f
         (or ((car rs) pos-info move)
-             ((apply r-and (cdr rs)) pos-info move)))))
+            ((apply r-and (cdr rs)) pos-info move)))))
+
+(: r-not (-> Pattern-recognizer Pattern-recognizer))
+(define (r-not recognizer)
+  (lambda ([pos-info : Position-info] [move : Move])
+    (not (recognizer pos-info move))))
 
 (: is-mate-in-one? Pattern-recognizer)
 (define (is-mate-in-one? pos-info move)
@@ -270,11 +285,19 @@
   (r-and is-capturing-move?
          (r-or to-en-prise? to-equivalent-trade?)))
 
+(: captures-en-prise-piece? Pattern-recognizer)
+(define captures-en-prise-piece?
+  (r-and is-capturing-move? to-en-prise?))
+
 (: puts-defender-en-prise? Pattern-recognizer)
 (define (puts-defender-en-prise? pos-info move)
   (exists-in (enemies-put-en-prise pos-info move)
              (lambda ([loc : Square-location])
                (is-defender? loc (Pos-info-sorted-enemy-defenses pos-info)))))
+
+(: puts-friendly-en-prise? Pattern-recognizer)
+(define (puts-friendly-en-prise? pos-info move)
+  (not (empty? (friendlies-put-en-prise pos-info move))))
 
 (: moves-en-prise-piece? Pattern-recognizer)
 (define (moves-en-prise-piece? pos-info move)
@@ -314,10 +337,21 @@
 (: candidate-moves-scare-off-defender Candidate-moves-function)
 (define candidate-moves-scare-off-defender
   (candidate-moves-of-tactical-patterns
-   (list puts-defender-en-prise?
-         moves-en-prise-piece?
+   (list (r-and puts-defender-en-prise?
+                (r-not puts-friendly-en-prise?))
+         (r-or moves-en-prise-piece?
+               captures-en-prise-piece?)
          (r-or is-mate-in-one?
-               initiates-equivalent-trade-or-better?))))
+               captures-en-prise-piece?))))
+
+(: candidate-moves-sacrifice-to-remove-defender Candidate-moves-function)
+(define candidate-moves-sacrifice-to-remove-defender
+  (candidate-moves-of-tactical-patterns
+   (list puts-defender-en-prise?
+         (r-or moves-en-prise-piece?
+               captures-en-prise-piece?)
+         (r-or is-mate-in-one?
+               captures-en-prise-piece?))))
 
 (: optional-stop? (-> Position Integer Boolean))
 (define (optional-stop? pos depth)
@@ -384,7 +418,8 @@
 
 (define arsenal
   (list (cons 'trade-and-capture candidate-moves-trade-n-capture)
-        (cons 'scare-off-defender candidate-moves-scare-off-defender)))
+        (cons 'scare-off-defender candidate-moves-scare-off-defender)
+        (cons 'sacrifice-to-remove-defender candidate-moves-sacrifice-to-remove-defender)))
 
 (: perform-test (-> (Listof Position) (Listof String) (Listof Integer)
                     Void))
@@ -400,7 +435,7 @@
                          tactic-name)))))
 
 (define first 1)
-(define last 30)
+(define last 25)
 
 (define positions-to-be-tested (drop (take positions last) (- first 1)))
 (define movesstrings-to-be-tested (drop (take movesstrings last) (- first 1)))
