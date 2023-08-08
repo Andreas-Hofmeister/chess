@@ -63,6 +63,13 @@
     [(Promotion-with-capture _ _ _) #t]
     [_ #f]))
 
+(: promotion-move? (-> Move Boolean))
+(define (promotion-move? move)
+  (match move
+    [(Promotion _ _ _) #t]
+    [(Promotion-with-capture _ _ _) #t]
+    [_ #f]))
+
 (: captures-on-square? (-> Move Square-location Boolean))
 (define (captures-on-square? move loc)
   (and (capturing-move? move)
