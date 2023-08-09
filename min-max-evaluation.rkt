@@ -241,11 +241,7 @@
                                    (make-move pos move)
                                    current-alpha
                                    current-beta)]
-                         [candidate-evs (if (optional-stop? pos current-depth)
-                                            (cons (No-move-evaluation (evaluate-position pos))
-                                                  rec-evs)
-                                            rec-evs)]
-                         [ev (discounted-evaluation move (min-or-max candidate-evs))])
+                         [ev (discounted-evaluation move (min-or-max rec-evs))])
                     (if (eq? player 'white)
                         (begin
                           (when (move-evaluation> ev current-alpha)
@@ -259,7 +255,11 @@
                           (if (move-evaluation< ev current-alpha)
                               (list ev)
                               (cons ev (process-moves (cdr moves)))))))))
-            (process-moves moves-to-consider))))))
+            (let ([move-evaluations (process-moves moves-to-consider)])
+              (if (optional-stop? pos current-depth)
+                  (cons (No-move-evaluation (evaluate-position pos))
+                        move-evaluations)
+                  move-evaluations)))))))
 
 (: evaluate-moves-with-optional-stopping (-> (-> Position Position-evaluation)
                                              (-> Position Integer (Listof Move))

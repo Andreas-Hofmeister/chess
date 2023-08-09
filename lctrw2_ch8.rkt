@@ -341,12 +341,27 @@
           (mate-in-n? new-pos mate-depth))])]
     [_ #f]))
 
-(: guards-of-promotion-squares (-> Position-info (Listof Square-location)))
-(define (guards-of-promotion-squares pos-info)
-  (let* ([attacker (opponent-of (Position-to-move (Position-info-pos pos-info)))]
+(: knight-guards-promotion-square? (-> Piece-placements Square-location Square-location Boolean))
+(define (knight-guards-promotion-square? pp knight-loc promotion-loc)
+  (or (equal? knight-loc promotion-loc)
+      (set-member? (knight-target-squares knight-loc) promotion-loc)))
+
+(: rook-guards-promotion-square? (-> Piece-placements Square-location Color Square-location Boolean))
+(define (rook-guards-promotion-square? pp rook-loc rook-color promotion-loc)
+  (or (and (= (Square-location-rank promotion-loc) (Square-location-rank rook-loc))
+           (forall-in (locations-between rook-loc promotion-loc)
+                      (lambda ([loc : Square-location])
+                        (square-empty? pp loc))))
+      (and (= (Square-location-file promotion-loc) (Square-location-file rook-loc))
+           (forall-in (locations-between rook-loc promotion-loc)
+      (set-member? (knight-target-squares knight-loc) promotion-loc)))
+
+
+(: guards-of-promotion-squares (-> Piece-placements Color (Listof Square-location)))
+(define (guards-of-promotion-squares pp guarding-player)
+  (let* ([promoting-player (opponent-of guarding-player)]
          [guards : (Listof Square-location) '()]
-         [pp (Pos-info-pp pos-info)]
-         [promotion-squares (promotion-squares-of-passed-pawns pp attacker)])
+         [promotion-squares (promotion-squares-of-passed-pawns pp promoting-player)])
     (for ([move (Pos-info-legal-moves pos-info)])
       (when (set-member? promotion-squares (to-of-move move))
         (set! guards (cons (from-of-move move) guards))))
@@ -452,6 +467,7 @@
                                                   5))))))
 
 (define-type Candidate-moves-function (-> Position Integer (Listof Move)))
+(define-type Optional-stop-function (-> Position Integer Boolean))
 
 (: candidate-moves-of-tactical-patterns (-> (Listof Pattern-recognizer) Candidate-moves-function))
 (define (candidate-moves-of-tactical-patterns patterns)
@@ -519,20 +535,32 @@
          (r-or is-mate-in-one?
                captures-en-prise-piece?))))
 
-(: optional-stop? (-> Position Integer Boolean))
-(define (optional-stop? pos depth)
-#f)
 ;  (empty? (locations-with-possibly-en-prise-piece (Position-pp pos))))
+
+(: never-stop Optional-stop-function)
+(define (never-stop pos depth) #f)
+
+(: stop-when-ahead-and-no-immediate-threats (-> Integer Optional-stop-function))
+(define (stop-when-ahead-and-no-immediate-threats threshold)
+  (lambda ([pos : Position] [depth : Integer])
+    (let* ([ev (position-evaluation->integer (evaluate-position pos))]
+           [player-sgn (if (eq? 'white (Position-to-move pos)) 1 -1)]
+           [pos-info (make-empty-pos-info pos)])
+      (and (>= (* player-sgn ev) threshold)
+           (not (in-check? pos (Position-to-move pos)))
+           (empty? (Pos-info-own-en-prise pos-info))))))
 
 (struct Arsenal ([names : (Listof Symbol)]
                  [functions : (Listof Candidate-moves-function)]
-                 [depths : (Listof Integer)]))
+                 [depths : (Listof Integer)]
+                 [optional-stops : (Listof Optional-stop-function)]))
 
 (: Arsenal-cdr (-> Arsenal Arsenal))
 (define (Arsenal-cdr arsenal)
   (Arsenal (cdr (Arsenal-names arsenal))
            (cdr (Arsenal-functions arsenal))
-           (cdr (Arsenal-depths arsenal))))
+           (cdr (Arsenal-depths arsenal))
+           (cdr (Arsenal-optional-stops arsenal))))
 
 (: Arsenal-empty? (-> Arsenal Boolean))
 (define (Arsenal-empty? arsenal)
@@ -552,10 +580,11 @@
         (let* ([candidate-moves-function (car (Arsenal-functions arsenal))]
                [candidate-moves-name (car (Arsenal-names arsenal))]
                [max-depth (car (Arsenal-depths arsenal))]
+               [optional-stop (car (Arsenal-optional-stops arsenal))]
                [move-evs (evaluate-moves-with-optional-stopping
                           evaluate-position
                           candidate-moves-function
-                          (lambda (pos depth) #f)
+                          optional-stop
                           max-depth pos)]
                [best-moves (best-evaluations move-evs
                                              (Position-to-move pos))]
@@ -613,7 +642,12 @@
          4
          4
          7
-         4)))
+         4)
+   (list never-stop
+         never-stop
+         never-stop
+         (stop-when-ahead-and-no-immediate-threats 100)
+         never-stop)))
 
 (: perform-test (-> (Listof Position) (Listof String) (Listof Integer)
                     Void))
@@ -628,8 +662,8 @@
                          (check-solution pos movestrings calculated-moves)
                          tactic-name)))))
 
-(define first 30)
-(define last 30)
+(define first 1)
+(define last 40)
 
 (define positions-to-be-tested (drop (take positions last) (- first 1)))
 (define movesstrings-to-be-tested (drop (take movesstrings last) (- first 1)))
@@ -640,8 +674,9 @@
               indices-to-be-tested)
 |#
 
-(: collect-best-moves (-> Position Candidate-moves-function Integer Integer (Listof Move)))
-(define (collect-best-moves pos candidate-moves-function current-depth max-depth)
+(: collect-best-moves (-> Position Candidate-moves-function Optional-stop-function
+                          Integer Integer (Listof Move)))
+(define (collect-best-moves pos candidate-moves-function optional-stop current-depth max-depth)
   (if (> current-depth max-depth) '()
       (let* ([depth-adjusted-candidates-f
               (lambda ([pos : Position] [depth : Integer])
@@ -649,7 +684,7 @@
              [move-evs (evaluate-moves-with-optional-stopping
                         evaluate-position
                         depth-adjusted-candidates-f
-                        (lambda (pos depth) #f)
+                        optional-stop
                         (- max-depth current-depth) pos)]
              [best-evs (best-evaluations move-evs
                                          (Position-to-move pos))]
@@ -657,8 +692,21 @@
         (if (empty? best-moves) '()
             (let* ([best-move (car best-moves)]
                    [new-pos (make-move pos best-move)])
-              (cons best-move (collect-best-moves new-pos candidate-moves-function (+ current-depth 1) max-depth)))))))
+              (cons best-move (collect-best-moves new-pos candidate-moves-function optional-stop
+                                                  (+ current-depth 1) max-depth)))))))
 
-(define pos-30 (pos-from-fen "r6k/4Qppp/2q5/8/8/2B5/4NPPP/6K1 b - - 0 1"))
-(for ([move (collect-best-moves pos-30 candidate-moves-capture-piece-with-overworked-defenders 0 7)])
-    (displayln (move->uci-string move)))
+#|
+(define test-pos (pos-from-fen "8/P7/8/r5k1/8/8/6K1/3R4 w - - 0 1"))
+(define test-current-depth 0)
+(define test-max-depth 4)
+(define test-candidate-moves candidate-moves-sacrifice-to-remove-promotion-guard)
+(define test-stop never-stop)
+
+(for ([move (collect-best-moves test-pos test-candidate-moves test-stop test-current-depth test-max-depth)])
+  (set! test-pos (make-move test-pos move))
+  (set! test-current-depth (+ test-current-depth 1))
+  (displayln (format "~a (ev: ~a) (optional-stop: ~a)"
+                     (move->uci-string move)
+                     (position-evaluation->integer (evaluate-position test-pos))
+                     (test-stop test-pos test-current-depth))))
+|#

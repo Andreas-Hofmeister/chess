@@ -215,6 +215,9 @@
     ['empty-square #f]
     [(Occupied-square occupied-color _) (if (equal? occupied-color c) #f #t)]))
 
+(: square-occupied-by-piece? (-> Piece-placements Piece Color Boolean))
+(define (square-occupied-by-piece? 
+
 (: location-occupied-by-enemy-piece? (-> Piece-placements Square-location Color Boolean))
 (define (location-occupied-by-enemy-piece? pp loc c)
   (occupied-by-enemy-piece? pp (Square-location-rank loc) (Square-location-file loc) c))
