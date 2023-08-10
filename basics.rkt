@@ -215,8 +215,12 @@
     ['empty-square #f]
     [(Occupied-square occupied-color _) (if (equal? occupied-color c) #f #t)]))
 
-(: square-occupied-by-piece? (-> Piece-placements Piece Color Boolean))
-(define (square-occupied-by-piece? 
+(: square-occupied-by-piece? (-> Piece-placements Square-location Piece Color Boolean))
+(define (square-occupied-by-piece? pp loc piece color)
+  (match (get-square-by-location pp loc)
+    [(Occupied-square occupied-color occupied-piece)
+     (and (eq? occupied-color color) (eq? occupied-piece piece))]
+    [_ #f]))
 
 (: location-occupied-by-enemy-piece? (-> Piece-placements Square-location Color Boolean))
 (define (location-occupied-by-enemy-piece? pp loc c)
@@ -244,6 +248,7 @@
   (filter (lambda ([loc : Square-location]) (location-occupied-by-friendly-piece? pp loc c))
           locs))
 
+;; between = strictly between, excluding the start and end locations
 (: locations-between (-> Square-location Square-location
                          (Listof Square-location)))
 (define (locations-between from-location to-location)
@@ -428,6 +433,14 @@
                   (Square-location (- rank 1) file)
                   (Square-location (- rank 1) (+ file 1))))))
 
+(: on-same-diagonal? (-> Square-location Square-location Boolean))
+(define (on-same-diagonal? loc1 loc2)
+  (match* (loc1 loc2)
+    [((Square-location rank1 file1)
+      (Square-location rank2 file2))
+     (= (abs (- file2 file1))
+        (abs (- rank2 rank1)))]))
+
 (: exists-in (All (a) (-> (Listof a) (-> a Boolean) Boolean)))
 (define (exists-in l cond-f)
   (match l
@@ -439,6 +452,12 @@
   (match l
     ['() #t]
     [(cons hd tl) (if (not (cond-f hd)) #f (forall-in tl cond-f))]))
+
+(: number-such-that (All (a) (-> (Listof a) (-> a Boolean) Integer)))
+(define (number-such-that l cond-f)
+  (match l
+    ['() 0]
+    [(cons hd tl) (+ (if (cond-f hd) 1 0) (number-such-that tl cond-f))]))
 
 (: find-piece (-> Piece-placements Color Piece (Listof Square-location) (Listof Square-location)))
 (define (find-piece pp c p locs)

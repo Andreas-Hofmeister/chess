@@ -14,6 +14,7 @@
 (require "check.rkt")
 (require "pawn-moves.rkt")
 (require "legal-moves.rkt")
+(require "knight-moves.rkt")
 
 (define positions (positions-from-file "../krr-test/fen_lctrw2_ch8.fen"))
 (define movesstrings (file->lines "solutions_lctrw2_ch8.txt"))
@@ -353,18 +354,57 @@
                       (lambda ([loc : Square-location])
                         (square-empty? pp loc))))
       (and (= (Square-location-file promotion-loc) (Square-location-file rook-loc))
-           (forall-in (locations-between rook-loc promotion-loc)
-      (set-member? (knight-target-squares knight-loc) promotion-loc)))
+           (let ([locs-between (locations-between rook-loc promotion-loc)]
+                 [enemy (opponent-of rook-color)])
+             (and (<= (number-such-that locs-between
+                                        (lambda ([loc : Square-location])
+                                          (square-occupied-by-piece? pp loc 'pawn enemy)))
+                      1)
+                  (= (number-such-that locs-between
+                                       (lambda ([loc : Square-location])
+                                         (and (not (square-empty? pp loc))
+                                              (not (square-occupied-by-piece? pp loc 'pawn enemy)))))
+                     0))))))
 
+(: bishop-guards-promotion-square? (-> Piece-placements Square-location Square-location Boolean))
+(define (bishop-guards-promotion-square? pp bishop-loc promotion-loc)
+  (and (on-same-diagonal? bishop-loc promotion-loc)
+       (forall-in (locations-between bishop-loc promotion-loc)
+                  (lambda ([loc : Square-location])
+                    (square-empty? pp loc)))))
+
+(: queen-guards-promotion-square? (-> Piece-placements Square-location Color Square-location Boolean))
+(define (queen-guards-promotion-square? pp queen-loc queen-color promotion-loc)
+  (or (rook-guards-promotion-square? pp queen-loc queen-color promotion-loc)
+      (bishop-guards-promotion-square? pp queen-loc promotion-loc)))
 
 (: guards-of-promotion-squares (-> Piece-placements Color (Listof Square-location)))
 (define (guards-of-promotion-squares pp guarding-player)
   (let* ([promoting-player (opponent-of guarding-player)]
          [guards : (Listof Square-location) '()]
          [promotion-squares (promotion-squares-of-passed-pawns pp promoting-player)])
-    (for ([move (Pos-info-legal-moves pos-info)])
-      (when (set-member? promotion-squares (to-of-move move))
-        (set! guards (cons (from-of-move move) guards))))
+    (for ([loc valid-locations])
+      (match (get-square-by-location pp loc)
+        [(Occupied-square occupied-color occupied-piece)
+         (when (and (eq? occupied-color guarding-player)
+                    (or (and (eq? occupied-piece 'knight)
+                             (exists-in promotion-squares
+                                        (lambda ([promotion-loc : Square-location])
+                                          (knight-guards-promotion-square? pp loc promotion-loc))))
+                        (and (eq? occupied-piece 'rook)
+                             (exists-in promotion-squares
+                                        (lambda ([promotion-loc : Square-location])
+                                          (rook-guards-promotion-square? pp loc guarding-player promotion-loc))))
+                        (and (eq? occupied-piece 'bishop)
+                             (exists-in promotion-squares
+                                        (lambda ([promotion-loc : Square-location])
+                                          (bishop-guards-promotion-square? pp loc promotion-loc))))
+                        (and (eq? occupied-piece 'queen)
+                             (exists-in promotion-squares
+                                        (lambda ([promotion-loc : Square-location])
+                                          (queen-guards-promotion-square? pp loc guarding-player promotion-loc))))))
+           (set! guards (cons loc guards)))]
+        [_ 'do-nothing]))
     guards))
 
 (define-type Pattern-recognizer (-> Position-info Move Boolean))
@@ -428,7 +468,9 @@
 
 (: puts-guard-of-promotion-square-en-prise? Pattern-recognizer)
 (define (puts-guard-of-promotion-square-en-prise? pos-info move)
-  (let ([guards (guards-of-promotion-squares (Pos-info-switch-to-move pos-info))])
+  (let* ([attacking-player (Position-to-move (Position-info-pos pos-info))]
+         [guarding-player (opponent-of attacking-player)]
+         [guards (guards-of-promotion-squares (Pos-info-pp pos-info) guarding-player)])
     (exists-in (enemies-put-en-prise pos-info move)
                (lambda ([loc : Square-location])
                  (set-member? guards loc)))))
@@ -662,17 +704,17 @@
                          (check-solution pos movestrings calculated-moves)
                          tactic-name)))))
 
-(define first 1)
+(define first 33)
 (define last 40)
 
 (define positions-to-be-tested (drop (take positions last) (- first 1)))
 (define movesstrings-to-be-tested (drop (take movesstrings last) (- first 1)))
 (define indices-to-be-tested (range first (+ last 1)))
-#|
+
 (perform-test positions-to-be-tested
               movesstrings-to-be-tested
               indices-to-be-tested)
-|#
+
 
 (: collect-best-moves (-> Position Candidate-moves-function Optional-stop-function
                           Integer Integer (Listof Move)))
