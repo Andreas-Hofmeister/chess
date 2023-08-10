@@ -197,6 +197,18 @@
                         (lambda ([pos-info : Position-info])
                           (attacks-of-pp (Pos-info-pp pos-info)))))
 
+(: Pos-info-own-attacks (-> Position-info (Listof Attack)))
+(define (Pos-info-own-attacks pos-info)
+  (if (eq? (Position-to-move (Position-info-pos pos-info)) 'white)
+      (Attacks-white (Pos-info-attacks pos-info))
+      (Attacks-black (Pos-info-attacks pos-info))))
+
+(: Pos-info-enemy-attacks (-> Position-info (Listof Attack)))
+(define (Pos-info-enemy-attacks pos-info)
+  (if (eq? (Position-to-move (Position-info-pos pos-info)) 'white)
+      (Attacks-black (Pos-info-attacks pos-info))
+      (Attacks-white (Pos-info-attacks pos-info))))
+
 (: Pos-info-sorted-white-attacks (-> Position-info (HashTable Square-location (Listof Attack))))
 (define Pos-info-sorted-white-attacks
   (make-Pos-info-getter Position-info-sorted-white-attacks
@@ -309,6 +321,16 @@
                                  (not (set-member? en-prise-now loc)))
                                en-prise-then)])
     new-en-prise))
+
+(: enemies-attacked (-> Position-info Move (Listof Square-location)))
+(define (enemies-attacked pos-info move)
+  (let* ([attacks-now (Pos-info-own-attacks pos-info)]
+         [new-pos-info (make-empty-pos-info (make-move (Position-info-pos pos-info) move))]
+         [attacks-then (Pos-info-enemy-attacks new-pos-info)]
+         [new-attacks (filter (lambda ([attack : Attack])
+                                 (not (set-member? attacks-now attack)))
+                               attacks-then)])
+    (map Attack-target-location new-attacks)))
 
 (: friendlies-put-en-prise (-> Position-info Move (Listof Square-location)))
 (define (friendlies-put-en-prise pos-info move)
@@ -466,14 +488,16 @@
              (lambda ([loc : Square-location])
                (is-defender? loc (Pos-info-sorted-enemy-defenses pos-info)))))
 
-(: puts-guard-of-promotion-square-en-prise? Pattern-recognizer)
-(define (puts-guard-of-promotion-square-en-prise? pos-info move)
+(: attacks-guard-of-promotion-square-en-prise? Pattern-recognizer)
+(define (attacks-guard-of-promotion-square-en-prise? pos-info move)
   (let* ([attacking-player (Position-to-move (Position-info-pos pos-info))]
          [guarding-player (opponent-of attacking-player)]
          [guards (guards-of-promotion-squares (Pos-info-pp pos-info) guarding-player)])
-    (exists-in (enemies-put-en-prise pos-info move)
-               (lambda ([loc : Square-location])
-                 (set-member? guards loc)))))
+    (or (and (capturing-move? move)
+             (set-member? guards (to-of-move move)))
+        (exists-in (enemies-attacked pos-info move)
+                   (lambda ([loc : Square-location])
+                     (set-member? guards loc))))))
 
 (: puts-friendly-en-prise? Pattern-recognizer)
 (define (puts-friendly-en-prise? pos-info move)
@@ -568,7 +592,7 @@
 (: candidate-moves-sacrifice-to-remove-promotion-guard Candidate-moves-function)
 (define candidate-moves-sacrifice-to-remove-promotion-guard
   (candidate-moves-of-tactical-patterns
-   (list puts-guard-of-promotion-square-en-prise?
+   (list attacks-guard-of-promotion-square-en-prise?
          (r-or is-in-check?
                moves-en-prise-piece?
                captures-en-prise-piece?)
@@ -704,7 +728,7 @@
                          (check-solution pos movestrings calculated-moves)
                          tactic-name)))))
 
-(define first 33)
+(define first 30)
 (define last 40)
 
 (define positions-to-be-tested (drop (take positions last) (- first 1)))
@@ -738,7 +762,7 @@
                                                   (+ current-depth 1) max-depth)))))))
 
 #|
-(define test-pos (pos-from-fen "8/P7/8/r5k1/8/8/6K1/3R4 w - - 0 1"))
+(define test-pos (pos-from-fen "8/6P1/2k5/3b4/8/3B4/1K6/8 w - - 0 1"))
 (define test-current-depth 0)
 (define test-max-depth 4)
 (define test-candidate-moves candidate-moves-sacrifice-to-remove-promotion-guard)
