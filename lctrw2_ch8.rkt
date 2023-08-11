@@ -488,8 +488,8 @@
              (lambda ([loc : Square-location])
                (is-defender? loc (Pos-info-sorted-enemy-defenses pos-info)))))
 
-(: attacks-guard-of-promotion-square-en-prise? Pattern-recognizer)
-(define (attacks-guard-of-promotion-square-en-prise? pos-info move)
+(: attacks-guard-of-promotion-square? Pattern-recognizer)
+(define (attacks-guard-of-promotion-square? pos-info move)
   (let* ([attacking-player (Position-to-move (Position-info-pos pos-info))]
          [guarding-player (opponent-of attacking-player)]
          [guards (guards-of-promotion-squares (Pos-info-pp pos-info) guarding-player)])
@@ -592,12 +592,16 @@
 (: candidate-moves-sacrifice-to-remove-promotion-guard Candidate-moves-function)
 (define candidate-moves-sacrifice-to-remove-promotion-guard
   (candidate-moves-of-tactical-patterns
-   (list attacks-guard-of-promotion-square-en-prise?
+   (list attacks-guard-of-promotion-square?
          (r-or is-in-check?
                moves-en-prise-piece?
                captures-en-prise-piece?)
          (r-or is-promotion-move?
+               initiates-equivalent-trade-or-better?)
+         (r-or is-mate-in-one?
                captures-en-prise-piece?)
+         (r-or is-promotion-move?
+               initiates-equivalent-trade-or-better?)
          (r-or is-mate-in-one?
                captures-en-prise-piece?))))
 
@@ -720,9 +724,9 @@
          candidate-moves-sacrifice-to-remove-promotion-guard)
    (list 4
          4
-         4
+         5
          7
-         4)
+         5)
    (list never-stop
          never-stop
          never-stop
@@ -744,17 +748,17 @@
                          improvement
                          tactic-name)))))
 
-(define first 45)
-(define last 45)
+(define first 1)
+(define last 60)
 
 (define positions-to-be-tested (drop (take positions last) (- first 1)))
 (define movesstrings-to-be-tested (drop (take movesstrings last) (- first 1)))
 (define indices-to-be-tested (range first (+ last 1)))
-#|
+
 (perform-test positions-to-be-tested
               movesstrings-to-be-tested
               indices-to-be-tested)
-|#
+
 
 (: collect-best-moves (-> Position Candidate-moves-function Optional-stop-function
                           Integer Integer (Listof Move)))
@@ -777,11 +781,11 @@
               (cons best-move (collect-best-moves new-pos candidate-moves-function optional-stop
                                                   (+ current-depth 1) max-depth)))))))
 
-
-(define test-pos (pos-from-fen "4r1k1/1q3pp1/7p/1Q6/8/7P/5PP1/1R4K1 b - - 0 1"))
+#|
+(define test-pos (pos-from-fen "8/6P1/2k5/3b4/8/3B4/1K6/8 w - - 0 1"))
 (define test-current-depth 0)
-(define test-max-depth 4)
-(define test-candidate-moves candidate-moves-sacrifice-to-remove-defender)
+(define test-max-depth 5)
+(define test-candidate-moves candidate-moves-sacrifice-to-remove-promotion-guard)
 (define test-stop never-stop)
 
 (for ([move (collect-best-moves test-pos test-candidate-moves test-stop test-current-depth test-max-depth)])
@@ -791,4 +795,4 @@
                      (move->uci-string move)
                      (position-evaluation->integer (evaluate-position test-pos))
                      (test-stop test-pos test-current-depth))))
-
+|#

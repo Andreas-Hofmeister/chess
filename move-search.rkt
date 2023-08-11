@@ -714,16 +714,16 @@
                                              current-directness
                                              color piece dir-x dir-y extension-pieces (- fuel 1))]
         [(Occupied-square target-color target-piece)
-         #:when (eq? target-color color)
-         (if (hash-has-key? extension-pieces target-piece)
-             (attacks-in-direction pp attacker-loc
-                                   (add-to-square-location current-loc dir-x dir-y)
-                                   (+ current-directness 1)
-                                   color piece dir-x dir-y extension-pieces (min (- fuel 1)
-                                                                                 (hash-ref extension-pieces target-piece)))
-             '())]
-        [(Occupied-square target-color target-piece)
-         (list (Attack attacker-loc piece color current-loc target-piece target-color current-directness))])))
+         (let* ([new-attack (Attack attacker-loc piece color current-loc target-piece target-color current-directness)]
+                [new-attacks (if (eq? color target-color) '() (list new-attack))])
+           (if (hash-has-key? extension-pieces target-piece)
+               (append new-attacks
+                       (attacks-in-direction pp attacker-loc
+                                             (add-to-square-location current-loc dir-x dir-y)
+                                             (+ current-directness 1)
+                                             color piece dir-x dir-y extension-pieces (min (- fuel 1)
+                                                                                           (hash-ref extension-pieces target-piece))))
+               new-attacks))])))
 
 (: attacks-in-directions (-> Piece-placements
                             Square-location
