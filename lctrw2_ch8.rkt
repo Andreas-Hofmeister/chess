@@ -632,20 +632,25 @@
 (define (Arsenal-empty? arsenal)
   (empty? (Arsenal-functions arsenal)))
 
+(struct Tactical-search-result ([function-name : Symbol]
+                                [move-evaluations : (Listof Move-evaluation)]
+                                [improvement : Integer]))
+
 (: tactical-move-search-with-arsenal (-> Position
                                          Arsenal
                                          Integer
-                                         (Pairof Symbol (Listof Move-evaluation))))
+                                         Tactical-search-result))
 (define (tactical-move-search-with-arsenal pos arsenal improvement-threshold)
   (: iter (-> Arsenal
               Integer
-              (Pairof Symbol (Listof Move-evaluation))))
+              Tactical-search-result))
   (define (iter arsenal initial-evaluation)
     (if (Arsenal-empty? arsenal)
-        (cons 'none '())
+        (Tactical-search-result 'none '() 0)
         (let* ([candidate-moves-function (car (Arsenal-functions arsenal))]
                [candidate-moves-name (car (Arsenal-names arsenal))]
                [max-depth (car (Arsenal-depths arsenal))]
+               [hard-threshold (* 2 improvement-threshold)]
                [optional-stop (car (Arsenal-optional-stops arsenal))]
                [move-evs (evaluate-moves-with-optional-stopping
                           evaluate-position
@@ -659,9 +664,18 @@
                              initial-evaluation))]
                [color-sgn (if (eq? 'white (Position-to-move pos)) 1 -1)]
                [improvement (* color-sgn delta)])
-          (if (>= improvement improvement-threshold)
-              (cons candidate-moves-name move-evs)
-              (iter (Arsenal-cdr arsenal) initial-evaluation)))))
+          (if (>= improvement hard-threshold)
+              (Tactical-search-result candidate-moves-name move-evs improvement)
+              (let* ([potentially-better-solution (iter (Arsenal-cdr arsenal) initial-evaluation)]
+                     [potentially-higher-improvement (Tactical-search-result-improvement potentially-better-solution)])
+                (cond
+                  [(and (>= potentially-higher-improvement improvement-threshold)
+                        (> potentially-higher-improvement improvement))
+                   potentially-better-solution]
+                  [(>= improvement improvement-threshold)
+                   (Tactical-search-result candidate-moves-name move-evs improvement)]
+                  [else
+                   (Tactical-search-result 'none '() 0)]))))))
   (iter arsenal (position-evaluation->integer (evaluate-position pos))))
 
 (: evs->string (-> (Listof Move-evaluation) String))
@@ -721,24 +735,26 @@
   (for ([pos positions]
         [movesstr movesstrings] [index indices])
     (let* ([movestrings (string-split movesstr)]
-           [tactic-name-and-evs (tactical-move-search-with-arsenal pos arsenal 100)]
-           [tactic-name (car tactic-name-and-evs)]
-           [calculated-moves (cdr tactic-name-and-evs)])
-      (displayln (format "~a: ~a (found by ~a)" index
+           [search-result (tactical-move-search-with-arsenal pos arsenal 100)]
+           [tactic-name (Tactical-search-result-function-name search-result)]
+           [calculated-moves (Tactical-search-result-move-evaluations search-result)]
+           [improvement (Tactical-search-result-improvement search-result)])
+      (displayln (format "~a: ~a (improvement: ~a, found by: ~a)" index
                          (check-solution pos movestrings calculated-moves)
+                         improvement
                          tactic-name)))))
 
-(define first 30)
-(define last 40)
+(define first 45)
+(define last 45)
 
 (define positions-to-be-tested (drop (take positions last) (- first 1)))
 (define movesstrings-to-be-tested (drop (take movesstrings last) (- first 1)))
 (define indices-to-be-tested (range first (+ last 1)))
-
+#|
 (perform-test positions-to-be-tested
               movesstrings-to-be-tested
               indices-to-be-tested)
-
+|#
 
 (: collect-best-moves (-> Position Candidate-moves-function Optional-stop-function
                           Integer Integer (Listof Move)))
@@ -761,11 +777,11 @@
               (cons best-move (collect-best-moves new-pos candidate-moves-function optional-stop
                                                   (+ current-depth 1) max-depth)))))))
 
-#|
-(define test-pos (pos-from-fen "8/6P1/2k5/3b4/8/3B4/1K6/8 w - - 0 1"))
+
+(define test-pos (pos-from-fen "4r1k1/1q3pp1/7p/1Q6/8/7P/5PP1/1R4K1 b - - 0 1"))
 (define test-current-depth 0)
 (define test-max-depth 4)
-(define test-candidate-moves candidate-moves-sacrifice-to-remove-promotion-guard)
+(define test-candidate-moves candidate-moves-sacrifice-to-remove-defender)
 (define test-stop never-stop)
 
 (for ([move (collect-best-moves test-pos test-candidate-moves test-stop test-current-depth test-max-depth)])
@@ -775,4 +791,4 @@
                      (move->uci-string move)
                      (position-evaluation->integer (evaluate-position test-pos))
                      (test-stop test-pos test-current-depth))))
-|#
+
