@@ -150,13 +150,14 @@
                        [sorted-black-attacks : (Option (HashTable Square-location (Listof Attack)))]
                        [defenses-by-target : (Option (HashTable Square-location (Listof Defense)))]
                        [in-check? : (Option Boolean)]
-                       [legal-moves : (Option (Listof Move))])
+                       [legal-moves : (Option (Listof Move))]
+                       [checkmate-threats : (Option (Listof Move))])
   #:transparent
   #:mutable)
 
 (: make-empty-pos-info (-> Position Position-info))
 (define (make-empty-pos-info pos)
-  (Position-info pos 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none))
+  (Position-info pos 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none))
 
 (: Pos-info-pp (-> Position-info Piece-placements))
 (define (Pos-info-pp pos-info)
@@ -174,6 +175,15 @@
          (setter! pos-info (Some calculated))
          calculated)]
       [(Some already-calculated) already-calculated])))
+
+(: Pos-info-checkmate-threats (-> Position-info (Listof Move)))
+(define Pos-info-checkmate-threats
+  (make-Pos-info-getter Position-info-checkmate-threats
+                        set-Position-info-checkmate-threats!
+                        (lambda ([pos-info : Position-info])
+                          (let* ([rev-pos (switch-to-move (Position-info-pos pos-info))]
+                                 [rev-moves (legal-moves rev-pos)])
+                            (moves-of-evaluations (forced-mate-moves (forced-mate-search 1 rev-pos)))))))
 
 (: Pos-info-legal-moves (-> Position-info (Listof Move)))
 (define Pos-info-legal-moves
@@ -488,6 +498,12 @@
              (lambda ([loc : Square-location])
                (is-defender? loc (Pos-info-sorted-enemy-defenses pos-info)))))
 
+(: attacks-defender? Pattern-recognizer)
+(define (attacks-defender? pos-info move)
+  (exists-in (enemies-attacked pos-info move)
+             (lambda ([loc : Square-location])
+               (is-defender? loc (Pos-info-sorted-enemy-defenses pos-info)))))
+
 (: attacks-guard-of-promotion-square? Pattern-recognizer)
 (define (attacks-guard-of-promotion-square? pos-info move)
   (let* ([attacking-player (Position-to-move (Position-info-pos pos-info))]
@@ -498,6 +514,12 @@
         (exists-in (enemies-attacked pos-info move)
                    (lambda ([loc : Square-location])
                      (set-member? guards loc))))))
+
+(: moves-guard-of-promotion-square? Pattern-recognizer)
+(define (moves-guard-of-promotion-square? pos-info move)
+  (let* ([guarding-player (Position-to-move (Position-info-pos pos-info))]
+         [guards (guards-of-promotion-squares (Pos-info-pp pos-info) guarding-player)])
+    (set-member? guards (from-of-move move))))
 
 (: puts-friendly-en-prise? Pattern-recognizer)
 (define (puts-friendly-en-prise? pos-info move)
@@ -531,6 +553,19 @@
                      (protects-against-checkmate? pos-after-capture
                                                   (Defense-defender-location defense)
                                                   5))))))
+(: defends-against-checkmate? Pattern-recognizer)
+(define (defends-against-checkmate? pos-info move)
+  (let ([threats (Pos-info-checkmate-threats pos-info)]
+        [pos (Position-info-pos pos-info)])
+    (if (empty? threats) #f
+        (or (king-move? pos move)
+            (move-by-piece-adjacent-to-king? pos move)
+            (exists-in threats
+                       (lambda ([threatened-move : Move])
+                         (or (move-defends-square? pos move (to-of-move threatened-move))
+                             (move-blocks-move? pos move threatened-move)
+                             (captures-on-square? move (from-of-move threatened-move)))))
+            (puts-opponent-in-check? pos move)))))
 
 (define-type Candidate-moves-function (-> Position Integer (Listof Move)))
 (define-type Optional-stop-function (-> Position Integer Boolean))
@@ -575,10 +610,11 @@
 (: candidate-moves-sacrifice-to-remove-defender Candidate-moves-function)
 (define candidate-moves-sacrifice-to-remove-defender
   (candidate-moves-of-tactical-patterns
-   (list puts-defender-en-prise?
+   (list attacks-defender?
          (r-or moves-en-prise-piece?
                captures-en-prise-piece?)
          (r-or is-mate-in-one?
+               defends-against-checkmate?
                captures-en-prise-piece?))))
 
 (: candidate-moves-capture-piece-with-overworked-defenders Candidate-moves-function)
@@ -594,15 +630,12 @@
   (candidate-moves-of-tactical-patterns
    (list attacks-guard-of-promotion-square?
          (r-or is-in-check?
-               moves-en-prise-piece?
+               moves-guard-of-promotion-square?
                captures-en-prise-piece?)
          (r-or is-promotion-move?
-               initiates-equivalent-trade-or-better?)
-         (r-or is-mate-in-one?
                captures-en-prise-piece?)
-         (r-or is-promotion-move?
-               initiates-equivalent-trade-or-better?)
          (r-or is-mate-in-one?
+               is-promotion-move?
                captures-en-prise-piece?))))
 
 ;  (empty? (locations-with-possibly-en-prise-piece (Position-pp pos))))
@@ -781,13 +814,13 @@
               (cons best-move (collect-best-moves new-pos candidate-moves-function optional-stop
                                                   (+ current-depth 1) max-depth)))))))
 
-#|
-(define test-pos (pos-from-fen "8/6P1/2k5/3b4/8/3B4/1K6/8 w - - 0 1"))
-(define test-current-depth 0)
-(define test-max-depth 5)
-(define test-candidate-moves candidate-moves-sacrifice-to-remove-promotion-guard)
-(define test-stop never-stop)
 
+(define test-pos (pos-from-fen "1B6/kp5p/pqp2p2/5bp1/8/1P2Q2P/P4PPK/8 b - - 1 1"))
+(define test-current-depth 1)
+(define test-max-depth 5)
+(define test-candidate-moves candidate-moves-sacrifice-to-remove-defender)
+(define test-stop never-stop)
+#|
 (for ([move (collect-best-moves test-pos test-candidate-moves test-stop test-current-depth test-max-depth)])
   (set! test-pos (make-move test-pos move))
   (set! test-current-depth (+ test-current-depth 1))
