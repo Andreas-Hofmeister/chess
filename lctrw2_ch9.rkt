@@ -16,8 +16,8 @@
 (require "legal-moves.rkt")
 (require "knight-moves.rkt")
 
-(define positions (positions-from-file "../krr-test/fen_lctrw2_ch8.fen"))
-(define movesstrings (file->lines "solutions_lctrw2_ch8.txt"))
+(define positions (positions-from-file "../krr-test/fen_lctrw2_ch9.fen"))
+(define movesstrings (file->lines "solutions_lctrw2_ch9.txt"))
 
 (: sequence-of-material-gain (-> Piece (Listof Attack) (Listof Defense) Boolean Integer
                                  (Listof Integer)))
@@ -167,6 +167,15 @@
                                       (lambda ([enemy-loc : Square-location])
                                         (pawn-at-location? pp enemy-loc (opponent-of color))))))))))
 
+(: passed-pawns (-> Piece-placements Color (Listof Square-location)))
+(define (passed-pawns pp color)
+  (filter (lambda ([loc : Square-location])
+            (is-passed-pawn? pp
+                             (Square-location-rank loc)
+                             (Square-location-file loc)
+                             color))
+          valid-locations))
+                             
 (: file-has-passed-pawn? (-> Piece-placements Integer Color Boolean))
 (define (file-has-passed-pawn? pp file-index color)
   (let* ([starting-rank (starting-rank-of-pawn color)]
@@ -190,6 +199,13 @@
     (for/list ([f files])
       (Square-location promotion-rank f))))
 
+(: promotion-threats (-> (Listof Square-location) Color (Listof Square-location)))
+(define (promotion-threats passed-pawns-locations color)
+  (let ([threatening-rank (match color ['white 6] ['black 1])])
+    (filter (lambda ([loc : Square-location])
+              (= (Square-location-rank loc) threatening-rank))
+            passed-pawns-locations)))
+
 (struct Position-info ([pos : Position]
                        [equivalent-trades : (Option (Listof Square-location))]
                        [en-prise : (Option (Listof Square-location))]
@@ -204,13 +220,18 @@
                        [defenses-by-target : (Option (HashTable Square-location (Listof Defense)))]
                        [in-check? : (Option Boolean)]
                        [legal-moves : (Option (Listof Move))]
-                       [checkmate-threats : (Option (Listof Move))])
+                       [checkmate-threats : (Option (Listof Move))]
+                       [enemy-double-attackers : (Option (Listof Square-location))]
+                       [white-passed-pawns : (Option (Listof Square-location))]
+                       [black-passed-pawns : (Option (Listof Square-location))]
+                       [enemy-promotion-threats : (Option (Listof Square-location))])
   #:transparent
   #:mutable)
 
 (: make-empty-pos-info (-> Position Position-info))
 (define (make-empty-pos-info pos)
-  (Position-info pos 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none))
+  (Position-info pos 'none 'none 'none 'none 'none 'none 'none 'none 'none
+                 'none 'none 'none 'none 'none 'none 'none 'none 'none))
 
 (: Pos-info-pp (-> Position-info Piece-placements))
 (define (Pos-info-pp pos-info)
@@ -228,6 +249,34 @@
          (setter! pos-info (Some calculated))
          calculated)]
       [(Some already-calculated) already-calculated])))
+
+(: Pos-info-white-passed-pawns (-> Position-info (Listof Square-location)))
+(define Pos-info-white-passed-pawns
+  (make-Pos-info-getter Position-info-white-passed-pawns
+                        set-Position-info-white-passed-pawns!
+                        (lambda ([pos-info : Position-info])
+                          (passed-pawns (Pos-info-pp pos-info) 'white))))
+
+(: Pos-info-black-passed-pawns (-> Position-info (Listof Square-location)))
+(define Pos-info-black-passed-pawns
+  (make-Pos-info-getter Position-info-black-passed-pawns
+                        set-Position-info-black-passed-pawns!
+                        (lambda ([pos-info : Position-info])
+                          (passed-pawns (Pos-info-pp pos-info) 'black))))
+
+(: Pos-info-passed-pawns (-> Position-info Color (Listof Square-location)))
+(define (Pos-info-passed-pawns pos-info color)
+  (if (eq? 'white color)
+      (Pos-info-white-passed-pawns pos-info)
+      (Pos-info-black-passed-pawns pos-info)))
+
+(: Pos-info-enemy-promotion-threats (-> Position-info (Listof Square-location)))
+(define Pos-info-enemy-promotion-threats
+  (make-Pos-info-getter Position-info-enemy-promotion-threats
+                        set-Position-info-enemy-promotion-threats!
+                        (lambda ([pos-info : Position-info])
+                          (let ([enemy (opponent-of (Position-to-move (Position-info-pos pos-info)))])
+                            (promotion-threats (Pos-info-passed-pawns pos-info enemy) enemy)))))
 
 (: Pos-info-checkmate-threats (-> Position-info (Listof Move)))
 (define Pos-info-checkmate-threats
@@ -271,6 +320,11 @@
   (if (eq? (Position-to-move (Position-info-pos pos-info)) 'white)
       (Attacks-black (Pos-info-attacks pos-info))
       (Attacks-white (Pos-info-attacks pos-info))))
+
+(: Pos-info-enemy-attackers (-> Position-info (HashTable Square-location (Listof Attack))))
+(define (Pos-info-enemy-attackers pos-info)
+  (if (eq? (Position-to-move (Position-info-pos pos-info)) 'white)
+      (Pos-info-sorted-black-attacks pos-info) (Pos-info-sorted-white-attacks pos-info)))
 
 (: Pos-info-sorted-white-attacks (-> Position-info (HashTable Square-location (Listof Attack))))
 (define Pos-info-sorted-white-attacks
@@ -374,6 +428,22 @@
 (: Pos-info-switch-to-move (-> Position-info Position-info))
 (define (Pos-info-switch-to-move pos-info)
   (make-empty-pos-info (switch-to-move (Position-info-pos pos-info))))
+
+(: enemy-double-attackers (-> Position-info (Listof Square-location)))
+(define (enemy-double-attackers pos-info)
+  (let ([attackers (Pos-info-enemy-attackers pos-info)]
+        [double-attackers : (Listof Square-location) '()])
+    (hash-for-each attackers
+                   (lambda ([loc : Square-location]
+                            [attacks : (Listof Attack)])
+                     (when (>= (length attacks) 2)
+                       (set! double-attackers (cons loc double-attackers)))))
+    double-attackers))
+
+(define Pos-info-enemy-double-attackers
+  (make-Pos-info-getter Position-info-enemy-double-attackers
+                        set-Position-info-enemy-double-attackers!
+                        enemy-double-attackers))
 
 (: enemies-put-en-prise (-> Position-info Move (Listof Square-location)))
 (define (enemies-put-en-prise pos-info move)
@@ -620,6 +690,20 @@
                              (captures-on-square? move (from-of-move threatened-move)))))
             (puts-opponent-in-check? pos move)))))
 
+(: puts-two-en-prise? Pattern-recognizer)
+(define (puts-two-en-prise? pos-info move)
+  (>= (length (enemies-put-en-prise pos-info move)) 2))
+
+(: captures-double-attacker? Pattern-recognizer)
+(define (captures-double-attacker? pos-info move)
+  (and (capturing-move? move)
+       (set-member? (enemy-double-attackers pos-info)
+                    (to-of-move move))))
+
+(: enemy-has-promotion-threat? Pattern-recognizer)
+(define (enemy-has-promotion-threat? pos-info move)
+  (not (empty? (Pos-info-enemy-promotion-threats pos-info))))
+
 (define-type Candidate-moves-function (-> Position Integer (Listof Move)))
 (define-type Optional-stop-function (-> Position Integer Boolean))
 
@@ -642,14 +726,6 @@
                        (legal-moves pos)))
              (rec-candidates pos (- depth 1)))))]))
 
-(: candidate-moves-trade-n-capture Candidate-moves-function)
-(define candidate-moves-trade-n-capture
-  (candidate-moves-of-tactical-patterns
-   (list initiates-equivalent-trade?
-         initiates-equivalent-trade-or-better?
-         (r-or is-mate-in-one?
-               initiates-equivalent-trade-or-better?))))
-
 (: candidate-moves-scare-off-defender Candidate-moves-function)
 (define candidate-moves-scare-off-defender
   (candidate-moves-of-tactical-patterns
@@ -660,38 +736,26 @@
          (r-or is-mate-in-one?
                captures-en-prise-piece?))))
 
-(: candidate-moves-sacrifice-to-remove-defender Candidate-moves-function)
-(define candidate-moves-sacrifice-to-remove-defender
+(: candidate-moves-double-attack Candidate-moves-function)
+(define candidate-moves-double-attack
   (candidate-moves-of-tactical-patterns
-   (list attacks-defender?
+   (list puts-two-en-prise?
          (r-or moves-en-prise-piece?
-               captures-en-prise-piece?)
+               captures-double-attacker?)
          (r-or is-mate-in-one?
-               defends-against-checkmate?
                captures-en-prise-piece?))))
 
-(: candidate-moves-capture-piece-with-overworked-defenders Candidate-moves-function)
-(define candidate-moves-capture-piece-with-overworked-defenders
+(: candidate-moves-double-attack-with-promotion-threat Candidate-moves-function)
+(define candidate-moves-double-attack-with-promotion-threat
   (candidate-moves-of-tactical-patterns
-   (list captures-piece-with-overworked-defenders?
-         (r-or is-in-check?
-               is-checking-move?
-               captures-en-prise-piece?))))
-
-(: candidate-moves-sacrifice-to-remove-promotion-guard Candidate-moves-function)
-(define candidate-moves-sacrifice-to-remove-promotion-guard
-  (candidate-moves-of-tactical-patterns
-   (list attacks-guard-of-promotion-square?
-         (r-or is-in-check?
-               moves-guard-of-promotion-square?
-               captures-en-prise-piece?)
-         (r-or is-promotion-move?
-               captures-en-prise-piece?)
+   (list puts-two-en-prise?
+         (r-or moves-en-prise-piece?
+               captures-double-attacker?)
          (r-or is-mate-in-one?
-               is-promotion-move?
-               captures-en-prise-piece?))))
-
-;  (empty? (locations-with-possibly-en-prise-piece (Position-pp pos))))
+               initiates-equivalent-trade-or-better?
+               is-in-check?
+               enemy-has-promotion-threat?))))
+               
 
 (: never-stop Optional-stop-function)
 (define (never-stop pos depth) #f)
@@ -798,26 +862,10 @@
 
 (define arsenal
   (Arsenal
-   (list 'trade-and-capture
-         'scare-off-defender
-         'sacrifice-to-remove-defender
-         'capture-piece-with-overworked-defenders
-         'sacrifice-to-remove-promotion-guard)
-   (list candidate-moves-trade-n-capture
-         candidate-moves-scare-off-defender
-         candidate-moves-sacrifice-to-remove-defender
-         candidate-moves-capture-piece-with-overworked-defenders
-         candidate-moves-sacrifice-to-remove-promotion-guard)
-   (list 4
-         4
-         5
-         7
-         5)
-   (list never-stop
-         never-stop
-         never-stop
-         (stop-when-ahead-and-no-immediate-threats 100)
-         never-stop)))
+   (list 'scare-off-defender 'double-attack 'double-attack-with-promotion-threat)
+   (list candidate-moves-scare-off-defender candidate-moves-double-attack candidate-moves-double-attack-with-promotion-threat)
+   (list 4 4 9)
+   (list never-stop never-stop never-stop)))
 
 (: perform-test (-> (Listof Position) (Listof String) (Listof Integer)
                     Void))
@@ -867,13 +915,13 @@
               (cons best-move (collect-best-moves new-pos candidate-moves-function optional-stop
                                                   (+ current-depth 1) max-depth)))))))
 
-
-(define test-pos (pos-from-fen "1B6/kp5p/pqp2p2/5bp1/8/1P2Q2P/P4PPK/8 b - - 1 1"))
-(define test-current-depth 1)
-(define test-max-depth 5)
-(define test-candidate-moves candidate-moves-sacrifice-to-remove-defender)
-(define test-stop never-stop)
 #|
+(define test-pos (pos-from-fen "6k1/pp3pp1/1npnb2p/8/2P5/1PN2N1P/P3BPP1/6K1 w - - 0 1"))
+(define test-current-depth 0)
+(define test-max-depth 9)
+(define test-candidate-moves candidate-moves-double-attack-with-promotion-threat)
+(define test-stop never-stop)
+
 (for ([move (collect-best-moves test-pos test-candidate-moves test-stop test-current-depth test-max-depth)])
   (set! test-pos (make-move test-pos move))
   (set! test-current-depth (+ test-current-depth 1))
