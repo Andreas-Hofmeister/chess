@@ -1041,6 +1041,21 @@
           (iter (cdr remaining-attacks)))))
   (iter attacks))
 
+(: sort-attacks-by-attacker (-> (Listof Attack) 
+                                (HashTable Square-location (Listof Attack))))
+(define (sort-attacks-by-attacker attacks)
+  (: sorted-attacks (HashTable Square-location (Listof Attack)))
+  (define sorted-attacks (make-hash))
+  (: iter (-> (Listof Attack) (HashTable Square-location (Listof Attack))))
+  (define (iter remaining-attacks)
+    (if (empty? remaining-attacks) sorted-attacks
+        (let* ([attack (car remaining-attacks)]
+               [attacker-loc (Attack-attacker-location attack)]
+               [attacks-so-far : (Listof Attack) (hash-ref! sorted-attacks attacker-loc (lambda () '()))])
+          (hash-set! sorted-attacks attacker-loc (cons attack attacks-so-far))
+          (iter (cdr remaining-attacks)))))
+  (iter attacks))
+
 (: sort-defenses-by-target (-> (Listof Defense) 
                                (HashTable Square-location (Listof Defense))))
 (define (sort-defenses-by-target defenses)
