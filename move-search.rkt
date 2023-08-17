@@ -687,6 +687,131 @@
               (= (move-evaluation->integer ev) best-value))
             sorted-evaluations)))
 
+(define up-down-left-right-dirs (list (cons 1 0) (cons -1 0) (cons 0 1) (cons 0 -1)))
+(define diagonal-up-dirs (list (cons 1 1) (cons -1 1)))
+(define diagonal-down-dirs (list (cons 1 -1) (cons -1 -1)))
+(define up-down-left-right-extensions (hash 'queen 8 'rook 8))
+
+(struct Pin ([attacker-location : Square-location]
+             [attacker-piece : Piece]
+             [attacker-color : Color]
+             [pinned-location : Square-location]
+             [pinned-piece : Piece]
+             [pinned-to-location : Square-location]
+             [pinned-to-piece : Piece])
+  #:transparent)
+
+(: pins-in-direction (-> Piece-placements
+                         Square-location
+                         Square-location
+                         Boolean
+                         Square-location
+                         Piece
+                         Color
+                         Piece
+                         Integer Integer
+                         (Listof Pin)))
+(define (pins-in-direction pp attacker-loc current-loc found-pinned pinned-location pinned-piece
+                           color piece dir-x dir-y)
+  (if (not (location-valid? current-loc)) '()
+      (match (get-square-by-location pp current-loc)
+        ['empty-square (pins-in-direction pp attacker-loc
+                                          (add-to-square-location current-loc dir-x dir-y)
+                                          found-pinned
+                                          pinned-location
+                                          pinned-piece
+                                          color piece dir-x dir-y)]
+        [(Occupied-square target-color target-piece)
+         (cond
+           [(eq? target-color color) '()]
+           [(not found-pinned)
+            (pins-in-direction pp attacker-loc (add-to-square-location current-loc dir-x dir-y)
+                               #t current-loc target-piece color piece dir-x dir-y)]
+           [else
+            (list (Pin attacker-loc piece color pinned-location pinned-piece current-loc target-piece))])])))
+
+(: pins-in-directions (-> Piece-placements
+                          Square-location
+                          Color
+                          Piece
+                          (Listof (Pairof Integer Integer))
+                          (Listof Pin)))
+(define (pins-in-directions pp attacker-loc color piece dir-list)
+  (if (empty? dir-list) '()
+      (let* ([dir (car dir-list)]
+             [delta-x (car dir)]
+             [delta-y (cdr dir)])
+        (append (pins-in-direction pp attacker-loc (add-to-square-location attacker-loc delta-x delta-y)
+                                      #f (Square-location 0 0) 'pawn color piece delta-x delta-y)
+                (pins-in-directions pp attacker-loc color piece (cdr dir-list))))))
+
+(: pins-by-queen (-> Piece-placements Square-location Color
+                     (Listof Pin)))
+(define (pins-by-queen pp loc color)
+  (append (pins-in-directions pp loc color 'queen up-down-left-right-dirs)
+          (pins-in-directions pp loc color 'queen diagonal-up-dirs)
+          (pins-in-directions pp loc color 'queen diagonal-down-dirs)))
+
+(: pins-by-rook (-> Piece-placements Square-location Color
+                    (Listof Pin)))
+(define (pins-by-rook pp loc color)
+  (pins-in-directions pp loc color 'rook up-down-left-right-dirs))
+
+(: pins-by-bishop (-> Piece-placements Square-location Color
+                      (Listof Pin)))
+(define (pins-by-bishop pp loc color)
+  (append (pins-in-directions pp loc color 'bishop diagonal-up-dirs)
+          (pins-in-directions pp loc color 'bishop diagonal-down-dirs)))
+
+(: pins-of-piece (-> Piece-placements Square-location Piece Color
+                     (Listof Pin)))
+(define (pins-of-piece pp loc piece color)
+  (match piece
+    ['pawn '()]
+    ['rook (pins-by-rook pp loc color)]
+    ['bishop (pins-by-bishop pp loc color)]
+    ['knight '()]
+    ['queen (pins-by-queen pp loc color)]
+    ['king '()]))
+
+(: pins-of-location (-> Piece-placements Square-location (Listof Pin)))
+(define (pins-of-location pp loc)
+  (match (get-square-by-location pp loc)
+    ['empty-square '()]
+    [(Occupied-square color piece) (pins-of-piece pp loc piece color)]))
+
+(: pins-of-locations (-> Piece-placements (Listof Square-location) (Listof Pin)))
+(define (pins-of-locations pp locs)
+  (if (empty? locs) '()
+      (append (pins-of-location pp (car locs))
+              (pins-of-locations pp (cdr locs)))))
+
+(: pins-of-pp (-> Piece-placements (Listof Pin)))
+(define (pins-of-pp pp)
+  (pins-of-locations pp valid-locations))
+
+(: pins-sorted-by-attacker (-> Color (Listof Pin) (HashTable Square-location (Listof Pin))))
+(define (pins-sorted-by-attacker attacker-color pins)
+  (let ([sorted-pins : (HashTable Square-location (Listof Pin)) (make-hash)])
+    (for ([pin pins])
+      (let* ([attacker-loc (Pin-attacker-location pin)]
+             [pin-color (Pin-attacker-color pin)]
+             [pins-so-far : (Listof Pin) (hash-ref! sorted-pins attacker-loc (lambda () '()))])
+        (when (eq? attacker-color pin-color)
+          (hash-set! sorted-pins attacker-loc (cons pin pins-so-far)))))
+    sorted-pins))
+
+(: pins-sorted-by-pinned-piece (-> Color (Listof Pin) (HashTable Square-location (Listof Pin))))
+(define (pins-sorted-by-pinned-piece pinned-piece-color pins)
+  (let ([sorted-pins : (HashTable Square-location (Listof Pin)) (make-hash)])
+    (for ([pin pins])
+      (let* ([pinned-loc (Pin-pinned-location pin)]
+             [pin-color (opponent-of (Pin-attacker-color pin))]
+             [pins-so-far : (Listof Pin) (hash-ref! sorted-pins pinned-loc (lambda () '()))])
+        (when (eq? pinned-piece-color pin-color)
+          (hash-set! sorted-pins pinned-loc (cons pin pins-so-far)))))
+    sorted-pins))
+
 (struct Attack ([attacker-location : Square-location]
                 [attacker-piece : Piece]
                 [attacker-color : Color]
@@ -741,10 +866,6 @@
                                       0 color piece delta-x delta-y extension-pieces 8)
                 (attacks-in-directions pp attacker-loc color piece (cdr dir-list) extension-pieces)))))
 
-(define up-down-left-right-dirs (list (cons 1 0) (cons -1 0) (cons 0 1) (cons 0 -1)))
-(define diagonal-up-dirs (list (cons 1 1) (cons -1 1)))
-(define diagonal-down-dirs (list (cons 1 -1) (cons -1 -1)))
-(define up-down-left-right-extensions (hash 'queen 8 'rook 8))
 (: diagonal-up-extensions (-> Color (HashTable Piece Integer)))
 (define (diagonal-up-extensions color)
   (if (eq? color 'white) (hash 'queen 8 'bishop 8 'pawn 1)
