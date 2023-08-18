@@ -802,13 +802,13 @@
     sorted-pins))
 
 (: pins-sorted-by-pinned-piece (-> Color (Listof Pin) (HashTable Square-location (Listof Pin))))
-(define (pins-sorted-by-pinned-piece pinned-piece-color pins)
+(define (pins-sorted-by-pinned-piece attacker-color pins)
   (let ([sorted-pins : (HashTable Square-location (Listof Pin)) (make-hash)])
     (for ([pin pins])
       (let* ([pinned-loc (Pin-pinned-location pin)]
-             [pin-color (opponent-of (Pin-attacker-color pin))]
+             [pin-color (Pin-attacker-color pin)]
              [pins-so-far : (Listof Pin) (hash-ref! sorted-pins pinned-loc (lambda () '()))])
-        (when (eq? pinned-piece-color pin-color)
+        (when (eq? attacker-color pin-color)
           (hash-set! sorted-pins pinned-loc (cons pin pins-so-far)))))
     sorted-pins))
 

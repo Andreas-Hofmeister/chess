@@ -229,14 +229,20 @@
                        [black-attacks-by-attacker : (Option (HashTable Square-location (Listof Attack)))]
                        [pins : (Option (Listof Pin))]
                        [white-pins : (Option (Listof Pin))]
-                       [black-pins : (Option (Listof Pin))])
+                       [black-pins : (Option (Listof Pin))]
+                       [white-pins-sorted-by-pinned-piece : (Option (HashTable Square-location (Listof Pin)))]
+                       [black-pins-sorted-by-pinned-piece : (Option (HashTable Square-location (Listof Pin)))]
+                       [white-pieces-with-pinned-defenders : (Option (Listof Square-location))]
+                       [black-pieces-with-pinned-defenders : (Option (Listof Square-location))])
   #:transparent
   #:mutable)
 
 (: make-empty-pos-info (-> Position Position-info))
 (define (make-empty-pos-info pos)
-  (Position-info pos 'none 'none 'none 'none 'none 'none 'none 'none 'none
-                 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none))
+  (Position-info pos
+                 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none
+                 'none 'none 'none 'none 'none 'none 'none 'none 'none 'none
+                 'none 'none 'none 'none 'none 'none 'none))
 
 (: Pos-info-pp (-> Position-info Piece-placements))
 (define (Pos-info-pp pos-info)
@@ -254,31 +260,32 @@
          (setter! pos-info (Some calculated))
          calculated)]
       [(Some already-calculated) already-calculated])))
+                          
 
 (: Pos-info-pins (-> Position-info (Listof Pin)))
 (define Pos-info-pins
-  (make-Pos-info-pins Position-info-pins
-                      set-Position-info-pins!
-                      (lambda ([pos-info : Position-info])
-                        (pins-of-pp (Pos-info-pp pos-info)))))
+  (make-Pos-info-getter Position-info-pins
+                        set-Position-info-pins!
+                        (lambda ([pos-info : Position-info])
+                          (pins-of-pp (Pos-info-pp pos-info)))))
 
 (: Pos-info-white-pins (-> Position-info (Listof Pin)))
 (define Pos-info-white-pins
-  (make-Pos-info-pins Position-info-white-pins
-                      set-Position-info-white-pins!
-                      (lambda ([pos-info : Position-info])
-                        (filter (lambda ([pin : Pin])
-                                  (eq? 'white (Pin-attacker-color pin))))
-                        (Pos-info-pins pos-info))))
+  (make-Pos-info-getter Position-info-white-pins
+                        set-Position-info-white-pins!
+                        (lambda ([pos-info : Position-info])
+                          (filter (lambda ([pin : Pin])
+                                    (eq? 'white (Pin-attacker-color pin)))
+                                  (Pos-info-pins pos-info)))))
 
 (: Pos-info-black-pins (-> Position-info (Listof Pin)))
 (define Pos-info-black-pins
-  (make-Pos-info-pins Position-info-black-pins
-                      set-Position-info-black-pins!
-                      (lambda ([pos-info : Position-info])
-                        (filter (lambda ([pin : Pin])
-                                  (eq? 'black (Pin-attacker-color pin))))
-                        (Pos-info-pins pos-info))))
+  (make-Pos-info-getter Position-info-black-pins
+                        set-Position-info-black-pins!
+                        (lambda ([pos-info : Position-info])
+                          (filter (lambda ([pin : Pin])
+                                    (eq? 'black (Pin-attacker-color pin)))
+                                  (Pos-info-pins pos-info)))))
 
 (: Pos-info-own-pins (-> Position-info (Listof Pin)))
 (define (Pos-info-own-pins pos-info)
@@ -291,6 +298,20 @@
   (if (eq? (Position-to-move (Position-info-pos pos-info)) 'white)
       (Pos-info-black-pins pos-info)
       (Pos-info-white-pins pos-info)))
+
+(: Pos-info-white-pins-sorted-by-pinned-piece (-> Position-info (HashTable Square-location (Listof Pin))))
+(define Pos-info-white-pins-sorted-by-pinned-piece
+  (make-Pos-info-getter Position-info-white-pins-sorted-by-pinned-piece
+                        set-Position-info-white-pins-sorted-by-pinned-piece!
+                        (lambda ([pos-info : Position-info])
+                          (pins-sorted-by-pinned-piece 'white (Pos-info-white-pins pos-info)))))
+
+(: Pos-info-black-pins-sorted-by-pinned-piece (-> Position-info (HashTable Square-location (Listof Pin))))
+(define Pos-info-black-pins-sorted-by-pinned-piece
+  (make-Pos-info-getter Position-info-black-pins-sorted-by-pinned-piece
+                        set-Position-info-black-pins-sorted-by-pinned-piece!
+                        (lambda ([pos-info : Position-info])
+                          (pins-sorted-by-pinned-piece 'black (Pos-info-black-pins pos-info)))))
 
 (: Pos-info-white-passed-pawns (-> Position-info (Listof Square-location)))
 (define Pos-info-white-passed-pawns
@@ -531,6 +552,29 @@
                                en-prise-then)])
     new-en-prise))
 
+(: pieces-with-pinned-defenders (-> (HashTable Square-location (Listof Defense))
+                                    (HashTable Square-location (Listof Pin))
+                                    (Listof Square-location)))
+(define (pieces-with-pinned-defenders defenses-by-target pins-by-pinned-piece)
+  (let ([result : (Listof Square-location) '()])
+    (hash-for-each defenses-by-target
+                   (lambda ([loc : Square-location]
+                            [defenses : (Listof Defense)])
+                     (when (exists-in defenses
+                                      (lambda ([defense : Defense])
+                                        (hash-has-key? pins-by-pinned-piece
+                                                       (Defense-defender-location defense))))
+                       (set! result (cons loc result)))))
+    result))
+
+(: Pos-info-white-pieces-with-pinned-defenders (-> Position-info (Listof Square-location)))
+(define Pos-info-white-pieces-with-pinned-defenders
+  (make-Pos-info-getter Position-info-white-pieces-with-pinned-defenders
+                        set-Position-info-white-pieces-with-pinned-defenders!
+                        (lambda ([pos-info : Position-info])
+                          (pieces-with-pinned-defenders (Pos-info-white-defenses-by-target pos-info)
+                                                        (Pos-info-white-pins-sorted-by-pinned-piece pos-info)))))
+
 (: mate-in-n? (-> Position Integer Boolean))
 (define (mate-in-n? pos depth)
   (let ([evs (forced-mate-search depth pos)])
@@ -686,7 +730,14 @@
   (let* ([pins-now (Pos-info-own-pins pos-info)]
          [new-pos (make-move (Position-info-pos pos-info) move)]
          [new-pos-info (make-empty-pos-info new-pos)]
-         [
+         [pins-then (Pos-info-enemy-pins new-pos-info)])
+    (exists-in pins-then
+               (lambda ([pin : Pin]) (not (set-member? pins-now pin))))))
+
+;; TODO
+(: captures-piece-with-pinned-defense? Pattern-recognizer)
+(define (captures-piece-with-pinned-defense? pos-info move) #f)
+;  (let* ([pins (Pos-info-own-pins pos-info)
 
 (: attacks-defender? Pattern-recognizer)
 (define (attacks-defender? pos-info move)
@@ -777,6 +828,9 @@
 (define (enemy-has-promotion-threat? pos-info move)
   (not (empty? (Pos-info-enemy-promotion-threats pos-info))))
 
+(: any-move? Pattern-recognizer)
+(define (any-move? pos-info move) #t)
+
 (define-type Candidate-moves-function (-> Position Integer (Listof Move)))
 (define-type Optional-stop-function (-> Position Integer Boolean))
 
@@ -839,6 +893,13 @@
                captures-en-prise-piece?
                is-checking-move?
                is-in-check?))))
+
+(: candidate-moves-pin-and-capture Candidate-moves-function)
+(define candidate-moves-pin-and-capture
+  (candidate-moves-of-tactical-patterns
+   (list pins-enemy-piece?
+         any-move?
+         captures-en-prise-piece?)))
 
 (: never-stop Optional-stop-function)
 (define (never-stop pos depth) #f)
@@ -945,11 +1006,10 @@
 
 (define arsenal
   (Arsenal
-   (list 'scare-off-defender 'double-attack 'double-attack-with-promotion-threat 'threaten-checkmate-and-capture)
-   (list candidate-moves-scare-off-defender candidate-moves-double-attack candidate-moves-double-attack-with-promotion-threat
-         candidate-moves-threaten-checkmate-and-capture)
-   (list 4 4 9 5)
-   (list never-stop never-stop never-stop never-stop)))
+   (list 'pin-and-capture)
+   (list candidate-moves-pin-and-capture)
+   (list 4)
+   (list never-stop)))
 
 (: perform-test (-> (Listof Position) (Listof String) (Listof Integer)
                     Void))
@@ -971,11 +1031,11 @@
 (define positions-to-be-tested (drop (take positions last) (- first 1)))
 (define movesstrings-to-be-tested (drop (take movesstrings last) (- first 1)))
 (define indices-to-be-tested (range first (+ last 1)))
-#|
+
 (perform-test positions-to-be-tested
               movesstrings-to-be-tested
               indices-to-be-tested)
-|#
+
 
 (: collect-best-moves (-> Position Candidate-moves-function Optional-stop-function
                           Integer Integer (Listof Move)))
@@ -1003,12 +1063,14 @@
   (let* ([pos (pos-from-fen fen)]
          [moves (candidates-f pos depth)])
     (for ([move moves])
-      (displayln (move->uci-string move)))))
+      (displayln (move->uci-string move)))
+    (when (empty? moves)
+        (displayln "No moves"))))
 #|
-(define test-pos (pos-from-fen "3q3k/bpp3p1/p6p/3p4/N6P/3P2P1/PPPQ4/7K b - - 0 1"))
+(define test-pos (pos-from-fen "r5k1/p5pp/1p1b4/3r1p2/4p3/1N6/PPP1QPPP/7K w - - 0 1"))
 (define test-current-depth 0)
 (define test-max-depth 4)
-(define test-candidate-moves candidate-moves-double-attack)
+(define test-candidate-moves candidate-moves-pin-and-capture)
 (define test-stop never-stop)
 
 (for ([move (collect-best-moves test-pos test-candidate-moves test-stop test-current-depth test-max-depth)])
@@ -1018,14 +1080,14 @@
                      (move->uci-string move)
                      (position-evaluation->integer (evaluate-position test-pos))
                      (test-stop test-pos test-current-depth))))
+
+
+
+(print-moves-considered "r5k1/p5pp/1p1b4/3r1p2/4p3/1N6/PPP1QPPP/7K w - - 0 1"
+                        candidate-moves-pin-and-capture
+                        0)
+
+(displayln (Pos-info-own-pins (make-empty-pos-info (pos-from-fen "r5k1/p5pp/1p1b4/3r1p2/4p3/1N6/PPP1QPPP/7K w - - 0 1"))))
+(displayln (Pos-info-enemy-pins (make-empty-pos-info (pos-from-fen "r5k1/p5pp/1p1b4/3r1p2/2Q1p3/1N6/PPP2PPP/7K b - - 1 1"))))
+
 |#
-
-#|
-(print-moves-considered "q3rnk1/1br1bppp/p3pN2/1p6/3P4/2NQ4/PPB2PPP/3RR1K1 b - - 1 1"
-                        candidate-moves-double-attack
-                        1)
-(displayln (Pos-info-enemy-attackers (make-empty-pos-info (pos-from-fen "q3rnk1/1br1bppp/p3pN2/1p6/3P4/2NQ4/PPB2PPP/3RR1K1 b - - 1 1"))))
-|#
-
-;(displayln (pins-of-pp (Position-pp (pos-from-fen "r5k1/p5pp/1p1b4/3r1p2/2Q1p3/1N6/PPP2PPP/7K b - - 1 1"))))
-
