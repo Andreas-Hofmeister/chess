@@ -244,6 +244,10 @@
                  'none 'none 'none 'none 'none 'none 'none 'none 'none 'none
                  'none 'none 'none 'none 'none 'none 'none))
 
+(: Pos-info-to-move (-> Position-info Color))
+(define (Pos-info-to-move pos-info)
+  (Position-to-move (Position-info-pos pos-info)))
+
 (: Pos-info-pp (-> Position-info Piece-placements))
 (define (Pos-info-pp pos-info)
   (Position-pp (Position-info-pos pos-info)))
@@ -573,7 +577,27 @@
                         set-Position-info-white-pieces-with-pinned-defenders!
                         (lambda ([pos-info : Position-info])
                           (pieces-with-pinned-defenders (Pos-info-white-defenses-by-target pos-info)
+                                                        (Pos-info-black-pins-sorted-by-pinned-piece pos-info)))))
+
+(: Pos-info-black-pieces-with-pinned-defenders (-> Position-info (Listof Square-location)))
+(define Pos-info-black-pieces-with-pinned-defenders
+  (make-Pos-info-getter Position-info-black-pieces-with-pinned-defenders
+                        set-Position-info-black-pieces-with-pinned-defenders!
+                        (lambda ([pos-info : Position-info])
+                          (pieces-with-pinned-defenders (Pos-info-black-defenses-by-target pos-info)
                                                         (Pos-info-white-pins-sorted-by-pinned-piece pos-info)))))
+
+(: Pos-info-own-pieces-with-pinned-defenders (-> Position-info (Listof Square-location)))
+(define (Pos-info-own-pieces-with-pinned-defenders pos-info)
+  (if (eq? 'white (Pos-info-to-move pos-info))
+      (Pos-info-white-pieces-with-pinned-defenders pos-info)
+      (Pos-info-black-pieces-with-pinned-defenders pos-info)))
+
+(: Pos-info-enemy-pieces-with-pinned-defenders (-> Position-info (Listof Square-location)))
+(define (Pos-info-enemy-pieces-with-pinned-defenders pos-info)
+  (if (eq? 'white (Pos-info-to-move pos-info))
+      (Pos-info-black-pieces-with-pinned-defenders pos-info)
+      (Pos-info-white-pieces-with-pinned-defenders pos-info)))
 
 (: mate-in-n? (-> Position Integer Boolean))
 (define (mate-in-n? pos depth)
@@ -734,10 +758,11 @@
     (exists-in pins-then
                (lambda ([pin : Pin]) (not (set-member? pins-now pin))))))
 
-;; TODO
 (: captures-piece-with-pinned-defense? Pattern-recognizer)
-(define (captures-piece-with-pinned-defense? pos-info move) #f)
-;  (let* ([pins (Pos-info-own-pins pos-info)
+(define (captures-piece-with-pinned-defense? pos-info move)
+  (and (capturing-move? move)
+       (set-member? (Pos-info-enemy-pieces-with-pinned-defenders pos-info)
+                    (to-of-move move))))
 
 (: attacks-defender? Pattern-recognizer)
 (define (attacks-defender? pos-info move)
@@ -901,6 +926,12 @@
          any-move?
          captures-en-prise-piece?)))
 
+(: candidate-moves-capture-piece-with-pinned-defender Candidate-moves-function)
+(define candidate-moves-capture-piece-with-pinned-defender
+  (candidate-moves-of-tactical-patterns
+   (list captures-piece-with-pinned-defense?
+         captures-en-prise-piece?)))
+
 (: never-stop Optional-stop-function)
 (define (never-stop pos depth) #f)
 
@@ -1006,10 +1037,10 @@
 
 (define arsenal
   (Arsenal
-   (list 'pin-and-capture)
-   (list candidate-moves-pin-and-capture)
-   (list 4)
-   (list never-stop)))
+   (list 'pin-and-capture 'capture-piece-with-pinned-defense)
+   (list candidate-moves-pin-and-capture candidate-moves-capture-piece-with-pinned-defender)
+   (list 4 4)
+   (list never-stop never-stop)))
 
 (: perform-test (-> (Listof Position) (Listof String) (Listof Integer)
                     Void))
@@ -1035,7 +1066,6 @@
 (perform-test positions-to-be-tested
               movesstrings-to-be-tested
               indices-to-be-tested)
-
 
 (: collect-best-moves (-> Position Candidate-moves-function Optional-stop-function
                           Integer Integer (Listof Move)))
@@ -1067,10 +1097,10 @@
     (when (empty? moves)
         (displayln "No moves"))))
 #|
-(define test-pos (pos-from-fen "r5k1/p5pp/1p1b4/3r1p2/4p3/1N6/PPP1QPPP/7K w - - 0 1"))
+(define test-pos (pos-from-fen "2r3k1/pp2qpp1/7p/8/4N3/1PB3NP/P4PP1/4R1K1 b - - 0 1"))
 (define test-current-depth 0)
 (define test-max-depth 4)
-(define test-candidate-moves candidate-moves-pin-and-capture)
+(define test-candidate-moves candidate-moves-capture-piece-with-pinned-defender)
 (define test-stop never-stop)
 
 (for ([move (collect-best-moves test-pos test-candidate-moves test-stop test-current-depth test-max-depth)])
@@ -1083,11 +1113,12 @@
 
 
 
-(print-moves-considered "r5k1/p5pp/1p1b4/3r1p2/4p3/1N6/PPP1QPPP/7K w - - 0 1"
-                        candidate-moves-pin-and-capture
+(print-moves-considered "2r3k1/pp2qpp1/7p/8/4N3/1PB3NP/P4PP1/4R1K1 b - - 0 1"
+                        candidate-moves-capture-piece-with-pinned-defender
                         0)
 
-(displayln (Pos-info-own-pins (make-empty-pos-info (pos-from-fen "r5k1/p5pp/1p1b4/3r1p2/4p3/1N6/PPP1QPPP/7K w - - 0 1"))))
-(displayln (Pos-info-enemy-pins (make-empty-pos-info (pos-from-fen "r5k1/p5pp/1p1b4/3r1p2/2Q1p3/1N6/PPP2PPP/7K b - - 1 1"))))
-
+(displayln (Pos-info-black-pins-sorted-by-pinned-piece
+            (make-empty-pos-info (pos-from-fen "2r3k1/pp2qpp1/7p/8/4N3/1PB3NP/P4PP1/4R1K1 b - - 0 1"))))
 |#
+
+
