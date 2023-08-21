@@ -749,6 +749,13 @@
 (define (puts-enemy-en-prise? pos-info move)
   (not (empty? (enemies-put-en-prise pos-info move))))
 
+(: puts-pinned-enemy-en-prise? Pattern-recognizer)
+(define (puts-pinned-enemy-en-prise? pos-info move)
+  (let ([put-en-prise (enemies-put-en-prise pos-info move)])
+    (exists-in (Pos-info-own-pins pos-info)
+               (lambda ([pin : Pin])
+                 (set-member? put-en-prise (Pin-pinned-location pin))))))
+
 (: pins-enemy-piece? Pattern-recognizer)
 (define (pins-enemy-piece? pos-info move)
   (let* ([pins-now (Pos-info-own-pins pos-info)]
@@ -878,47 +885,6 @@
                        (legal-moves pos)))
              (rec-candidates pos (- depth 1)))))]))
 
-(: candidate-moves-scare-off-defender Candidate-moves-function)
-(define candidate-moves-scare-off-defender
-  (candidate-moves-of-tactical-patterns
-   (list (r-and puts-defender-en-prise?
-                (r-not puts-friendly-en-prise?))
-         (r-or moves-en-prise-piece?
-               captures-en-prise-piece?)
-         (r-or is-mate-in-one?
-               captures-en-prise-piece?))))
-
-(: candidate-moves-double-attack Candidate-moves-function)
-(define candidate-moves-double-attack
-  (candidate-moves-of-tactical-patterns
-   (list puts-two-en-prise?
-         (r-or moves-en-prise-piece?
-               captures-double-attacker?)
-         (r-or is-mate-in-one?
-               captures-en-prise-piece?))))
-
-(: candidate-moves-double-attack-with-promotion-threat Candidate-moves-function)
-(define candidate-moves-double-attack-with-promotion-threat
-  (candidate-moves-of-tactical-patterns
-   (list puts-two-en-prise?
-         (r-or moves-en-prise-piece?
-               captures-double-attacker?)
-         (r-or is-mate-in-one?
-               initiates-equivalent-trade-or-better?
-               is-in-check?
-               enemy-has-promotion-threat?))))
-
-(: candidate-moves-threaten-checkmate-and-capture Candidate-moves-function)
-(define candidate-moves-threaten-checkmate-and-capture
-  (candidate-moves-of-tactical-patterns
-   (list (r-and threatens-checkmate?
-                puts-enemy-en-prise?)
-         defends-against-checkmate?
-         (r-or is-mate-in-one?
-               captures-en-prise-piece?
-               is-checking-move?
-               is-in-check?))))
-
 (: candidate-moves-pin-and-capture Candidate-moves-function)
 (define candidate-moves-pin-and-capture
   (candidate-moves-of-tactical-patterns
@@ -930,6 +896,13 @@
 (define candidate-moves-capture-piece-with-pinned-defender
   (candidate-moves-of-tactical-patterns
    (list captures-piece-with-pinned-defense?
+         captures-en-prise-piece?)))
+
+(: candidate-moves-attack-pinned-piece Candidate-moves-function)
+(define candidate-moves-attack-pinned-piece
+  (candidate-moves-of-tactical-patterns
+   (list puts-pinned-enemy-en-prise?
+         any-move?
          captures-en-prise-piece?)))
 
 (: never-stop Optional-stop-function)
@@ -1037,10 +1010,11 @@
 
 (define arsenal
   (Arsenal
-   (list 'pin-and-capture 'capture-piece-with-pinned-defense)
-   (list candidate-moves-pin-and-capture candidate-moves-capture-piece-with-pinned-defender)
-   (list 4 4)
-   (list never-stop never-stop)))
+   (list 'pin-and-capture 'capture-piece-with-pinned-defense 'attack-pinned-piece)
+   (list candidate-moves-pin-and-capture candidate-moves-capture-piece-with-pinned-defender
+         candidate-moves-attack-pinned-piece)
+   (list 5 4 5)
+   (list never-stop never-stop never-stop)))
 
 (: perform-test (-> (Listof Position) (Listof String) (Listof Integer)
                     Void))
@@ -1056,7 +1030,7 @@
                          (check-solution pos movestrings calculated-moves)
                          improvement
                          tactic-name)))))
-(define first 1)
+(define first 28)
 (define last 60)
 
 (define positions-to-be-tested (drop (take positions last) (- first 1)))
@@ -1097,10 +1071,10 @@
     (when (empty? moves)
         (displayln "No moves"))))
 #|
-(define test-pos (pos-from-fen "2r3k1/pp2qpp1/7p/8/4N3/1PB3NP/P4PP1/4R1K1 b - - 0 1"))
+(define test-pos (pos-from-fen "4q3/6kp/2p2bp1/8/4b3/5N2/P3BKPP/4Q3 w - - 0 1"))
 (define test-current-depth 0)
-(define test-max-depth 4)
-(define test-candidate-moves candidate-moves-capture-piece-with-pinned-defender)
+(define test-max-depth 5)
+(define test-candidate-moves candidate-moves-pin-and-capture)
 (define test-stop never-stop)
 
 (for ([move (collect-best-moves test-pos test-candidate-moves test-stop test-current-depth test-max-depth)])
@@ -1110,13 +1084,12 @@
                      (move->uci-string move)
                      (position-evaluation->integer (evaluate-position test-pos))
                      (test-stop test-pos test-current-depth))))
+|#
 
-
-
-(print-moves-considered "2r3k1/pp2qpp1/7p/8/4N3/1PB3NP/P4PP1/4R1K1 b - - 0 1"
-                        candidate-moves-capture-piece-with-pinned-defender
+#|
+(print-moves-considered "4q3/6kp/2p2bp1/8/4b3/5N2/P3BKPP/4Q3 w - - 0 1"
+                        candidate-moves-attack-pinned-piece
                         0)
-
 (displayln (Pos-info-black-pins-sorted-by-pinned-piece
             (make-empty-pos-info (pos-from-fen "2r3k1/pp2qpp1/7p/8/4N3/1PB3NP/P4PP1/4R1K1 b - - 0 1"))))
 |#
