@@ -9,6 +9,8 @@
 (require "movement-basics.rkt")
 (require "make-move.rkt")
 (require "move-search.rkt")
+(require "position-info-v1.rkt")
+(require "attacks-defenses-v1.rkt")
 (require "min-max-evaluation.rkt")
 (require "test-common.rkt")
 (require "check.rkt")
@@ -45,7 +47,7 @@
 (define (candidate-moves pos)
   (cond
     [(in-check? pos (Position-to-move pos)) (legal-moves pos)]
-    [(empty? (locations-with-possibly-en-prise-piece (Position-pp pos))) '()]
+    [(empty? (Pos-info-en-prise (make-empty-pos-info pos))) '()]
     [else
      (filter (lambda ([move : Move])
                (or (capturing-move? move)
